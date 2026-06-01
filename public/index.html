@@ -394,7 +394,7 @@ let formData={dept:'',subDate:''};
 async function fetchRates(){
   const btn=document.getElementById('refreshBtn');btn.classList.add('spin');
   try{
-    const r=await fetch('https://api.frankfurter.app/latest?from=SGD');
+    const r=await fetch('/api/rates');
     if(!r.ok)throw new Error('HTTP '+r.status);
     const d=await r.json();
     if(!d.rates)throw new Error('No rates in response');
