@@ -1,13 +1,14 @@
-const { verifyIdToken }   = require('../lib/verifyToken');
 const { getAppToken, getSiteId, createListItem } = require('../lib/sharepoint');
 
 module.exports = async function handler(req, res) {
+  // Allow cross-origin requests from the frontend
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  try {
-    const authHeader = req.headers.authorization || '';
-    const idToken    = authHeader.replace('Bearer ', '').trim();
-    const user       = await verifyIdToken(idToken);
 
+  try {
     const { employeeName, employeeEmail, department, submissionDate,
             lineItems, notes, exchangeRates, receiptCount } = req.body;
 
@@ -32,11 +33,11 @@ module.exports = async function handler(req, res) {
       Status:          'Pending',
       ReceiptCount:    receiptCount || 0,
       ExchangeRates:   JSON.stringify(exchangeRates || {}),
-      SubmittedByOID:  user.oid,
     };
 
     const created = await createListItem(token, siteId, fields);
     return res.status(200).json({ success: true, itemId: created?.id || 'unknown' });
+
   } catch(err) {
     console.error('[submit]', err.message);
     return res.status(500).json({ error: err.message });

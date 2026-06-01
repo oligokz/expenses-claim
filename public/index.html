@@ -7,8 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://alcdn.msauth.net/browser/2.38.3/js/msal-browser.min.js" 
-  onload="if(window.__initApp)window.__initApp()"></script>
 </head>
 <body>
 <style>
@@ -27,17 +25,7 @@
 }
 html,body{font-family:var(--font);background:var(--bg);color:var(--ink);font-size:14px;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;width:100%;min-height:100vh}
-/* AUTH BAR */
-.auth-bar{display:none;align-items:center;justify-content:space-between;
-  padding:10px 32px;background:#fff3cd;border-bottom:1px solid #ffc107;gap:12px;flex-wrap:wrap}
-.auth-bar p{font-size:13px;color:#856404}
-.auth-bar button{padding:7px 18px;background:var(--blue);color:#fff;border:none;
-  border-radius:var(--r-sm);font-family:var(--font);font-size:13px;font-weight:600;cursor:pointer}
-.auth-user{display:none;align-items:center;justify-content:space-between;
-  padding:8px 32px;background:var(--teal-dim);border-bottom:1px solid #b2e8df;gap:12px}
-.auth-user p{font-size:12.5px;color:#007a68;font-weight:500}
-.auth-user button{background:none;border:1px solid #007a68;color:#007a68;padding:4px 12px;
-  border-radius:20px;font-size:12px;cursor:pointer;font-family:var(--font)}
+
 /* TOPBAR */
 .topbar{position:sticky;top:0;z-index:100;height:52px;background:var(--panel);
   display:flex;align-items:center;justify-content:space-between;
@@ -54,7 +42,6 @@ html,body{font-family:var(--font);background:var(--bg);color:var(--ink);font-siz
   .topbar{height:48px;padding:0 14px}
   .tb-name{font-size:13.5px}.tb-logo{width:26px;height:26px}
   .tb-id{font-size:10px;padding:3px 8px}
-  .auth-bar,.auth-user{padding:10px 14px}
 }
 /* LAYOUT */
 .outer{width:100%;padding:22px 32px 60px;overflow-x:hidden}
@@ -257,15 +244,6 @@ table.lt .cdd-btn{height:36px;font-size:12.5px;padding:0 28px 0 9px;background-p
 .prog-bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--teal));transition:width .3s}
 </style>
 
-<div id="authBar" class="auth-bar">
-  <p>⚠️ Sign in with your Microsoft work account to submit expense claims.</p>
-  <button id="authBtn">Sign in with Microsoft</button>
-</div>
-<div id="authUser" class="auth-user" style="display:none">
-  <p id="authUserName">Signed in</p>
-  <button id="signOutBtn">Sign out</button>
-</div>
-
 <div class="prog"><div class="prog-bar" id="pbar"></div></div>
 <div class="toast" id="toast"><span id="ticon">✓</span><span id="tmsg"></span></div>
 
@@ -392,8 +370,6 @@ table.lt .cdd-btn{height:36px;font-size:12.5px;padding:0 28px 0 9px;background-p
 <script>
 /* ── CONFIG (public values only — no secrets) ── */
 const CFG = {
-  clientId: '046120d8-89e0-45dd-94de-72f3e993708b',
-  tenantId: '7b788342-e05a-443d-a6eb-43624b103a65',
   ratesUrl: 'https://api.frankfurter.app/latest?from=SGD',
   displayCurr: ['USD','EUR','GBP','JPY','CNY','MYR','AUD','THB','HKD','IDR'],
   allCurr: ['SGD','USD','EUR','GBP','JPY','CNY','MYR','AUD','NZD','THB','HKD','IDR','PHP','VND','INR','KRW','TWD','CHF','CAD','SEK'],
@@ -413,72 +389,6 @@ const CUR_NAMES={SGD:'Singapore Dollar',USD:'US Dollar',EUR:'Euro',GBP:'British 
 /* ── STATE ── */
 let rates={SGD:1},rateTs=null,rows=[],files=[],rowId=0;
 let formData={dept:'',subDate:''};
-let msalInstance=null,msalAccount=null,idToken=null;
-
-/* ── MSAL AUTH ── */
-window.__initApp = async function() {
-  msalInstance = new msal.PublicClientApplication({
-    auth:{
-      clientId: CFG.clientId,
-      authority: 'https://login.microsoftonline.com/'+CFG.tenantId,
-      redirectUri: window.location.origin+window.location.pathname,
-    },
-    cache:{cacheLocation:'sessionStorage',storeAuthStateInCookie:false}
-  });
-  await msalInstance.initialize();
-  const resp = await msalInstance.handleRedirectPromise();
-  if(resp){msalAccount=resp.account;idToken=resp.idToken;}
-  else{
-    const accounts=msalInstance.getAllAccounts();
-    if(accounts.length){
-      msalAccount=accounts[0];
-      // get a fresh ID token silently
-      try{
-        const r=await msalInstance.acquireTokenSilent({
-          scopes:['openid','profile'],account:msalAccount
-        });
-        idToken=r.idToken;
-      }catch(e){console.warn('Silent token failed',e);}
-    }
-  }
-  updateAuthUI();
-};
-
-function updateAuthUI(){
-  const bar=document.getElementById('authBar');
-  const userBar=document.getElementById('authUser');
-  if(msalAccount){
-    bar.style.display='none';
-    userBar.style.display='flex';
-    document.getElementById('authUserName').textContent=
-      'Signed in as '+( msalAccount.name||msalAccount.username);
-  }else{
-    bar.style.display='flex';
-    userBar.style.display='none';
-  }
-}
-
-function signIn(){
-  msalInstance.loginRedirect({scopes:['openid','profile']});
-}
-document.getElementById('authBtn').onclick=function(){
-  if(msalInstance)signIn();
-  else toast('Auth loading, please wait…','warn');
-};
-document.getElementById('signOutBtn').onclick=function(){
-  msalInstance.logoutRedirect();
-};
-
-async function getIdToken(){
-  if(!msalAccount)throw new Error('Not signed in');
-  try{
-    const r=await msalInstance.acquireTokenSilent({scopes:['openid','profile'],account:msalAccount});
-    idToken=r.idToken; return idToken;
-  }catch(e){
-    const r=await msalInstance.acquireTokenPopup({scopes:['openid','profile']});
-    msalAccount=r.account; idToken=r.idToken; return idToken;
-  }
-}
 
 /* ── RATES ── */
 async function fetchRates(){
@@ -744,15 +654,10 @@ async function submitClaim(){
   if(!emp||!mail||!dept||!date){toast('Fill in all required fields','err');return;}
   if(!rows.length){toast('Add at least one line item','err');return;}
   if(rows.some(r=>!r.cat||!r.amt)){toast('Each line needs category & amount','err');return;}
-  if(!msalAccount){toast('Please sign in first','err');return;}
-
   const btn=document.getElementById('submitBtn');
   btn.disabled=true;btn.innerHTML='⟳ Submitting…';setP(20);
 
   try{
-    const token=await getIdToken();
-    const authHeader={'Authorization':'Bearer '+token};
-
     // 1 — Submit claim data to our API route
     setP(35);
     const lineItems=rows.map(r=>({
@@ -763,7 +668,7 @@ async function submitClaim(){
     }));
     const submitRes=await fetch('/api/submit',{
       method:'POST',
-      headers:{...authHeader,'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
         employeeName:emp,employeeEmail:mail,department:dept,submissionDate:date,
         lineItems,notes:document.getElementById('notes').value.trim(),
@@ -782,7 +687,7 @@ async function submitClaim(){
       fd.append('metadata',JSON.stringify({employeeName:emp,date}));
       fd.append('file',files[i],files[i].name);
       const uploadRes=await fetch('/api/upload',{
-        method:'POST',headers:authHeader,body:fd
+        method:'POST',body:fd
       });
       if(!uploadRes.ok){
         const ud=await uploadRes.json();
