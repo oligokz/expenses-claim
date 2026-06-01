@@ -1,4 +1,66 @@
-const { getAppToken, getSiteId, createListItem } = require('../lib/sharepoint');
+// All SharePoint logic is inlined here — Vercel serverless functions
+// cannot require files outside the /api directory without a build step.
+
+let _cachedToken = null, _tokenExpiry = 0, _siteId = null;
+
+async function getAppToken() {
+  const now = Date.now();
+  if (_cachedToken && now < _tokenExpiry) return _cachedToken;
+  const url  = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
+  const body = new URLSearchParams({
+    grant_type:    'client_credentials',
+    client_id:     process.env.AZURE_CLIENT_ID,
+    client_secret: process.env.AZURE_CLIENT_SECRET,
+    scope:         'https://graph.microsoft.com/.default',
+  });
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Token failed (${res.status}): ${txt}`);
+  }
+  const data = await res.json();
+  _cachedToken = data.access_token;
+  _tokenExpiry = now + (data.expires_in - 300) * 1000;
+  return _cachedToken;
+}
+
+async function getSiteId(token) {
+  if (_siteId) return _siteId;
+  const spUrl    = process.env.SP_SITE_URL;
+  const hostname = new URL(spUrl).hostname;
+  const sitePath = new URL(spUrl).pathname;
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`getSiteId failed (${res.status}): ${txt}`);
+  }
+  _siteId = (await res.json()).id;
+  return _siteId;
+}
+
+async function createListItem(token, siteId, fields) {
+  const listName = process.env.SP_LIST_NAME;
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    }
+  );
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`createListItem failed (${res.status}): ${txt}`);
+  }
+  return res.json();
+}
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -7,7 +69,6 @@ module.exports = async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  // Log env vars presence (values hidden) to help diagnose config issues
   console.log('[submit] Env check:', {
     hasTenantId:     !!process.env.AZURE_TENANT_ID,
     hasClientId:     !!process.env.AZURE_CLIENT_ID,
@@ -27,11 +88,11 @@ module.exports = async function handler(req, res) {
     if (!lineItems || !lineItems.length)
       return res.status(400).json({ error: 'At least one line item required' });
 
-    console.log('[submit] Getting app token…');
-    const token = await getAppToken();
-    console.log('[submit] Got token ✓, getting site ID…');
+    console.log('[submit] Getting token…');
+    const token  = await getAppToken();
+    console.log('[submit] Token OK. Getting site ID…');
     const siteId = await getSiteId(token);
-    console.log('[submit] Got siteId ✓:', siteId);
+    console.log('[submit] Site ID OK:', siteId);
 
     const totalSGD = lineItems.reduce((s, i) => s + (i.amountSGD || 0), 0);
     const fields = {
@@ -50,13 +111,11 @@ module.exports = async function handler(req, res) {
 
     console.log('[submit] Creating list item…');
     const created = await createListItem(token, siteId, fields);
-    console.log('[submit] Created ✓, ID:', created?.id);
+    console.log('[submit] Success! ID:', created?.id);
     return res.status(200).json({ success: true, itemId: created?.id || 'unknown' });
 
   } catch(err) {
-    // Log full error details to Vercel logs
     console.error('[submit] ERROR:', err.message);
-    // Always return valid JSON even on error
-    return res.status(500).json({ error: err.message || 'Internal server error' });
+    return res.status(500).json({ error: err.message });
   }
 };
