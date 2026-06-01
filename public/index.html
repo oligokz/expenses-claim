@@ -394,14 +394,20 @@ let formData={dept:'',subDate:''};
 async function fetchRates(){
   const btn=document.getElementById('refreshBtn');btn.classList.add('spin');
   try{
-    const r=await fetch(CFG.ratesUrl);
-    if(!r.ok)throw new Error();
-    const d=await r.json();rates={SGD:1,...d.rates};rateTs=new Date();
+    const r=await fetch('https://api.frankfurter.app/latest?from=SGD');
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const d=await r.json();
+    if(!d.rates)throw new Error('No rates in response');
+    rates={SGD:1,...d.rates};
+    rateTs=new Date();
     renderRates();recalcAll();
-  }catch{
+    console.log('Rates fetched live:', Object.keys(d.rates).length+' currencies');
+  }catch(e){
+    console.warn('Using cached rates:', e.message);
     rates={SGD:1,USD:0.74,EUR:0.69,GBP:0.59,JPY:111,CNY:5.38,MYR:3.42,AUD:1.13,
       NZD:1.21,THB:26.9,HKD:5.8,IDR:11700,PHP:42.5,VND:18500,INR:61.8,KRW:990,
       TWD:23.8,CHF:0.66,CAD:1.01,SEK:7.9};
+    rateTs='cached';
     renderRates();recalcAll();
   }finally{btn.classList.remove('spin');}
 }
@@ -414,8 +420,11 @@ function renderRates(){
     const f=v.toLocaleString('en-SG',{maximumFractionDigits:big?0:4,minimumFractionDigits:big?0:2});
     return'<div class="rate-tile"><div class="rt-pair">SGD→'+c+'</div><div class="rt-val">'+f+'</div><div class="rt-sub">1 SGD</div></div>';
   }).join('');
+  const statusText = rateTs==='cached' ? 'Using cached rates'
+    : rateTs ? 'Live · Updated '+rateTs.toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit'})
+    : 'Fetching live rates…';
   document.getElementById('rateUpdated').innerHTML=
-    '<div class="live-dot"></div><span>'+(rateTs?'Updated '+rateTs.toLocaleTimeString('en-SG',{hour:'2-digit',minute:'2-digit'}):'Connecting…')+'</span>';
+    '<div class="live-dot"></div><span>'+statusText+'</span>';
 }
 
 /* ── DROPDOWN ── */
