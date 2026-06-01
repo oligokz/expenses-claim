@@ -115,6 +115,16 @@ expense-app/
 
 ## Environment Variables
 
+### Local development — `.env.local`
+```
+AZURE_TENANT_ID=7b788342-e05a-443d-a6eb-43624b103a65
+AZURE_CLIENT_ID=046120d8-89e0-45dd-94de-72f3e993708b
+AZURE_CLIENT_SECRET=<paste secret here>
+SP_SITE_URL=https://creoxtech.sharepoint.com/sites/Forms
+SP_LIST_NAME=ExpenseClaims
+SP_LIBRARY_NAME=Receipts
+NEXT_PUBLIC_AZURE_CLIENT_ID=046120d8-89e0-45dd-94de-72f3e993708b
+NEXT_PUBLIC_AZURE_TENANT_ID=7b788342-e05a-443d-a6eb-43624b103a65
 ```
 
 ### Vercel — set these in Project Settings → Environment Variables
