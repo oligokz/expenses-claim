@@ -1,0 +1,9 @@
+{
+  "name": "expenses-claim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Expense claim form with SharePoint backend (Vercel serverless).",
+  "dependencies": {
+    "jose": "^5.9.6"
+  }
+}

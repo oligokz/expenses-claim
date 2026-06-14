@@ -1,65 +1,9 @@
-// All SharePoint logic is inlined here — Vercel serverless functions
-// cannot require files outside the /api directory without a build step.
-
-let _cachedToken = null, _tokenExpiry = 0, _siteId = null, _driveId = null;
-
-async function getAppToken() {
-  const now = Date.now();
-  if (_cachedToken && now < _tokenExpiry) return _cachedToken;
-  const url  = `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`;
-  const body = new URLSearchParams({
-    grant_type:    'client_credentials',
-    client_id:     process.env.AZURE_CLIENT_ID,
-    client_secret: process.env.AZURE_CLIENT_SECRET,
-    scope:         'https://graph.microsoft.com/.default',
-  });
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: body.toString(),
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Token failed (${res.status}): ${txt}`);
-  }
-  const data = await res.json();
-  _cachedToken = data.access_token;
-  _tokenExpiry = now + (data.expires_in - 300) * 1000;
-  return _cachedToken;
-}
-
-async function getSiteId(token) {
-  if (_siteId) return _siteId;
-  const spUrl    = process.env.SP_SITE_URL;
-  const hostname = new URL(spUrl).hostname;
-  const sitePath = new URL(spUrl).pathname;
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${hostname}:${sitePath}`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`getSiteId failed (${res.status}): ${txt}`);
-  }
-  _siteId = (await res.json()).id;
-  return _siteId;
-}
+const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 
 async function uploadFile(token, siteId, fileName, buffer, mimeType) {
-  if (!_driveId) {
-    const libName   = process.env.SP_LIBRARY_NAME;
-    const drivesRes = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/${siteId}/drives`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!drivesRes.ok) throw new Error(`getDrives failed: ${drivesRes.status}`);
-    const drives = await drivesRes.json();
-    const drive  = drives.value.find(d => d.name === libName);
-    if (!drive) throw new Error(`Drive "${libName}" not found. Available: ${drives.value.map(d=>d.name).join(', ')}`);
-    _driveId = drive.id;
-  }
+  const driveId = await getDriveId(token, siteId);
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/drives/${_driveId}/root:/${encodeURIComponent(fileName)}:/content`,
+    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(fileName)}:/content`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
@@ -100,13 +44,14 @@ function parseMultipart(buffer, boundary) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  applyCors(req, res, 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
+    // Identity comes from the verified token, NOT the request metadata.
+    const user = await verifyUserToken(req);
+
     const chunks = [];
     for await (const chunk of req) chunks.push(chunk);
     const rawBody  = Buffer.concat(chunks);
@@ -120,7 +65,7 @@ module.exports = async function handler(req, res) {
     if (!metaPart) return res.status(400).json({ error: 'No metadata found in request' });
 
     const meta     = JSON.parse(metaPart.data.toString('utf8'));
-    const safeName = (meta.employeeName || 'unknown').replace(/[^a-z0-9]/gi, '_');
+    const safeName = (user.name || 'unknown').replace(/[^a-z0-9]/gi, '_');
     const fileName = `${safeName}_${meta.date}_${filePart.filename}`;
 
     if (filePart.data.length > 15 * 1024 * 1024)
@@ -132,7 +77,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ success: true, fileName });
 
   } catch(err) {
-    console.error('[upload] ERROR:', err.message);
-    return res.status(500).json({ error: err.message });
+    const status = err.status || 500;
+    if (status >= 500) console.error('[upload] ERROR:', err.message);
+    return res.status(status).json({ error: err.message });
   }
 };
