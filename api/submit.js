@@ -17,6 +17,32 @@ async function createListItem(token, siteId, fields) {
   return res.json();
 }
 
+// Diagnostic: list the target list's columns with their data type, so we can
+// tell exactly which field is missing or has a mismatched type when a write fails.
+async function describeColumns(token, siteId) {
+  const listName = process.env.SP_LIST_NAME;
+  const res = await fetch(
+    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/columns`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  if (!res.ok) return null;
+  const data = await res.json();
+  const typeOf = (c) =>
+    c.text ? 'text'
+    : c.number ? 'number'
+    : c.dateTime ? 'dateTime'
+    : c.choice ? 'choice'
+    : c.currency ? 'currency'
+    : c.boolean ? 'boolean'
+    : c.personOrGroup ? 'person'
+    : c.lookup ? 'lookup'
+    : c.calculated ? 'calculated(read-only)'
+    : 'other';
+  const map = {};
+  for (const c of data.value || []) map[c.name] = typeOf(c) + (c.readOnly ? ' [readOnly]' : '');
+  return map;
+}
+
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'POST, OPTIONS');
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -42,43 +68,47 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    const totalSGD = lineItems.reduce((s, i) => s + (i.amountSGD || 0), 0);
-
-    // Build human-readable line item summary for easy Excel export
-    // e.g. "1. Airfare [Travel] — Qty 1 × USD 250.00 = SGD 337.84"
-    const lineItemsSummary = lineItems.map((item, idx) => {
-      const qty    = item.quantity || 1;
-      const cur    = item.currency || 'SGD';
-      const amt    = (item.amount || 0).toFixed(2);
-      const sgd    = (item.amountSGD || 0).toFixed(2);
-      const curStr = cur === 'SGD' ? `SGD ${amt}` : `${cur} ${amt} = SGD ${sgd}`;
-      return `${idx+1}. ${item.description || '(no description)'} [${item.category || 'Uncategorised'}] — Qty ${qty} × ${curStr}`;
-    }).join('\n');
-
-    // Currencies used (deduplicated)
-    const currenciesUsed = [...new Set(lineItems.map(i => i.currency || 'SGD'))].join(', ');
+    // One expense per submission — write it to flat columns.
+    const item = lineItems[0] || {};
 
     const fields = {
-      Title:            `${employeeName} — ${submissionDate}`,
-      EmployeeName:      employeeName,
-      EmployeeEmail:     employeeEmail,
-      Department:        department,
-      SubmissionDate:    submissionDate,
-      TotalAmountSGD:    parseFloat(totalSGD.toFixed(2)),
-      // Human-readable columns for HR
-      LineItemCount:     lineItems.length,
-      CurrenciesUsed:    currenciesUsed,
-      LineItemsSummary:  lineItemsSummary,
-      Notes:             notes || '',
-      Status:            'Pending',
-      ReceiptCount:      receiptCount || 0,
-      // Raw JSON kept for system use (hidden in HR view)
-      LineItemsJSON:     JSON.stringify(lineItems),
-      ExchangeRates:     JSON.stringify(exchangeRates || {}),
+      Title:          `${employeeName} - ${submissionDate}`,
+      EmployeeName:   employeeName,
+      EmployeeEmail:  employeeEmail,
+      Department:     department,
+      SubmissionDate: submissionDate,
+      // Flat expense columns (single entry per claim)
+      Category:       item.category || '',
+      Description:    item.description || '',
+      ReceiptDate:    item.receiptDate || null,
+      Quantity:       item.quantity || 1,
+      Currency:       item.currency || 'SGD',
+      Amount:         item.amount || 0,
+      TotalAmountSGD: parseFloat((item.amountSGD || 0).toFixed(2)),
+      Notes:          notes || '',
+      Status:         'Pending',
+      ReceiptCount:   receiptCount || 0,
+      ExchangeRates:  JSON.stringify(exchangeRates || {}),
     };
 
-    const created = await createListItem(token, siteId, fields);
-    return res.status(200).json({ success: true, itemId: created?.id || 'unknown' });
+    let created;
+    try {
+      created = await createListItem(token, siteId, fields);
+    } catch (writeErr) {
+      // Turn Graph's opaque "generalException" into something actionable by
+      // reporting each field we sent alongside the actual column type it maps to.
+      const cols = await describeColumns(token, siteId).catch(() => null);
+      if (cols) {
+        const report = Object.keys(fields)
+          .map((f) => `${f}=${cols[f] || 'MISSING'}`)
+          .join(', ');
+        writeErr.message += ` | columns: ${report}`;
+      }
+      throw writeErr;
+    }
+    const itemId   = created?.id || 'unknown';
+    const claimRef = `EXP-${itemId}`;
+    return res.status(200).json({ success: true, itemId, claimRef });
 
   } catch(err) {
     const status = err.status || 500;

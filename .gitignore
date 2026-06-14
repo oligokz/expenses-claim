@@ -1,6 +1,11 @@
 node_modules/
+dist/
 .vercel
 .env
 .env.local
 .env.check
 .DS_Store
+
+# Local design tooling (impeccable skill + its working state)
+.claude/
+.impeccable/

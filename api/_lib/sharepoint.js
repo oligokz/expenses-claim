@@ -92,16 +92,24 @@ async function verifyUserToken(req) {
 
   const { jwtVerify } = await import('jose');
   const jwks     = await getJwks();
-  const tenant   = process.env.AZURE_TENANT_ID;
+  const tenant      = process.env.AZURE_TENANT_ID;
+  const spaClientId = process.env.SPA_CLIENT_ID;
   const audience = [
-    process.env.API_AUDIENCE,        // api://<spa-client-id>
-    process.env.SPA_CLIENT_ID,       // some tokens carry the bare GUID as aud
+    process.env.API_AUDIENCE,                       // api://<spa-client-id>
+    spaClientId,                                     // bare GUID (some v2 tokens)
+    spaClientId ? `api://${spaClientId}` : null,     // derived App ID URI (v1 tokens)
   ].filter(Boolean);
 
   let payload;
   try {
     ({ payload } = await jwtVerify(token, jwks, {
-      issuer:   `https://login.microsoftonline.com/${tenant}/v2.0`,
+      // Accept both Entra token formats for this tenant:
+      //   v2.0 → https://login.microsoftonline.com/<tenant>/v2.0
+      //   v1.0 → https://sts.windows.net/<tenant>/
+      issuer: [
+        `https://login.microsoftonline.com/${tenant}/v2.0`,
+        `https://sts.windows.net/${tenant}/`,
+      ],
       audience,
     }));
   } catch (err) {

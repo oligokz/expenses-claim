@@ -1,9 +1,11 @@
 const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 
-async function uploadFile(token, siteId, fileName, buffer, mimeType) {
+async function uploadFile(token, siteId, segments, buffer, mimeType) {
   const driveId = await getDriveId(token, siteId);
+  // Graph auto-creates every folder in the path when uploading content.
+  const path = segments.map(encodeURIComponent).join('/');
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodeURIComponent(fileName)}:/content`,
+    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${path}:/content`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': mimeType || 'application/octet-stream' },
@@ -64,17 +66,27 @@ module.exports = async function handler(req, res) {
     if (!filePart) return res.status(400).json({ error: 'No file found in request' });
     if (!metaPart) return res.status(400).json({ error: 'No metadata found in request' });
 
-    const meta     = JSON.parse(metaPart.data.toString('utf8'));
-    const safeName = (user.name || 'unknown').replace(/[^a-z0-9]/gi, '_');
-    const fileName = `${safeName}_${meta.date}_${filePart.filename}`;
+    const meta = JSON.parse(metaPart.data.toString('utf8'));
+
+    // Organise receipts as  <YYYY-MM> / EXP-<claim ID> / NN-<file>
+    // so HR can copy a whole month's folder, with each claim grouped inside.
+    // Month is taken from the submission date (what the Excel export filters on).
+    const month       = /^\d{4}-\d{2}/.test(meta.date || '')
+      ? meta.date.slice(0, 7)
+      : 'Undated';
+    const claimFolder = (meta.claimRef || 'Unfiled').replace(/[^a-z0-9_-]/gi, '_');
+    const idx         = Number.isInteger(meta.index) ? meta.index + 1 : 1;
+    const safeFile    = (filePart.filename || 'receipt').replace(/[^a-z0-9._-]/gi, '_');
+    const fileName    = `${String(idx).padStart(2, '0')}-${safeFile}`;
+    const segments    = [month, claimFolder, fileName];
 
     if (filePart.data.length > 15 * 1024 * 1024)
       return res.status(413).json({ error: 'File exceeds 15 MB limit' });
 
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
-    await uploadFile(token, siteId, fileName, filePart.data, filePart.contentType);
-    return res.status(200).json({ success: true, fileName });
+    await uploadFile(token, siteId, segments, filePart.data, filePart.contentType);
+    return res.status(200).json({ success: true, fileName: segments.join('/') });
 
   } catch(err) {
     const status = err.status || 500;
