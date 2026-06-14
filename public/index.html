@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://alcdn.msauth.net/browser/3.7.1/js/msal-browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
 </head>
 <body>
 <style>
@@ -400,17 +400,19 @@ const AUTH={
   tenantId:'7b788342-e05a-443d-a6eb-43624b103a65',
 };
 const API_SCOPE='api://'+AUTH.clientId+'/access_as_user';
-const msalInstance=new msal.PublicClientApplication({
-  auth:{
-    clientId:AUTH.clientId,
-    authority:'https://login.microsoftonline.com/'+AUTH.tenantId,
-    redirectUri:window.location.origin
-  },
-  cache:{cacheLocation:'sessionStorage'}
-});
-let account=null;
+let msalInstance=null,account=null;
 
 async function initAuth(){
+  if(typeof msal==='undefined')
+    throw new Error('Sign-in library failed to load — check your network or ad-blocker, then refresh.');
+  msalInstance=new msal.PublicClientApplication({
+    auth:{
+      clientId:AUTH.clientId,
+      authority:'https://login.microsoftonline.com/'+AUTH.tenantId,
+      redirectUri:window.location.origin
+    },
+    cache:{cacheLocation:'sessionStorage'}
+  });
   await msalInstance.initialize();
   const resp=await msalInstance.handleRedirectPromise();
   if(resp&&resp.account)account=resp.account;
