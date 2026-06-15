@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils"
 
 export type View = "expense" | "leave" | "history"
 
-const TABS: { id: View; label: string; icon: typeof Receipt }[] = [
-  { id: "expense", label: "New Expense", icon: Receipt },
-  { id: "leave", label: "Leave Request", icon: CalendarDays },
-  { id: "history", label: "My Requests", icon: ListChecks },
+const TABS: { id: View; label: string; short: string; icon: typeof Receipt }[] = [
+  { id: "expense", label: "New Expense", short: "Expense", icon: Receipt },
+  { id: "leave", label: "Leave Request", short: "Leave", icon: CalendarDays },
+  { id: "history", label: "My Requests", short: "Requests", icon: ListChecks },
 ]
 
 export function AppNav({
@@ -29,14 +29,15 @@ export function AppNav({
               onClick={() => onChange(t.id)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-2 whitespace-nowrap rounded-t-md px-3 py-3 text-sm font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                "relative flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-t-md px-2 py-3 text-sm font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-none sm:justify-start sm:px-3",
                 active
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
               <Icon className="size-4 shrink-0" />
-              {t.label}
+              <span className="sm:hidden">{t.short}</span>
+              <span className="hidden sm:inline">{t.label}</span>
               {active && (
                 <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />
               )}
