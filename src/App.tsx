@@ -403,10 +403,9 @@ export default function App() {
         ) : (
           <>
             <div className="mb-6">
-              <h1 className="font-display text-xl font-semibold tracking-tight sm:text-2xl">
+              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
                 New Expense Claim
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">Drafting stage</p>
             </div>
 
             <div className="grid items-start gap-5 lg:grid-cols-[1fr_300px]">

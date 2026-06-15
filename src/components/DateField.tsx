@@ -65,6 +65,14 @@ export function DateField({
     onChange(displayToIso(next))
   }
 
+  const openPicker = () => {
+    try {
+      pickerRef.current?.showPicker?.()
+    } catch {
+      /* unsupported — typing still works */
+    }
+  }
+
   return (
     <div className="relative">
       <Input
@@ -77,18 +85,13 @@ export function DateField({
         required={required}
         aria-required={required || undefined}
         onChange={(e) => handleText(e.target.value)}
+        onClick={openPicker}
         className={cn("bg-card pr-9", className)}
       />
       <button
         type="button"
         aria-label="Open calendar"
-        onClick={() => {
-          try {
-            pickerRef.current?.showPicker?.()
-          } catch {
-            /* unsupported — typing still works */
-          }
-        }}
+        onClick={openPicker}
         className="absolute right-2 top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-md text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
         <CalendarDays className="size-4" />

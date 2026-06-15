@@ -55,11 +55,6 @@ export function ClaimantInfo({
               />
             )}
           </div>
-          {identityLocked && (
-            <p className="text-[11px] text-muted-foreground">
-              Verified via single sign-on
-            </p>
-          )}
           <FieldError id="claimant-employee-error" message={errors.employee} />
         </div>
 

@@ -1,57 +1,56 @@
 ---
 name: CorpExpense
-description: A composed, exact, dependable expense-claim tool — black & white worksheet, bright-blue action, near-black service counter.
+description: A composed, exact, dependable expense-claim tool — Manrope throughout, black & white worksheet, vivid blue action, near-black service counter.
 colors:
-  app-bg: "oklch(0.985 0 0)"
-  ink: "oklch(0.18 0 0)"
-  blue-primary: "oklch(0.52 0.2 255)"
+  app-bg: "oklch(1 0 0)"
+  ink: "oklch(0.145 0 0)"
+  blue-primary: "oklch(0.546 0.245 262.881)"
   card-white: "oklch(1 0 0)"
-  gray-surface: "oklch(0.96 0 0)"
-  muted-ink: "oklch(0.44 0 0)"
-  border: "oklch(0.92 0 0)"
-  blue-wash: "oklch(0.95 0.03 255)"
-  counter-black: "oklch(0.2 0 0)"
-  counter-muted: "oklch(0.7 0 0)"
+  gray-surface: "oklch(0.967 0.001 286.375)"
+  muted-ink: "oklch(0.556 0 0)"
+  border: "oklch(0.922 0 0)"
+  counter-black: "oklch(0.205 0 0)"
+  counter-muted: "oklch(0.708 0 0)"
   success-teal: "oklch(0.62 0.13 165)"
   warning-amber: "oklch(0.78 0.15 80)"
-  destructive-red: "oklch(0.585 0.205 27)"
+  destructive-red: "oklch(0.577 0.245 27.325)"
 typography:
   display:
-    fontFamily: "Inter, 'Inter Fallback', ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.25rem, 2.5vw, 1.5rem)"
-    fontWeight: 600
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "clamp(1.5rem, 3vw, 1.875rem)"
+    fontWeight: 700
     lineHeight: 1.1
-    letterSpacing: "-0.01em"
+    letterSpacing: "-0.02em"
   title:
-    fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 600
     lineHeight: 1.2
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "'Noto Sans', ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
     letterSpacing: "normal"
   label:
-    fontFamily: "'Noto Sans', ui-sans-serif, system-ui, sans-serif"
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.625rem"
     fontWeight: 600
     lineHeight: 1.4
     letterSpacing: "0.03em"
   mono:
-    fontFamily: "'JetBrains Mono', ui-monospace, monospace"
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.8125rem"
     fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "normal"
 rounded:
-  xs: "5.6px"
-  sm: "9.8px"
-  md: "11.9px"
-  lg: "14px"
-  xl: "19.6px"
+  xs: "4px"
+  sm: "7px"
+  md: "8.5px"
+  lg: "10px"
+  xl: "14px"
 spacing:
   xs: "6px"
   sm: "10px"
@@ -146,23 +145,21 @@ A strict black-and-white system with one bright blue. Surfaces are true neutrals
 
 ## 3. Typography
 
-**Display Font:** Inter (with "Inter Fallback", system-ui)
-**Body Font:** Noto Sans (with system-ui)
-**Label/Mono Font:** JetBrains Mono
+**One Family:** Manrope (with ui-sans-serif, system-ui fallbacks) — used for everything: display, titles, body, labels, and figures.
 
-**Character:** A geometric-leaning display (Inter, with `cv11`/`ss01` features enabled) paired with a calm, highly-legible humanist body (Noto Sans) — paired on a contrast axis so they never blur together. JetBrains Mono carries every figure that must be trusted, giving currency and rate readouts the ruled-column exactness of the Concierge Desk's ledger.
+**Character:** Manrope is a clean, slightly-rounded geometric sans that reads as modern and trustworthy at every size. A single family keeps the worksheet quiet and cohesive; hierarchy is carried by weight and size, not by mixing typefaces. Figures use Manrope's `tabular-nums` so currency and rate readouts still align in ruled columns.
 
 ### Hierarchy
-- **Display** (Inter 600, `clamp(1.25rem, 2.5vw, 1.5rem)`, `-0.01em`): the page title ("New Expense Claim"). Restrained on purpose — this is a worksheet, not a landing page.
-- **Title** (Inter 600, 0.875rem, `-0.01em`): section-card headers ("Claimant", "Expense", "Receipts").
-- **Body** (Noto Sans 400, 0.875rem, line-height 1.5): field values, descriptions, helper text. Cap prose at 65–75ch.
-- **Label** (Noto Sans 600, 0.625rem, `+0.03em`, often uppercase): field labels, the "Base Currency · SGD" eyebrow on the counter panel, micro-captions.
-- **Mono** (JetBrains Mono 600, ~0.8125rem, tabular-nums): exchange-rate readouts, the running total, any committed figure.
+- **Display** (Manrope 700, `clamp(1.5rem, 3vw, 1.875rem)`, `-0.02em`): the page title ("New Expense Claim"). Bold and prominent — the anchor of the screen.
+- **Title** (Manrope 600, 0.875rem, `-0.01em`): section-card headers ("Claimant", "Expense", "Receipts").
+- **Body** (Manrope 400, 0.875rem, line-height 1.5): field values, descriptions, helper text. Cap prose at 65–75ch.
+- **Label** (Manrope 600, 0.625rem, `+0.03em`, often uppercase): field labels, the "Base Currency · SGD" eyebrow on the counter panel, micro-captions.
+- **Figures** (Manrope 600, ~0.8125rem, `tabular-nums`): exchange-rate readouts, the running total, any committed figure.
 
 ### Named Rules
-**The Tabular-Money Rule.** Every number that represents money or a rate is set in JetBrains Mono with `tabular-nums`. Figures must align vertically and never jitter as digits change. Body sans is for words; mono is for amounts.
+**The Tabular-Money Rule.** Every number that represents money or a rate uses `tabular-nums`. Figures must align vertically and never jitter as digits change.
 
-**The Quiet-Title Rule.** Display type never exceeds ~1.5rem. This is a tool people use, not a page that sells. Hierarchy comes from weight, color, and position — not from large type.
+**The One-Family Rule.** Manrope only. Don't introduce a second typeface; contrast comes from weight (400 / 600 / 700) and size, not from pairing.
 
 ## 4. Elevation
 
