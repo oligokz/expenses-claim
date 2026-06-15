@@ -51,6 +51,18 @@ export const CATEGORIES = [
   "Miscellaneous",
 ]
 
+export const LEAVE_TYPES: {
+  id: string
+  label: string
+  /** Which entitlement balance this draws from; null = not balance-tracked. */
+  balanceKey: "annual" | "medical" | "compassionate" | null
+}[] = [
+  { id: "Annual", label: "Annual / Vacation", balanceKey: "annual" },
+  { id: "Medical", label: "Medical / Sick", balanceKey: "medical" },
+  { id: "Unpaid", label: "Unpaid", balanceKey: null },
+  { id: "Compassionate", label: "Compassionate / Family", balanceKey: "compassionate" },
+]
+
 export const DEPARTMENTS = [
   "Finance & Operations",
   "Human Resources",

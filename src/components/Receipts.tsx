@@ -9,6 +9,8 @@ interface ReceiptsProps {
   files: File[]
   onAdd: (files: FileList | null) => void
   onRemove: (index: number) => void
+  title?: string
+  hint?: string
 }
 
 function humanSize(bytes: number) {
@@ -17,13 +19,19 @@ function humanSize(bytes: number) {
     : `${(bytes / 1024).toFixed(0)} KB`
 }
 
-export function Receipts({ files, onAdd, onRemove }: ReceiptsProps) {
+export function Receipts({
+  files,
+  onAdd,
+  onRemove,
+  title = "Receipt Attachments",
+  hint = "PDF · JPG · PNG · HEIC · Max 15 MB per file",
+}: ReceiptsProps) {
   const [drag, setDrag] = useState(false)
 
   return (
     <SectionCard
       icon={<Paperclip />}
-      title="Receipt Attachments"
+      title={title}
       action={
         files.length > 0 ? (
           <Badge variant="secondary" className="font-medium">
@@ -67,9 +75,7 @@ export function Receipts({ files, onAdd, onRemove }: ReceiptsProps) {
           <span className="font-semibold">Click to browse</span> or drag &amp; drop
           files here
         </span>
-        <span className="mt-1 text-xs text-muted-foreground">
-          PDF · JPG · PNG · HEIC · Max 15 MB per file
-        </span>
+        <span className="mt-1 text-xs text-muted-foreground">{hint}</span>
       </label>
 
       {files.length > 0 && (

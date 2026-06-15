@@ -2,6 +2,7 @@ import { getApiToken } from "./auth"
 import type {
   LineRow,
   ClaimantForm,
+  LeaveBalanceResponse,
   MyClaim,
   Rates,
   SubmitResponse,
@@ -109,5 +110,51 @@ export async function uploadReceipt(file: File, meta: UploadMeta): Promise<void>
   if (!res.ok) {
     const ud = await res.json().catch(() => ({}))
     throw new Error(ud.error || `Upload failed (HTTP ${res.status})`)
+  }
+}
+
+interface LeaveArgs {
+  leaveType: string
+  startDate: string
+  endDate: string
+  startPortion: string
+  endPortion: string
+  days: number
+  reason: string
+  attachmentCount: number
+}
+
+/** POST /api/leave — creates a leave request. Returns the new id + ref. */
+export async function submitLeave(
+  args: LeaveArgs,
+): Promise<{ itemId: string; claimRef: string }> {
+  const token = await getApiToken()
+  const res = await fetch("/api/leave", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(args),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Leave submit failed")
+  return {
+    itemId: (data.itemId as string) ?? "unknown",
+    claimRef: data.claimRef ?? `LEAVE-${data.itemId ?? "unknown"}`,
+  }
+}
+
+/** GET /api/leave-balance — the signed-in user's entitlements minus approved leave. */
+export async function fetchLeaveBalance(): Promise<LeaveBalanceResponse> {
+  const token = await getApiToken()
+  const res = await fetch("/api/leave-balance", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Failed to load leave balance")
+  return {
+    balance: data.balance || {},
+    hasEntitlements: !!data.hasEntitlements,
   }
 }

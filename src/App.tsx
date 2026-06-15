@@ -413,7 +413,7 @@ export default function App() {
                 New Expense Claim
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Enter your expense — we'll handle the SGD conversion and approval.
+                Submit a new claim below.
               </p>
             </div>
 
@@ -490,7 +490,7 @@ export default function App() {
           </>
           ))}
 
-        {view === "leave" && <LeaveRequest />}
+        {view === "leave" && <LeaveRequest employeeName={userName} />}
         {view === "history" && <MyRequests />}
       </main>
     </div>
