@@ -35,9 +35,11 @@ export function ClaimSummary({ data }: { data: ClaimSummaryData }) {
         <div className="mt-2 font-mono text-4xl font-bold leading-none tabular-nums text-destructive">
           SGD {fmt(data.total)}
         </div>
-        <div className="mt-2 break-all font-mono text-xs text-muted-foreground">
-          {data.breakdown}
-        </div>
+        {data.breakdown && data.breakdown !== "-" && (
+          <div className="mt-2 break-all font-mono text-xs text-muted-foreground">
+            {data.breakdown}
+          </div>
+        )}
       </div>
     </SectionCard>
   )
