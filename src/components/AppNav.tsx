@@ -29,7 +29,7 @@ export function AppNav({
               onClick={() => onChange(t.id)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-t-md px-2 py-3 text-sm font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 sm:flex-none sm:justify-start sm:px-3",
+                "relative flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-md px-2 py-3 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 sm:flex-none sm:justify-start sm:px-3",
                 active
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
