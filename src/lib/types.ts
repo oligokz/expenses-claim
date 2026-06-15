@@ -34,3 +34,17 @@ export interface SubmitResponse {
   claimRef?: string
   error?: string
 }
+
+/** A past expense claim, as returned by GET /api/my-claims. */
+export interface MyClaim {
+  id: string
+  claimRef: string
+  submissionDate: string
+  category: string
+  description: string
+  amount: number
+  currency: string
+  totalSGD: number
+  status: string
+  department: string
+}

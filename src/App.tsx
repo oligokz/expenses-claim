@@ -3,6 +3,9 @@ import { Loader2, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
+import { AppNav, type View } from "@/components/AppNav"
+import { MyRequests } from "@/components/MyRequests"
+import { LeaveRequest } from "@/components/LeaveRequest"
 import { ClaimantInfo } from "@/components/ClaimantInfo"
 import { LineItems } from "@/components/LineItems"
 import { Receipts } from "@/components/Receipts"
@@ -74,6 +77,7 @@ export default function App() {
   const [authError, setAuthError] = useState("")
   const [identityLocked, setIdentityLocked] = useState(false)
   const [userName, setUserName] = useState("")
+  const [view, setView] = useState<View>("expense")
 
   const [claimant, setClaimant] = useState<ClaimantForm>({
     employee: "",
@@ -391,9 +395,11 @@ export default function App() {
       </div>
 
       <TopBar userName={userName} onLogout={handleLogout} />
+      <AppNav view={view} onChange={setView} />
 
       <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 sm:pt-8 lg:pb-8">
-        {result ? (
+        {view === "expense" &&
+          (result ? (
           <ClaimConfirmation
             result={result}
             retrying={retrying}
@@ -426,7 +432,7 @@ export default function App() {
                 <Notes value={notes} onChange={setNotes} />
               </div>
 
-              <div className="flex flex-col gap-5 lg:sticky lg:top-20">
+              <div className="flex flex-col gap-5 lg:sticky lg:top-28">
                 <RatesPanel
                   rates={rates}
                   status={rateStatus}
@@ -479,7 +485,10 @@ export default function App() {
               </div>
             </div>
           </>
-        )}
+          ))}
+
+        {view === "leave" && <LeaveRequest />}
+        {view === "history" && <MyRequests />}
       </main>
     </div>
   )

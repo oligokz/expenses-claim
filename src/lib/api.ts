@@ -1,5 +1,11 @@
 import { getApiToken } from "./auth"
-import type { LineRow, ClaimantForm, Rates, SubmitResponse } from "./types"
+import type {
+  LineRow,
+  ClaimantForm,
+  MyClaim,
+  Rates,
+  SubmitResponse,
+} from "./types"
 import { toSGD, num } from "./currency"
 
 /** GET /api/rates — returns { rates } (1 SGD → currency). Throws on failure. */
@@ -9,6 +15,17 @@ export async function fetchRates(): Promise<Rates> {
   const d = await r.json()
   if (!d.rates) throw new Error("No rates in response")
   return { SGD: 1, ...d.rates }
+}
+
+/** GET /api/my-claims — the signed-in user's own past claims (newest first). */
+export async function fetchMyClaims(): Promise<MyClaim[]> {
+  const token = await getApiToken()
+  const res = await fetch("/api/my-claims", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Failed to load your claims")
+  return (data.claims as MyClaim[]) || []
 }
 
 interface SubmitArgs {
