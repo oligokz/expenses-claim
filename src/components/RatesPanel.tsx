@@ -36,7 +36,7 @@ export function RatesPanel({
         <div className="flex items-center gap-2 font-display text-sm font-semibold">
           <span
             aria-hidden="true"
-            className="grid size-7 place-items-center rounded-lg bg-white/10 [&_svg]:size-3.5"
+            className="grid size-7 place-items-center rounded-lg bg-primary/20 text-primary [&_svg]:size-3.5"
           >
             <ArrowRightLeft />
           </span>

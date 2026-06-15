@@ -26,7 +26,7 @@ export function SectionCard({
     <Card className={cn("gap-0 overflow-hidden py-0", className)}>
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3.5">
         <div className="flex items-center gap-2.5">
-          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-secondary text-muted-foreground [&_svg]:size-3.5">
+          <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary [&_svg]:size-3.5">
             {icon}
           </span>
           <h2 className="font-display text-sm font-semibold tracking-tight">
