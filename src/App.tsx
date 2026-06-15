@@ -412,6 +412,9 @@ export default function App() {
               <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
                 New Expense Claim
               </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Submit a single expense for manager approval.
+              </p>
             </div>
 
             <div className="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
