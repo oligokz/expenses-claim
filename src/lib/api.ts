@@ -123,7 +123,6 @@ interface LeaveArgs {
   endPortion: string
   days: number
   reason: string
-  attachmentCount: number
 }
 
 /** POST /api/leave — creates a leave request. Returns the new id + ref. */

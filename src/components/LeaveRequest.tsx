@@ -121,7 +121,6 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
         endPortion: "Full",
         days,
         reason: form.reason,
-        attachmentCount: files.length,
       })
 
       let failed = 0

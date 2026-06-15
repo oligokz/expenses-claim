@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
     const {
       department, leaveType, startDate, endDate,
       startPortion = 'Full', endPortion = 'Full',
-      reason, attachmentCount,
+      reason,
     } = req.body;
 
     if (!department || !leaveType || !startDate || !endDate)
@@ -94,7 +94,6 @@ module.exports = async function handler(req, res) {
       Days:           days,
       Reason:         reason || '',
       Status:         'Pending',
-      AttachmentCount: attachmentCount || 0,
     };
 
     let created;
