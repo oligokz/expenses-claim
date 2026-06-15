@@ -18,7 +18,7 @@ export function AppNav({
 }) {
   return (
     <nav className="sticky top-14 z-40 border-b bg-background">
-      <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 sm:px-4">
+      <div className="mx-auto flex max-w-7xl gap-1 overflow-x-auto overflow-y-hidden px-2 sm:px-4">
         {TABS.map((t) => {
           const active = t.id === view
           const Icon = t.icon
@@ -38,7 +38,7 @@ export function AppNav({
               <Icon className="size-4 shrink-0" />
               {t.label}
               {active && (
-                <span className="absolute inset-x-3 -bottom-px h-0.5 rounded-full bg-primary" />
+                <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />
               )}
             </button>
           )

@@ -413,7 +413,7 @@ export default function App() {
                 New Expense Claim
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Submit a single expense for manager approval.
+                Enter your expense — we'll handle the SGD conversion and approval.
               </p>
             </div>
 
