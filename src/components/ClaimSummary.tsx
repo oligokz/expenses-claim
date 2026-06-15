@@ -30,9 +30,9 @@ export function ClaimSummary({ data }: { data: ClaimSummaryData }) {
 
       <div className="mt-4 rounded-xl border bg-muted/50 px-5 py-6">
         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Total Claim (SGD)
+          Total Claim
         </div>
-        <div className="mt-2 font-mono text-4xl font-bold leading-none tabular-nums text-destructive">
+        <div className="mt-2 font-mono text-2xl font-bold leading-tight tabular-nums text-destructive">
           SGD {fmt(data.total)}
         </div>
         {data.breakdown && data.breakdown !== "-" && (

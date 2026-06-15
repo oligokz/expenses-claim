@@ -154,7 +154,7 @@ export function LineItems({ row, rates, onUpdate, errors }: ExpenseDetailsProps)
       </div>
 
       <div className="mt-5 flex items-center justify-between rounded-xl border bg-muted/50 px-4 py-3">
-        <span className="text-sm text-muted-foreground">SGD Equivalent</span>
+        <span className="text-sm text-muted-foreground">Equivalent</span>
         <div className="text-right">
           <div className="font-mono text-base font-bold tabular-nums">
             SGD {fmt(sgd)}
