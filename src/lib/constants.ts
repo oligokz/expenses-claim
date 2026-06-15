@@ -57,10 +57,10 @@ export const LEAVE_TYPES: {
   /** Which entitlement balance this draws from; null = not balance-tracked. */
   balanceKey: "annual" | "medical" | "compassionate" | null
 }[] = [
-  { id: "Annual", label: "Annual / Vacation", balanceKey: "annual" },
-  { id: "Medical", label: "Medical / Sick", balanceKey: "medical" },
+  { id: "Annual", label: "Annual", balanceKey: "annual" },
+  { id: "Medical", label: "Medical", balanceKey: "medical" },
   { id: "Unpaid", label: "Unpaid", balanceKey: null },
-  { id: "Compassionate", label: "Compassionate / Family", balanceKey: "compassionate" },
+  { id: "Compassionate", label: "Compassionate", balanceKey: "compassionate" },
 ]
 
 export const DEPARTMENTS = [
