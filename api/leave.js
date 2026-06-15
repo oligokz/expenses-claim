@@ -20,7 +20,7 @@ function computeDays(start, end, portion) {
 }
 
 async function createLeaveItem(token, siteId, fields) {
-  const listName = process.env.SP_LEAVE_LIST_NAME;
+  const listName = process.env.SP_LEAVE_LIST_NAME || 'Leave Requests';
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items`,
     {
@@ -39,7 +39,7 @@ async function createLeaveItem(token, siteId, fields) {
 // Same diagnostic as submit.js: report each field against its column type so a
 // failed write tells us exactly which column is missing or mistyped.
 async function describeColumns(token, siteId) {
-  const listName = process.env.SP_LEAVE_LIST_NAME;
+  const listName = process.env.SP_LEAVE_LIST_NAME || 'Leave Requests';
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/columns`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -61,9 +61,6 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    if (!process.env.SP_LEAVE_LIST_NAME)
-      return res.status(500).json({ error: 'SP_LEAVE_LIST_NAME is not configured' });
-
     const user = await verifyUserToken(req);
     if (!user.email)
       return res.status(400).json({ error: 'Token did not contain an email/username claim' });

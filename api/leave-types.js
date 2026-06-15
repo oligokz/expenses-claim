@@ -3,8 +3,7 @@ const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/s
 // Admin-managed leave types from the "Leave Types" SharePoint list.
 // Columns expected: Name (text), Active (yes/no), Order (number).
 async function listTypes(token, siteId) {
-  const listName = process.env.SP_LEAVETYPES_LIST_NAME;
-  if (!listName) return null; // not configured — client falls back to defaults
+  const listName = process.env.SP_LEAVETYPES_LIST_NAME || 'Leave Types';
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=100`,
     { headers: { Authorization: `Bearer ${token}` } }
