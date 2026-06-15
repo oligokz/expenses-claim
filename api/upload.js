@@ -68,9 +68,14 @@ module.exports = async function handler(req, res) {
 
     const meta = JSON.parse(metaPart.data.toString('utf8'));
 
-    // Organise receipts as  <YYYY-MM> / EXP-<claim ID> / NN-<file>
-    // so HR can copy a whole month's folder, with each claim grouped inside.
-    // Month is taken from the submission date (what the Excel export filters on).
+    // Organise files as  <Type> / <YYYY-MM> / <REF> / NN-<file>
+    //   Leave Attachments / 2026-06 / LEAVE-5 / 01-mc.pdf
+    //   Claims Attachments / 2026-06 / EXP-12 / 01-receipt.pdf
+    // so HR can copy a whole month's folder, with each item grouped inside.
+    // Type is derived from the reference prefix; month from the item date.
+    const topFolder   = /^LEAVE-/i.test(meta.claimRef || '')
+      ? 'Leave Attachments'
+      : 'Claims Attachments';
     const month       = /^\d{4}-\d{2}/.test(meta.date || '')
       ? meta.date.slice(0, 7)
       : 'Undated';
@@ -78,7 +83,7 @@ module.exports = async function handler(req, res) {
     const idx         = Number.isInteger(meta.index) ? meta.index + 1 : 1;
     const safeFile    = (filePart.filename || 'receipt').replace(/[^a-z0-9._-]/gi, '_');
     const fileName    = `${String(idx).padStart(2, '0')}-${safeFile}`;
-    const segments    = [month, claimFolder, fileName];
+    const segments    = [topFolder, month, claimFolder, fileName];
 
     if (filePart.data.length > 15 * 1024 * 1024)
       return res.status(413).json({ error: 'File exceeds 15 MB limit' });
