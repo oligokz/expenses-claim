@@ -6,12 +6,11 @@ interface TopBarProps {
   onLogout: () => void
 }
 
-/** "Bernard Lim" → "BL"; single name → first two letters. */
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+/** Deterministic DiceBear avatar, seeded per user so each person is consistent. */
+function avatarUrl(seed: string) {
+  return `https://api.dicebear.com/10.x/adventurer-neutral/svg?seed=${encodeURIComponent(
+    seed || "user",
+  )}`
 }
 
 export function TopBar({ userName, onLogout }: TopBarProps) {
@@ -22,9 +21,12 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
 
         <DropdownMenu.Root>
           <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-white/10 focus-visible:ring-[3px] focus-visible:ring-white/40">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-white/15 text-xs font-semibold">
-              {initials(userName)}
-            </span>
+            <img
+              src={avatarUrl(userName)}
+              alt=""
+              aria-hidden="true"
+              className="size-7 shrink-0 rounded-full bg-white/15"
+            />
             {userName && (
               <span className="hidden max-w-[160px] truncate text-sm font-medium md:inline">
                 {userName}

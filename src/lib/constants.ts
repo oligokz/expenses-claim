@@ -51,16 +51,13 @@ export const CATEGORIES = [
   "Miscellaneous",
 ]
 
-export const LEAVE_TYPES: {
-  id: string
-  label: string
-  /** Which entitlement balance this draws from; null = not balance-tracked. */
-  balanceKey: "annual" | "medical" | "compassionate" | null
-}[] = [
-  { id: "Annual", label: "Annual", balanceKey: "annual" },
-  { id: "Medical", label: "Medical", balanceKey: "medical" },
-  { id: "Unpaid", label: "Unpaid", balanceKey: null },
-  { id: "Compassionate", label: "Compassionate", balanceKey: "compassionate" },
+// Fallback leave types used when the SharePoint "Leave Types" list isn't
+// configured yet. Once it is, the form loads types from there instead.
+export const DEFAULT_LEAVE_TYPES: { name: string }[] = [
+  { name: "Annual" },
+  { name: "Medical" },
+  { name: "Unpaid" },
+  { name: "Compassionate" },
 ]
 
 export const DEPARTMENTS = [

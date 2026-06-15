@@ -27,7 +27,13 @@ export interface FormErrors {
 
 export type LeavePortion = "Full" | "AM" | "PM"
 
+/** A selectable leave type — admin-managed in SharePoint, with code defaults as fallback. */
+export interface LeaveTypeOption {
+  name: string
+}
+
 export interface LeaveForm {
+  department: string
   leaveType: string
   startDate: string // ISO yyyy-mm-dd
   endDate: string // ISO yyyy-mm-dd
@@ -37,24 +43,11 @@ export interface LeaveForm {
 }
 
 export interface LeaveErrors {
+  department?: string
   leaveType?: string
   startDate?: string
   endDate?: string
   reason?: string
-}
-
-export interface LeaveBalanceEntry {
-  entitlement: number
-  taken: number
-  remaining: number
-}
-
-/** Keyed by balanceKey: annual / medical / compassionate. */
-export type LeaveBalance = Record<string, LeaveBalanceEntry>
-
-export interface LeaveBalanceResponse {
-  balance: LeaveBalance
-  hasEntitlements: boolean
 }
 
 export type Rates = Record<string, number>

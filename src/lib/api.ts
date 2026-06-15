@@ -2,11 +2,12 @@ import { getApiToken } from "./auth"
 import type {
   LineRow,
   ClaimantForm,
-  LeaveBalanceResponse,
+  LeaveTypeOption,
   MyClaim,
   Rates,
   SubmitResponse,
 } from "./types"
+import { DEFAULT_LEAVE_TYPES } from "./constants"
 import { toSGD, num } from "./currency"
 
 /** GET /api/rates — returns { rates } (1 SGD → currency). Throws on failure. */
@@ -114,6 +115,7 @@ export async function uploadReceipt(file: File, meta: UploadMeta): Promise<void>
 }
 
 interface LeaveArgs {
+  department: string
   leaveType: string
   startDate: string
   endDate: string
@@ -145,16 +147,20 @@ export async function submitLeave(
   }
 }
 
-/** GET /api/leave-balance — the signed-in user's entitlements minus approved leave. */
-export async function fetchLeaveBalance(): Promise<LeaveBalanceResponse> {
-  const token = await getApiToken()
-  const res = await fetch("/api/leave-balance", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Failed to load leave balance")
-  return {
-    balance: data.balance || {},
-    hasEntitlements: !!data.hasEntitlements,
+/**
+ * GET /api/leave-types — admin-managed leave types from SharePoint.
+ * Falls back to the built-in defaults if the list isn't configured yet.
+ */
+export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
+  try {
+    const token = await getApiToken()
+    const res = await fetch("/api/leave-types", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    const types = (data.types as LeaveTypeOption[]) || []
+    return types.length ? types : DEFAULT_LEAVE_TYPES
+  } catch {
+    return DEFAULT_LEAVE_TYPES
   }
 }

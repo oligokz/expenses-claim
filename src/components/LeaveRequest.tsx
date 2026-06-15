@@ -1,5 +1,14 @@
 import { useEffect, useState } from "react"
-import { CalendarDays, CheckCircle2, Loader2, Plus, Send, StickyNote } from "lucide-react"
+import {
+  CalendarDays,
+  CheckCircle2,
+  Loader2,
+  Lock,
+  Plus,
+  Send,
+  StickyNote,
+  User,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { SectionCard } from "@/components/SectionCard"
@@ -9,6 +18,7 @@ import { FieldLabel } from "@/components/FieldLabel"
 import { Receipts } from "@/components/Receipts"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
@@ -18,10 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { fetchLeaveBalance, submitLeave, uploadReceipt } from "@/lib/api"
-import { LEAVE_TYPES } from "@/lib/constants"
+import { fetchLeaveTypes, submitLeave, uploadReceipt } from "@/lib/api"
+import { DEPARTMENTS } from "@/lib/constants"
 import { computeLeaveDays } from "@/lib/leave"
-import type { LeaveBalance, LeaveErrors, LeaveForm } from "@/lib/types"
+import type { LeaveErrors, LeaveForm, LeaveTypeOption } from "@/lib/types"
 
 const todayIso = () => {
   const d = new Date()
@@ -29,6 +39,7 @@ const todayIso = () => {
 }
 
 const blankForm = (): LeaveForm => ({
+  department: "",
   leaveType: "",
   startDate: todayIso(),
   endDate: todayIso(),
@@ -43,21 +54,18 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<LeaveErrors>({})
   const [submitting, setSubmitting] = useState(false)
-  const [balance, setBalance] = useState<LeaveBalance | null>(null)
-  const [hasEntitlements, setHasEntitlements] = useState(false)
+  const [types, setTypes] = useState<LeaveTypeOption[]>([])
   const [submitted, setSubmitted] = useState<{ ref: string; days: number } | null>(null)
 
-  const loadBalance = () => {
-    fetchLeaveBalance()
-      .then((b) => {
-        setBalance(b.balance)
-        setHasEntitlements(b.hasEntitlements)
-      })
-      .catch(() => {
-        /* balance is optional; the form still works without it */
-      })
-  }
-  useEffect(loadBalance, [])
+  useEffect(() => {
+    let alive = true
+    fetchLeaveTypes().then((t) => {
+      if (alive) setTypes(t)
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const update = <K extends keyof LeaveForm>(field: K, val: LeaveForm[K]) => {
     setForm((prev) => ({ ...prev, [field]: val }))
@@ -83,12 +91,10 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
 
   const single = !!form.startDate && form.startDate === form.endDate
   const days = computeLeaveDays(form.startDate, form.endDate, single ? form.portion : "Full")
-  const selectedType = LEAVE_TYPES.find((t) => t.id === form.leaveType)
-  const bKey = selectedType?.balanceKey ?? null
-  const bal = bKey && balance ? balance[bKey] : null
 
   const handleSubmit = async () => {
     const found: LeaveErrors = {}
+    if (!form.department) found.department = "Select a department"
     if (!form.leaveType) found.leaveType = "Select a leave type"
     if (!form.startDate) found.startDate = "Choose a start date"
     if (!form.endDate) found.endDate = "Choose an end date"
@@ -107,6 +113,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
     setSubmitting(true)
     try {
       const { claimRef } = await submitLeave({
+        department: form.department,
         leaveType: form.leaveType,
         startDate: form.startDate,
         endDate: form.endDate,
@@ -139,7 +146,6 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
       setSubmitted({ ref: claimRef, days })
       setForm(blankForm())
       setFiles([])
-      loadBalance()
     } catch (e) {
       console.error(e)
       toast.error(`Error: ${(e as Error).message}`)
@@ -194,6 +200,53 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
       </div>
 
       <div className="flex flex-col gap-5">
+        <SectionCard icon={<User />} title="Claimant Information">
+          <div className="grid gap-5 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel htmlFor="leave-employee" text="Employee Name" required />
+              <div className="relative">
+                <Input
+                  id="leave-employee"
+                  value={employeeName}
+                  readOnly
+                  aria-required="true"
+                  className="bg-muted pr-9"
+                />
+                <Lock
+                  aria-hidden="true"
+                  className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <FieldLabel id="leave-dept-label" text="Department" required />
+              <Select
+                value={form.department || undefined}
+                onValueChange={(v) => update("department", v)}
+              >
+                <SelectTrigger
+                  id="leave-dept"
+                  className="w-full bg-card"
+                  aria-labelledby="leave-dept-label"
+                  aria-required="true"
+                  aria-invalid={!!errors.department || undefined}
+                >
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENTS.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {d}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FieldError id="leave-dept-error" message={errors.department} />
+            </div>
+          </div>
+        </SectionCard>
+
         <SectionCard icon={<CalendarDays />} title="Leave Details">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-1.5">
@@ -212,28 +265,14 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
                   <SelectValue placeholder="Select leave type" />
                 </SelectTrigger>
                 <SelectContent>
-                  {LEAVE_TYPES.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.label}
+                  {types.map((t) => (
+                    <SelectItem key={t.name} value={t.name}>
+                      {t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FieldError id="leave-type-error" message={errors.leaveType} />
-
-              {/* Remaining balance for the chosen, balance-tracked type. */}
-              {bKey && (
-                <div className="mt-1 flex items-center justify-between rounded-lg border bg-secondary px-3 py-2 text-sm">
-                  <span className="text-muted-foreground">Remaining balance</span>
-                  {hasEntitlements && bal ? (
-                    <span className="font-mono font-semibold tabular-nums">
-                      {bal.remaining} <span className="text-muted-foreground">/ {bal.entitlement} days</span>
-                    </span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Not set up yet</span>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">

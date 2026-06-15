@@ -39,10 +39,9 @@ import { cn } from "@/lib/utils"
 type AuthState = "loading" | "ready" | "redirecting" | "error"
 
 /** DOM ids for required controls, in document order — used to focus the first invalid field. */
-const FIELD_IDS: Record<keyof FormErrors, string> = {
+const FIELD_IDS: Partial<Record<keyof FormErrors, string>> = {
   employee: "claimant-employee",
   dept: "claimant-dept",
-  subDate: "claimant-subdate",
   cat: "line-cat",
   receiptDate: "line-receipt-date",
   amt: "line-amt",
@@ -50,7 +49,6 @@ const FIELD_IDS: Record<keyof FormErrors, string> = {
 const FIELD_ORDER: (keyof FormErrors)[] = [
   "employee",
   "dept",
-  "subDate",
   "cat",
   "receiptDate",
   "amt",
@@ -231,7 +229,6 @@ export default function App() {
     const found: FormErrors = {}
     if (!claimant.employee) found.employee = "Enter the employee name"
     if (!claimant.dept) found.dept = "Select a department"
-    if (!claimant.subDate) found.subDate = "Choose the submission date"
     if (!row.cat) found.cat = "Select an expense category"
     if (!row.receiptDate) found.receiptDate = "Choose the date on the receipt"
     if (!row.amt) found.amt = "Enter the expense amount"
@@ -241,9 +238,10 @@ export default function App() {
       toast.error("Please complete the highlighted fields")
       // Move focus to the first invalid control for keyboard / screen-reader users.
       const firstInvalid = FIELD_ORDER.find((f) => found[f])
-      if (firstInvalid) {
+      const focusId = firstInvalid ? FIELD_IDS[firstInvalid] : undefined
+      if (focusId) {
         window.requestAnimationFrame(() => {
-          document.getElementById(FIELD_IDS[firstInvalid])?.focus()
+          document.getElementById(focusId)?.focus()
         })
       }
       return

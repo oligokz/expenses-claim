@@ -69,12 +69,12 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Token did not contain an email/username claim' });
 
     const {
-      leaveType, startDate, endDate,
+      department, leaveType, startDate, endDate,
       startPortion = 'Full', endPortion = 'Full',
       reason, attachmentCount,
     } = req.body;
 
-    if (!leaveType || !startDate || !endDate)
+    if (!department || !leaveType || !startDate || !endDate)
       return res.status(400).json({ error: 'Missing required fields' });
 
     const days = computeDays(startDate, endDate, startPortion);
@@ -88,6 +88,7 @@ module.exports = async function handler(req, res) {
       Title:          `${user.name} - ${leaveType} - ${startDate}`,
       EmployeeName:   user.name,
       EmployeeEmail:  user.email,
+      Department:     department,
       LeaveType:      leaveType,
       StartDate:      startDate,
       EndDate:        endDate,

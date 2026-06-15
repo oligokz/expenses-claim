@@ -1,6 +1,5 @@
 import { Lock, User } from "lucide-react"
 import { SectionCard } from "@/components/SectionCard"
-import { DateField } from "@/components/DateField"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 import { Input } from "@/components/ui/input"
@@ -83,21 +82,6 @@ export function ClaimantInfo({
             </SelectContent>
           </Select>
           <FieldError id="claimant-dept-error" message={errors.dept} />
-        </div>
-
-        <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="claimant-subdate" text="Submission Date" required />
-          <DateField
-            id="claimant-subdate"
-            required
-            value={value.subDate}
-            onChange={(iso) => onChange("subDate", iso)}
-            aria-invalid={!!errors.subDate || undefined}
-            aria-describedby={
-              errors.subDate ? "claimant-subdate-error" : undefined
-            }
-          />
-          <FieldError id="claimant-subdate-error" message={errors.subDate} />
         </div>
       </div>
     </SectionCard>
