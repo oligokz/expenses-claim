@@ -10,6 +10,19 @@ import { cn } from "@/lib/utils"
 
 type LoadState = "loading" | "ready" | "error"
 
+/** SharePoint returns dates as ISO timestamps — show them as dd/mm/yyyy. */
+function fmtDate(s: string) {
+  if (!s) return "—"
+  const d = new Date(s)
+  return isNaN(d.getTime())
+    ? s
+    : d.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      })
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = status.toLowerCase()
   return (
@@ -112,7 +125,7 @@ export function MyRequests() {
                 <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
                   <div className="truncate text-sm">{c.category || "—"}</div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {c.submissionDate}
+                    {fmtDate(c.submissionDate)}
                     {c.description ? ` · ${c.description}` : ""}
                   </div>
                 </div>
