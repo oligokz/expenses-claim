@@ -31,12 +31,12 @@ export function RatesPanel({
         : "Fetching live rates"
 
   return (
-    <section className="overflow-hidden rounded-xl border border-surface-dark-border bg-surface-dark text-surface-dark-foreground shadow-sm">
-      <div className="flex items-center justify-between border-b border-surface-dark-border px-4 py-3.5">
+    <section className="overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm">
+      <div className="flex items-center justify-between border-b px-4 py-3.5">
         <div className="flex items-center gap-2 font-display text-sm font-semibold">
           <span
             aria-hidden="true"
-            className="grid size-7 place-items-center rounded-lg bg-primary/20 text-primary [&_svg]:size-3.5"
+            className="grid size-7 place-items-center rounded-lg bg-primary/10 text-primary [&_svg]:size-3.5"
           >
             <ArrowRightLeft />
           </span>
@@ -46,20 +46,20 @@ export function RatesPanel({
           type="button"
           onClick={onRefresh}
           aria-label="Refresh rates"
-          className="grid size-8 place-items-center rounded-lg border border-surface-dark-border bg-white/5 text-surface-dark-muted transition-colors outline-none hover:bg-white/10 hover:text-surface-dark-foreground focus-visible:ring-[3px] focus-visible:ring-white/40"
+          className="grid size-8 place-items-center rounded-lg border bg-secondary text-muted-foreground transition-colors outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
         >
           <RefreshCw className={cn("size-3.5", refreshing && "animate-spin")} />
         </button>
       </div>
 
       <div className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
-          <span className="h-px w-6 bg-surface-dark-border" />
+        <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <span className="h-px w-6 bg-border" />
           Base Currency · SGD
         </div>
 
         {shown.length === 0 ? (
-          <div className="py-6 text-center text-xs text-surface-dark-muted">
+          <div className="py-6 text-center text-xs text-muted-foreground">
             Fetching rates
           </div>
         ) : (
@@ -73,9 +73,9 @@ export function RatesPanel({
               return (
                 <div
                   key={c}
-                  className="rounded-lg border border-surface-dark-border bg-white/5 px-2.5 py-2"
+                  className="rounded-lg border bg-secondary px-2.5 py-2"
                 >
-                  <div className="text-[11px] font-semibold tracking-wide text-surface-dark-muted">
+                  <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">
                     SGD→{c}
                   </div>
                   <div className="font-mono text-sm font-semibold tabular-nums">
@@ -90,7 +90,7 @@ export function RatesPanel({
         <div
           role="status"
           aria-live="polite"
-          className="mt-4 flex items-center justify-center gap-2 border-t border-surface-dark-border pt-3 text-[11px] text-surface-dark-muted"
+          className="mt-4 flex items-center justify-center gap-2 border-t pt-3 text-[11px] text-muted-foreground"
         >
           <span
             aria-hidden="true"
@@ -100,7 +100,7 @@ export function RatesPanel({
                 ? "animate-pulse bg-success"
                 : status === "cached"
                   ? "bg-warning"
-                  : "bg-surface-dark-muted",
+                  : "bg-muted-foreground",
             )}
           />
           {statusText}

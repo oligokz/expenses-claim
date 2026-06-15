@@ -28,14 +28,14 @@ export function ClaimSummary({ data }: { data: ClaimSummaryData }) {
       <Row label="Currencies" value={data.currencies} />
       <Row label="Receipts" value={data.fileCount} />
 
-      <div className="mt-3 rounded-xl bg-surface-dark px-4 py-3.5 text-surface-dark-foreground">
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
+      <div className="mt-4 rounded-xl bg-surface-dark px-5 py-6 text-surface-dark-foreground">
+        <div className="text-xs font-semibold uppercase tracking-wide text-surface-dark-muted">
           Total Claim (SGD)
         </div>
-        <div className="mt-1 font-mono text-2xl font-bold leading-none tabular-nums">
+        <div className="mt-2 font-mono text-4xl font-bold leading-none tabular-nums">
           SGD {fmt(data.total)}
         </div>
-        <div className="mt-1.5 break-all font-mono text-[11px] text-surface-dark-muted">
+        <div className="mt-2 break-all font-mono text-xs text-surface-dark-muted">
           {data.breakdown}
         </div>
       </div>
