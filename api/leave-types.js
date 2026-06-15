@@ -14,7 +14,7 @@ async function listTypes(token, siteId) {
   return rows
     .filter((f) => f.Active !== false) // treat missing Active as active
     .sort((a, b) => (Number(a.Order) || 0) - (Number(b.Order) || 0))
-    .map((f) => ({ name: f.Name || '' }))
+    .map((f) => ({ name: f.Title || f.Name || '' }))
     .filter((t) => t.name);
 }
 
