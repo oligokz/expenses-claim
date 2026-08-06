@@ -159,9 +159,11 @@ const REQ_COLUMNS = [
 ];
 
 // Mirrors the "Leave Types" list shape: Title is the category name.
+// NOT 'Order' — SharePoint reserves that as a built-in hidden field, so creating
+// it returns 409 nameAlreadyExists and the value never round-trips.
 const CAT_COLUMNS = [
-  { name: 'Active', ...yesNo() },
-  { name: 'Order',  ...number(0) },
+  { name: 'Active',    ...yesNo() },
+  { name: 'SortOrder', ...number(0) },
 ];
 
 const SEED_CATEGORIES = [
@@ -354,38 +356,74 @@ async function ensureList(token, siteId, displayName, columns) {
   console.log(`  adding ${absent.length} missing column(s): ${absent.map((c) => c.name).join(', ')}`);
   if (DRY) return existing.id;
   for (const col of absent) {
-    await graph(token, `/sites/${siteId}/lists/${existing.id}/columns`, {
-      method: 'POST',
-      body: JSON.stringify(col),
-    });
-    console.log(`    ✓ ${col.name}`);
+    try {
+      await graph(token, `/sites/${siteId}/lists/${existing.id}/columns`, {
+        method: 'POST',
+        body: JSON.stringify(col),
+      });
+      console.log(`    ✓ ${col.name}`);
+    } catch (e) {
+      // A name that collides with a built-in hidden field (SharePoint reserves
+      // e.g. 'Order') 409s even though it never showed up in the column list.
+      // Report it and keep going — aborting here would skip later steps.
+      if (e.status === 409) {
+        console.log(`    ! ${col.name}: name reserved by SharePoint — rename it`);
+      } else {
+        console.log(`    ! ${col.name}: ${e.message.slice(0, 160)}`);
+      }
+    }
   }
   return existing.id;
 }
 
-/** Seed category rows, skipping any Title that's already there. */
+const sortValue = (name) => (SEED_CATEGORIES.indexOf(name) + 1) * 10;
+
+/**
+ * Seed category rows, skipping any Title already present, and backfill
+ * SortOrder on rows created before that column existed.
+ */
 async function seedCategories(token, siteId, listId) {
-  const data  = await graph(token, `/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200`);
-  const have  = new Set((data.value || []).map((i) => i.fields?.Title).filter(Boolean));
-  const absent = SEED_CATEGORIES.filter((c) => !have.has(c));
-  if (!absent.length) {
-    console.log('  ✓ categories already seeded');
-    return;
+  const data     = await graph(token, `/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200`);
+  const existing = (data.value || []).filter((i) => i.fields?.Title);
+  const have     = new Set(existing.map((i) => i.fields.Title));
+  const absent   = SEED_CATEGORIES.filter((c) => !have.has(c));
+
+  if (absent.length) {
+    console.log(`  seeding ${absent.length} categor${absent.length === 1 ? 'y' : 'ies'}`);
+    if (!DRY) {
+      for (const name of absent) {
+        await graph(token, `/sites/${siteId}/lists/${listId}/items`, {
+          method: 'POST',
+          body: JSON.stringify({
+            fields: { Title: name, Active: true, SortOrder: sortValue(name) },
+          }),
+        });
+        console.log(`    ✓ ${name}`);
+      }
+    }
+  } else {
+    console.log('  ✓ all categories present');
   }
-  console.log(`  seeding ${absent.length} categor${absent.length === 1 ? 'y' : 'ies'}`);
+
+  // Rows seeded before SortOrder existed carry no sort value.
+  const unsorted = existing.filter(
+    (i) => i.fields.SortOrder === undefined || i.fields.SortOrder === null
+  );
+  if (!unsorted.length) return;
+
+  console.log(`  backfilling SortOrder on ${unsorted.length} row(s)`);
   if (DRY) return;
-  for (let i = 0; i < absent.length; i++) {
-    await graph(token, `/sites/${siteId}/lists/${listId}/items`, {
-      method: 'POST',
-      body: JSON.stringify({
-        fields: {
-          Title: absent[i],
-          Active: true,
-          Order: (SEED_CATEGORIES.indexOf(absent[i]) + 1) * 10,
-        },
-      }),
-    });
-    console.log(`    ✓ ${absent[i]}`);
+  for (const item of unsorted) {
+    const value = sortValue(item.fields.Title);
+    try {
+      await graph(token, `/sites/${siteId}/lists/${listId}/items/${item.id}/fields`, {
+        method: 'PATCH',
+        body: JSON.stringify({ SortOrder: value > 0 ? value : 999 }),
+      });
+      console.log(`    ✓ ${item.fields.Title}`);
+    } catch (e) {
+      console.log(`    ! ${item.fields.Title}: ${e.message.slice(0, 120)}`);
+    }
   }
 }
 
