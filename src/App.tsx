@@ -7,6 +7,7 @@ import { AppNav, type View } from "@/components/AppNav"
 import { MyRequests } from "@/components/MyRequests"
 import { LeaveRequest } from "@/components/LeaveRequest"
 import { PurchaseRequisition } from "@/components/PurchaseRequisition"
+import { ApprovalPage } from "@/components/ApprovalPage"
 import { ClaimantInfo } from "@/components/ClaimantInfo"
 import { LineItems } from "@/components/LineItems"
 import { Receipts } from "@/components/Receipts"
@@ -353,6 +354,16 @@ export default function App() {
   /* ── Dismiss the confirmation and start a fresh claim ── */
   const handleNewClaim = useCallback(() => setResult(null), [])
 
+  /* ── Approval deep link ──
+   * vercel.json rewrites every non-/api path to index.html, so /approve is
+   * handled here rather than by a router. Read after auth, because signing in
+   * round-trips through Microsoft and auth.ts restores the path on the way back.
+   */
+  const approvalToken =
+    window.location.pathname.replace(/\/+$/, "") === "/approve"
+      ? new URLSearchParams(window.location.search).get("t")
+      : null
+
   /* ── Non-ready states ── */
   if (authState !== "ready") {
     return (
@@ -382,6 +393,8 @@ export default function App() {
       </div>
     )
   }
+
+  if (approvalToken) return <ApprovalPage token={approvalToken} />
 
   return (
     <div className="min-h-dvh bg-background">

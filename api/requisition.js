@@ -1,5 +1,6 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendMail, templates } = require('./_lib/mail');
+const { mintToken, getModule, TOKEN_TTL_DAYS } = require('./_lib/approvals');
 
 /** Resolve an approver's display name from the approvers list, for the email. */
 async function approverName(token, siteId, email) {
@@ -84,6 +85,18 @@ module.exports = async function handler(req, res) {
     const price = Number(unitPrice) || 0;
     if (qty <= 0) return res.status(400).json({ error: 'Quantity must be greater than zero' });
 
+    /* Approving your own spend is a control weakness, but blocking it by
+     * default would make the flow untestable while one person is the only
+     * seeded approver. Off unless BLOCK_SELF_APPROVAL=true — switch it on
+     * before real users touch this. */
+    if (
+      process.env.BLOCK_SELF_APPROVAL === 'true' &&
+      reportingManager &&
+      reportingManager.trim().toLowerCase() === user.email.trim().toLowerCase()
+    ) {
+      return res.status(400).json({ error: 'You cannot nominate yourself as the approver.' });
+    }
+
     // Recompute the money server-side so the stored figures are trusted, not
     // whatever the client happened to post.
     const estimatedTotal = parseFloat((qty * price).toFixed(2));
@@ -164,13 +177,33 @@ module.exports = async function handler(req, res) {
           maximumFractionDigits: 2,
         });
 
-        const toApprover = templates.requisitionSubmitted({
+        /* The approval link's nonce can only be stored once the row exists —
+         * the item id is part of what the token authorises. Write it back, then
+         * send; a link whose nonce isn't on the row is rejected as spent. */
+        const { token: approvalToken, jti } = await mintToken({
+          module: 'requisition', itemId, stage: 1, approver: reportingManager,
+        });
+        const mod = getModule('requisition');
+        const patchRes = await fetch(
+          `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${itemId}/fields`,
+          {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Stage1TokenId: jti }),
+          }
+        );
+        if (!patchRes.ok) throw new Error(`Could not store approval token (${patchRes.status})`);
+
+        const toApprover = templates.approvalRequest({
           claimRef,
-          requester: user.name,
-          item:      `${qty} × ${category}`,
-          totalSGD:  fmtMoney,
-          vendor:    vendorName,
-          project:   projectCustomer || '',
+          requester:  user.name,
+          item:       `${qty} × ${category}`,
+          totalSGD:   fmtMoney,
+          vendor:     vendorName,
+          project:    projectCustomer || '',
+          stageLabel: 'Reporting Manager',
+          token:      approvalToken,
+          ttlDays:    TOKEN_TTL_DAYS,
         });
         // Replies go to the requester, not into the no-reply mailbox.
         await sendMail(token, { to: reportingManager, replyTo: user.email, ...toApprover });
@@ -186,7 +219,7 @@ module.exports = async function handler(req, res) {
         notified = true;
       } catch (mailErr) {
         mailError = mailErr.message;
-        console.error('[requisition] mail failed:', mailErr.message);
+        console.error('[requisition] notify failed:', mailErr.message);
       }
     }
 

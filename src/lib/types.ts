@@ -96,6 +96,25 @@ export interface RequisitionErrors {
   quotation?: string
 }
 
+/** What an approver is shown before signing, from GET /api/approval. */
+export interface ApprovalView {
+  claimRef: string
+  stage: number
+  stageLabel: string
+  /** False when the link is spent, superseded, or the request already decided. */
+  actionable: boolean
+  reason: string
+  status: string
+  title: string
+  description: string
+  requester: string
+  requesterEmail: string
+  department: string
+  submittedOn: string
+  /** Label/value pairs rendered as the detail table. */
+  rows: [string, string][]
+}
+
 export type Rates = Record<string, number>
 
 export type RateStatus = "connecting" | "live" | "cached"

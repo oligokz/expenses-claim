@@ -157,6 +157,18 @@ const REQ_COLUMNS = [
   { name: 'FinalApprovalStatus',    ...choice(...APPROVAL_STATES) },
   { name: 'FinalApprovalDate',      ...dateOnly() },
   { name: 'ApprovalNotes',          ...multiline() },
+
+  // Approval mechanics. The token id is the nonce from the emailed link: it is
+  // matched on use and then cleared, which is what makes a link single-use and
+  // stops a decision being replayed. Signatures are stored as file paths, not
+  // base64 in a column — a PNG would risk SharePoint's ~64k text limit.
+  { name: 'Stage1TokenId',       ...text() },
+  { name: 'Stage2TokenId',       ...text() },
+  { name: 'Stage1SignatureUrl',  ...text() },
+  { name: 'Stage2SignatureUrl',  ...text() },
+  { name: 'Stage1SignedName',    ...text() },   // verified identity at signing
+  { name: 'Stage2SignedName',    ...text() },
+  { name: 'ApprovedPdfUrl',      ...text() },
 ];
 
 // Mirrors the "Leave Types" list shape: Title is the category name.

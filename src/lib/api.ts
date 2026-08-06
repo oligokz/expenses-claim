@@ -1,5 +1,6 @@
 import { getApiToken } from "./auth"
 import type {
+  ApprovalView,
   ApproverOption,
   LineRow,
   ClaimantForm,
@@ -198,6 +199,39 @@ export async function fetchApprovers(
   } catch {
     return []
   }
+}
+
+/** GET /api/approval — what this approver is being asked to sign. */
+export async function fetchApproval(token: string): Promise<ApprovalView> {
+  const apiToken = await getApiToken()
+  const res = await fetch(`/api/approval?t=${encodeURIComponent(token)}`, {
+    headers: { Authorization: `Bearer ${apiToken}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Could not load this approval")
+  return data as ApprovalView
+}
+
+/** POST /api/approval — record an approve or reject decision. */
+export async function submitApproval(args: {
+  token: string
+  decision: "approve" | "reject"
+  comment: string
+  /** PNG data URL; omitted on rejection. */
+  signature?: string
+}): Promise<{ decision: string; claimRef: string; complete?: boolean; nextApprover?: string | null }> {
+  const apiToken = await getApiToken()
+  const res = await fetch("/api/approval", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiToken}`,
+    },
+    body: JSON.stringify(args),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Could not record your decision")
+  return data
 }
 
 interface RequisitionArgs {

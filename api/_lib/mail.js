@@ -94,13 +94,17 @@ function layout({ heading, intro, rows, action, footer }) {
 </body></html>`;
 }
 
-/** Tell the nominated approver a requisition is waiting on them. */
-function requisitionSubmitted({ claimRef, requester, item, totalSGD, vendor, project }) {
+/**
+ * Ask an approver to review and sign. The link carries a single-use token, but
+ * the token only identifies the request and stage — the approver still signs in
+ * with Entra, so a forwarded email cannot approve anything.
+ */
+function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project, stageLabel, token, ttlDays }) {
   return {
-    subject: `Purchase requisition ${claimRef} needs your review`,
+    subject: `Purchase requisition ${claimRef} needs your approval`,
     html: layout({
-      heading: 'A purchase requisition needs your review',
-      intro: `${requester} submitted a requisition and named you as the approver.`,
+      heading: 'A purchase requisition needs your approval',
+      intro: `${requester} submitted a requisition and you are the ${stageLabel.toLowerCase()} for it.`,
       rows: [
         ['Reference', claimRef],
         ['Item', item],
@@ -108,9 +112,39 @@ function requisitionSubmitted({ claimRef, requester, item, totalSGD, vendor, pro
         ['Vendor', vendor],
         ['Project / customer', project],
       ],
-      action: { href: `${baseUrl()}/`, label: 'Open the forms app' },
+      action: {
+        href: `${baseUrl()}/approve?t=${encodeURIComponent(token)}`,
+        label: 'Review and sign',
+      },
       footer:
-        'Approving in the app is not available yet — open the Purchase Requisitions list in SharePoint to review it.',
+        `You'll be asked to sign in first, so this link only works for you. It expires in ${ttlDays} days.`,
+    }),
+  };
+}
+
+/** Tell the requester the outcome of a stage, or of the whole request. */
+function decisionNotice({ claimRef, item, decision, decidedBy, stageLabel, comment, complete }) {
+  const approved = decision === 'approved';
+  return {
+    subject: `Purchase requisition ${claimRef} was ${decision}`,
+    html: layout({
+      heading: approved
+        ? complete
+          ? 'Your requisition is fully approved'
+          : `${stageLabel} approved your requisition`
+        : 'Your requisition was rejected',
+      intro: approved
+        ? complete
+          ? 'Both approvals are in. You can go ahead with the purchase.'
+          : 'It has moved to the next approver.'
+        : `${decidedBy} rejected this request.`,
+      rows: [
+        ['Reference', claimRef],
+        ['Item', item],
+        [approved ? 'Approved by' : 'Rejected by', decidedBy],
+        ['Comment', comment || ''],
+      ],
+      action: { href: `${baseUrl()}/`, label: 'View my requests' },
     }),
   };
 }
@@ -136,5 +170,5 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
 module.exports = {
   sendMail,
   baseUrl,
-  templates: { requisitionSubmitted, requisitionReceipt },
+  templates: { approvalRequest, requisitionReceipt, decisionNotice },
 };
