@@ -9,6 +9,8 @@ const { sendMail, templates } = require('./_lib/mail');
 const { buildRequisitionPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
+// Decisions record the moment, not just the day — the PDF shows a real time.
+const nowIso = () => new Date().toISOString();
 
 /** Approvers for a stage, from the admin-managed list. */
 async function approversFor(token, siteId, stageLabel) {
@@ -159,7 +161,7 @@ async function handlePost(req, res) {
   if (decision === 'reject') {
     await patchRow(token, siteId, mod, itemId, {
       [stage.statusField]: 'Rejected',
-      [stage.dateField]:   todayIso(),
+      [stage.dateField]:   nowIso(),
       [stage.signedNameField]: user.name,
       [stage.tokenField]:  '',            // spend the link
       Status:              'Rejected',
@@ -204,7 +206,7 @@ async function handlePost(req, res) {
       : null;
   const patch = {
     [stage.statusField]:     'Approved',
-    [stage.dateField]:       todayIso(),
+    [stage.dateField]:       nowIso(),
     [stage.signedNameField]: user.name,
     [stage.signatureField]:  signatureUrl,
     [stage.tokenField]:      '',

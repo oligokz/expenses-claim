@@ -126,8 +126,7 @@ function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project,
         href: `${baseUrl()}/approve?t=${encodeURIComponent(token)}`,
         label: 'Review and sign',
       },
-      footer:
-        `You'll be asked to sign in first, so this link only works for you. It expires in ${ttlDays} days.`,
+      footer: `This link expires in ${ttlDays} days.`,
     }),
   };
 }

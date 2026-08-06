@@ -267,10 +267,6 @@ export function ApprovalPage({ token }: { token: string }) {
               </Button>
             </div>
 
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Your approval is recorded against your signed-in account with a
-              timestamp — that, not the drawing, is what proves who approved.
-            </p>
           </div>
         </SectionCard>
       </div>

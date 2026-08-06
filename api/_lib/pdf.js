@@ -28,10 +28,49 @@ const LOGO_PATHS = [
 ];
 
 const A4 = [595.28, 841.89];
-const MARGIN = 50;
+const MARGIN = 56;
 const INK = [0.06, 0.06, 0.06];
-const MUTED = [0.42, 0.42, 0.42];
-const RULE = [0.85, 0.85, 0.85];
+const MUTED = [0.45, 0.45, 0.45];
+const RULE = [0.86, 0.86, 0.86];
+const PANEL = [0.96, 0.96, 0.96];
+const GREEN = [0.09, 0.42, 0.24];
+
+const LABEL_W = 168;
+const LINE = 15;
+
+/* SharePoint returns UTC. A date-only column comes back as midnight Singapore
+ * time expressed as 16:00Z the previous day, so formatting without the zone
+ * silently shows the wrong day. */
+const TZ = 'Asia/Singapore';
+
+function parts(value) {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return null;
+  const f = new Intl.DateTimeFormat('en-GB', {
+    timeZone: TZ,
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: 'numeric', minute: '2-digit', hour12: true,
+  }).formatToParts(d);
+  const get = (t) => f.find((p) => p.type === t)?.value || '';
+  return {
+    date: `${get('day')}/${get('month')}/${get('year')}`,
+    time: `${get('hour')}:${get('minute')} ${get('dayPeriod').toLowerCase()}`,
+  };
+}
+
+/** "9:41 am 06/08/2026" */
+function fmtDateTime(value) {
+  if (!value) return '';
+  const p = parts(value);
+  return p ? `${p.time} ${p.date}` : String(value);
+}
+
+/** "06/08/2026" */
+function fmtDate(value) {
+  if (!value) return '';
+  const p = parts(value);
+  return p ? p.date : String(value);
+}
 
 /** Fetch a file's bytes from the document library by drive-relative path. */
 async function fetchDriveFile(token, siteId, path) {
@@ -104,58 +143,59 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   };
 
   /* ── header ── */
-  const logoW = 108;
+  const logoW = 96;
   const logoScale = logoW / LOGO_VIEWBOX[0];
   const logoH = LOGO_VIEWBOX[1] * logoScale;
   for (const d of LOGO_PATHS) {
     // drawSvgPath treats (x, y) as the SVG origin with y running downward, so
     // pass the top of the block rather than its baseline.
-    page.drawSvgPath(d, {
-      x: MARGIN,
-      y,
-      scale: logoScale,
-      color: colour(INK),
-    });
+    page.drawSvgPath(d, { x: MARGIN, y, scale: logoScale, color: colour(INK) });
   }
-  y -= logoH + 16;
 
-  text('PURCHASE REQUISITION', { size: 18, f: bold });
-  y -= 20;
-  text(claimRef, { size: 11, f: bold, c: MUTED });
+  // Status sits on the logo line, hard right — the first thing worth knowing.
   const statusLabel = (fields.Status || 'Pending').toUpperCase();
   page.drawText(statusLabel, {
-    x: MARGIN + width - bold.widthOfTextAtSize(statusLabel, 11),
-    y,
-    size: 11,
+    x: MARGIN + width - bold.widthOfTextAtSize(statusLabel, 10),
+    y: y - logoH + 14,
+    size: 10,
     font: bold,
-    color: colour(statusLabel === 'APPROVED' ? [0.1, 0.45, 0.25] : MUTED),
+    color: colour(statusLabel === 'APPROVED' ? GREEN : MUTED),
   });
+
+  y -= logoH + 32;
+
+  text('Purchase Requisition', { size: 21, f: bold });
+  y -= 18;
+  text(claimRef, { size: 12, f: bold, c: MUTED });
   y -= 14;
   rule();
-  y -= 22;
+  y -= 28;
 
   const section = (title) => {
-    ensure(60);
-    text(title.toUpperCase(), { size: 9, f: bold, c: MUTED });
-    y -= 14;
+    ensure(90);
+    text(title.toUpperCase(), { size: 8.5, f: bold, c: MUTED });
+    y -= 8;
+    rule();
+    y -= 18;
   };
 
-  const field = (label, value) => {
+  const field = (label, value, opts = {}) => {
     if (value === undefined || value === null || String(value).trim() === '') return;
-    const labelW = 150;
-    const lines = wrap(value, 10, width - labelW);
-    ensure(lines.length * 13 + 6);
+    const size = opts.strong ? 11 : 10;
+    const valueFont = opts.strong ? bold : font;
+    const lines = wrap(value, size, width - LABEL_W);
+    ensure(lines.length * LINE + 8);
     text(label, { size: 10, c: MUTED });
     lines.forEach((ln, i) => {
       page.drawText(ln, {
-        x: MARGIN + labelW,
-        y: y - i * 13,
-        size: 10,
-        font,
+        x: MARGIN + LABEL_W,
+        y: y - i * LINE,
+        size,
+        font: valueFont,
         color: colour(INK),
       });
     });
-    y -= lines.length * 13 + 3;
+    y -= lines.length * LINE;
   };
 
   const money = (n) =>
@@ -166,74 +206,115 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   field('Email', fields.RequestorEmail);
   field('Department', fields.Department);
   field('Job title', fields.JobTitle);
-  field('Submitted', fields.SubmissionDate);
-  y -= 12;
+  field('Submitted', fmtDateTime(fields.SubmissionDate));
+  y -= 22;
 
   section('Item / service');
   field('Category', fields.ItemCategoryOther || fields.ItemCategory);
   field('Description', fields.Description);
-  field('Quantity', fields.Quantity);
+  field('Quantity', String(fields.Quantity ?? ''));
   field('Unit price', `${fields.Currency || 'SGD'} ${money(fields.UnitPrice)}`);
   if (fields.Currency && fields.Currency !== 'SGD') {
     field('Estimated total', `${fields.Currency} ${money(fields.EstimatedTotal)}`);
   }
-  field('Estimated total (SGD)', `SGD ${money(fields.EstimatedTotalSGD)}`);
-  y -= 12;
+  y -= 14;
+
+  // The committed figure gets a panel — it's what the approval is really about.
+  ensure(46);
+  page.drawRectangle({
+    x: MARGIN, y: y - 11, width, height: 32, color: colour(PANEL),
+  });
+  page.drawText('Estimated total (SGD)', {
+    x: MARGIN + 14, y, size: 10, font, color: colour(MUTED),
+  });
+  const totalStr = `SGD ${money(fields.EstimatedTotalSGD)}`;
+  page.drawText(totalStr, {
+    x: MARGIN + width - 14 - bold.widthOfTextAtSize(totalStr, 13),
+    y: y - 2,
+    size: 13,
+    font: bold,
+    color: colour(INK),
+  });
+  y -= 50;
 
   section('Vendor');
   field('Vendor', fields.VendorName);
   field('Contact', fields.VendorContact);
   field('Email', fields.VendorEmail);
   field('Quotation attached', fields.QuotationAttached ? 'Yes' : 'No');
-  y -= 12;
+  y -= 22;
 
   section('Project / customer');
   field('For', fields.ProjectCustomer);
-  y -= 12;
+  y -= 22;
 
-  /* ── approvals ── */
-  ensure(200);
-  section('Approvals');
+  /* ── approvals ──
+   * Boxed side by side, mirroring the signature table on the paper form.
+   * A stage nobody was nominated for never happened, so it gets no box. */
+  const acted = signatures.filter((s) => s.name || s.png);
+  if (acted.length) {
+    ensure(150);
+    section('Approvals');
 
-  // A stage nobody was nominated for never happened — don't print an empty
-  // signature block for it.
-  for (const sig of signatures.filter((s) => s.name || s.png)) {
-    ensure(110);
-    text(sig.label, { size: 10, f: bold });
-    y -= 14;
-    text(sig.name || '', { size: 10 });
-    const dateStr = sig.date || '';
-    page.drawText(dateStr, {
-      x: MARGIN + width - font.widthOfTextAtSize(dateStr, 10),
-      y,
-      size: 10,
-      font,
-      color: colour(MUTED),
-    });
-    y -= 6;
+    const gap = 16;
+    const boxW = (width - gap) / 2;
+    const boxH = 108;
 
-    if (sig.png) {
-      try {
-        const img = await doc.embedPng(sig.png);
-        // Cap the height; signatures vary wildly in aspect ratio.
-        const maxH = 46;
-        const scale = Math.min(maxH / img.height, 180 / img.width, 1);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ensure(h + 20);
-        page.drawImage(img, { x: MARGIN, y: y - h, width: w, height: h });
-        y -= h + 4;
-      } catch {
-        // A missing or corrupt image must not lose the whole document.
-        y -= 8;
-        text('(signature image unavailable)', { size: 9, c: MUTED });
-        y -= 8;
+    for (let i = 0; i < acted.length; i += 2) {
+      const row = acted.slice(i, i + 2);
+      ensure(boxH + 12);
+      const top = y;
+
+      row.forEach((sig, j) => {
+        const bx = MARGIN + j * (boxW + gap);
+        const by = top - boxH + 12;
+
+        page.drawRectangle({
+          x: bx, y: by, width: boxW, height: boxH,
+          borderColor: colour(RULE), borderWidth: 0.5,
+        });
+
+        page.drawText(sig.label, {
+          x: bx + 14, y: top - 6, size: 9, font: bold, color: colour(INK),
+        });
+        page.drawText(sig.name || '', {
+          x: bx + 14, y: top - 23, size: 10, font, color: colour(INK),
+        });
+        const when = fmtDateTime(sig.date);
+        if (when) {
+          page.drawText(when, {
+            x: bx + 14, y: top - 37, size: 8.5, font, color: colour(MUTED),
+          });
+        }
+      });
+
+      // Images need await, so they go in a second pass over the same row.
+      for (let j = 0; j < row.length; j++) {
+        const sig = row[j];
+        if (!sig.png) continue;
+        const bx = MARGIN + j * (boxW + gap);
+        const by = top - boxH + 12;
+        try {
+          const img = await doc.embedPng(sig.png);
+          // Cap both dimensions; signatures vary wildly in aspect ratio.
+          const scale = Math.min(38 / img.height, (boxW - 28) / img.width, 1);
+          page.drawImage(img, {
+            x: bx + 14,
+            y: by + 12,
+            width: img.width * scale,
+            height: img.height * scale,
+          });
+        } catch {
+          // A missing or corrupt image must not lose the whole document.
+          page.drawText('(signature image unavailable)', {
+            x: bx + 14, y: by + 16, size: 8, font, color: colour(MUTED),
+          });
+        }
       }
-    }
 
-    y -= 6;
-    rule();
-    y -= 18;
+      y -= boxH + gap;
+    }
+    y -= 10;
   }
 
   if (fields.ApprovalNotes) {

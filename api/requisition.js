@@ -108,7 +108,10 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    const submissionDate = new Date().toISOString().slice(0, 10);
+    const submittedAt    = new Date().toISOString();
+    // Date-only for the Title and folder paths; the column keeps the full
+    // timestamp so the PDF can show a real time rather than a fake midnight.
+    const submissionDate = submittedAt.slice(0, 10);
     const category = itemCategory === 'Others' && itemCategoryOther
       ? itemCategoryOther
       : itemCategory;
@@ -119,7 +122,7 @@ module.exports = async function handler(req, res) {
       RequestorEmail:    user.email,
       Department:        department,
       JobTitle:          jobTitle || '',
-      SubmissionDate:    submissionDate,
+      SubmissionDate:    submittedAt,
 
       ItemCategory:      itemCategory,
       ItemCategoryOther: itemCategoryOther || '',
