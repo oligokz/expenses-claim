@@ -50,6 +50,43 @@ export interface LeaveErrors {
   reason?: string
 }
 
+/** A selectable requisition item category — admin-managed in SharePoint, with code defaults as fallback. */
+export interface RequisitionCategoryOption {
+  name: string
+}
+
+export interface RequisitionForm {
+  department: string
+  jobTitle: string
+  itemCategory: string
+  /** Free text, shown only when itemCategory is "Others". */
+  itemCategoryOther: string
+  description: string
+  quantity: number | string
+  unitPrice: number | string
+  currency: string
+  vendorName: string
+  vendorContact: string
+  vendorEmail: string
+  projectCustomer: string
+  /** Optional routing hint for whoever runs the approval — see PurchaseRequisition. */
+  reportingManager: string
+}
+
+export interface RequisitionErrors {
+  department?: string
+  jobTitle?: string
+  itemCategory?: string
+  itemCategoryOther?: string
+  description?: string
+  quantity?: string
+  unitPrice?: string
+  vendorName?: string
+  vendorEmail?: string
+  projectCustomer?: string
+  quotation?: string
+}
+
 export type Rates = Record<string, number>
 
 export type RateStatus = "connecting" | "live" | "cached"

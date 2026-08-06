@@ -60,6 +60,27 @@ export const DEFAULT_LEAVE_TYPES: { name: string }[] = [
   { name: "Compassionate" },
 ]
 
+// Fallback item categories used when the SharePoint "Requisition Categories"
+// list isn't configured yet. Once it is, the form loads categories from there.
+// "Others" is special: selecting it reveals the free-text field, mirroring the
+// "If others" box on the paper form.
+export const DEFAULT_REQUISITION_CATEGORIES: { name: string }[] = [
+  { name: "Processors/Compute Units" },
+  { name: "Memory & Storage" },
+  { name: "Networking Equipment" },
+  { name: "Server & Rack Hardware" },
+  { name: "Peripherals & Accessories" },
+  { name: "Cables & Components" },
+  { name: "Software Licenses" },
+  { name: "Tools & Test Equipment" },
+  { name: "Office Supplies" },
+  { name: "Services & Subcontracting" },
+  { name: "Others" },
+]
+
+/** Selecting this category reveals the "If others" free-text field. */
+export const REQUISITION_OTHER = "Others"
+
 export const DEPARTMENTS = [
   "Finance & Operations",
   "Human Resources",

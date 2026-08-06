@@ -5,9 +5,13 @@ import type {
   LeaveTypeOption,
   MyClaim,
   Rates,
+  RequisitionCategoryOption,
   SubmitResponse,
 } from "./types"
-import { DEFAULT_LEAVE_TYPES } from "./constants"
+import {
+  DEFAULT_LEAVE_TYPES,
+  DEFAULT_REQUISITION_CATEGORIES,
+} from "./constants"
 import { toSGD, num } from "./currency"
 
 /** GET /api/rates — returns { rates } (1 SGD → currency). Throws on failure. */
@@ -161,5 +165,65 @@ export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
     return types.length ? types : DEFAULT_LEAVE_TYPES
   } catch {
     return DEFAULT_LEAVE_TYPES
+  }
+}
+
+interface RequisitionArgs {
+  department: string
+  jobTitle: string
+  itemCategory: string
+  itemCategoryOther: string
+  description: string
+  quantity: number
+  unitPrice: number
+  currency: string
+  vendorName: string
+  vendorContact: string
+  vendorEmail: string
+  projectCustomer: string
+  reportingManager: string
+  quotationAttached: boolean
+  exchangeRates: Rates
+}
+
+/** POST /api/requisition — creates a purchase requisition. Returns the new id + ref. */
+export async function submitRequisition(
+  args: RequisitionArgs,
+): Promise<{ itemId: string; claimRef: string; estimatedTotalSGD: number }> {
+  const token = await getApiToken()
+  const res = await fetch("/api/requisition", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(args),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Requisition submit failed")
+  return {
+    itemId: (data.itemId as string) ?? "unknown",
+    claimRef: data.claimRef ?? `REQ-${data.itemId ?? "unknown"}`,
+    estimatedTotalSGD: (data.estimatedTotalSGD as number) ?? 0,
+  }
+}
+
+/**
+ * GET /api/requisition-categories — admin-managed item categories from SharePoint.
+ * Falls back to the built-in defaults if the list isn't configured yet.
+ */
+export async function fetchRequisitionCategories(): Promise<
+  RequisitionCategoryOption[]
+> {
+  try {
+    const token = await getApiToken()
+    const res = await fetch("/api/requisition-categories", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    const categories = (data.categories as RequisitionCategoryOption[]) || []
+    return categories.length ? categories : DEFAULT_REQUISITION_CATEGORIES
+  } catch {
+    return DEFAULT_REQUISITION_CATEGORIES
   }
 }

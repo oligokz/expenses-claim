@@ -1,11 +1,17 @@
-import { CalendarDays, ListChecks, Receipt } from "lucide-react"
+import { CalendarDays, ListChecks, Receipt, ShoppingCart } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-export type View = "expense" | "leave" | "history"
+export type View = "expense" | "leave" | "requisition" | "history"
 
 const TABS: { id: View; label: string; short: string; icon: typeof Receipt }[] = [
   { id: "expense", label: "New Expense", short: "Expense", icon: Receipt },
   { id: "leave", label: "Leave Request", short: "Leave", icon: CalendarDays },
+  {
+    id: "requisition",
+    label: "Purchase Requisition",
+    short: "Purchase",
+    icon: ShoppingCart,
+  },
   { id: "history", label: "My Requests", short: "Requests", icon: ListChecks },
 ]
 
