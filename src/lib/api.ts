@@ -219,9 +219,13 @@ interface RequisitionArgs {
 }
 
 /** POST /api/requisition — creates a purchase requisition. Returns the new id + ref. */
-export async function submitRequisition(
-  args: RequisitionArgs,
-): Promise<{ itemId: string; claimRef: string; estimatedTotalSGD: number }> {
+export async function submitRequisition(args: RequisitionArgs): Promise<{
+  itemId: string
+  claimRef: string
+  estimatedTotalSGD: number
+  /** True only if the approver was actually emailed. */
+  notified: boolean
+}> {
   const token = await getApiToken()
   const res = await fetch("/api/requisition", {
     method: "POST",
@@ -233,10 +237,16 @@ export async function submitRequisition(
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || "Requisition submit failed")
+  if (data.mailError) {
+    // The requisition saved; only the notification failed. Worth seeing in the
+    // console, but not worth failing the submission over.
+    console.warn("Requisition saved but notification failed:", data.mailError)
+  }
   return {
     itemId: (data.itemId as string) ?? "unknown",
     claimRef: data.claimRef ?? `REQ-${data.itemId ?? "unknown"}`,
     estimatedTotalSGD: (data.estimatedTotalSGD as number) ?? 0,
+    notified: !!data.notified,
   }
 }
 

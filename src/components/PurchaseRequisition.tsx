@@ -108,6 +108,7 @@ export function PurchaseRequisition({
     ref: string
     totalSGD: number
     attachments: number
+    notified: boolean
   } | null>(null)
 
   useEffect(() => {
@@ -207,7 +208,7 @@ export function PurchaseRequisition({
 
     setSubmitting(true)
     try {
-      const { claimRef, estimatedTotalSGD: committedSGD } =
+      const { claimRef, estimatedTotalSGD: committedSGD, notified } =
         await submitRequisition({
           department: form.department,
           jobTitle: form.jobTitle,
@@ -255,6 +256,7 @@ export function PurchaseRequisition({
         ref: claimRef,
         totalSGD: committedSGD,
         attachments: files.length - failed,
+        notified,
       })
       setForm(blankForm())
       setFiles([])
@@ -278,7 +280,11 @@ export function PurchaseRequisition({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             SGD {fmt(submitted.totalSGD)} · {submitted.attachments} attachment
-            {submitted.attachments === 1 ? "" : "s"} · recorded and awaiting review.
+            {submitted.attachments === 1 ? "" : "s"} ·{" "}
+            {/* Only claim the approver was told if the email actually sent. */}
+            {submitted.notified
+              ? "your approver has been emailed."
+              : "recorded and awaiting review."}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">

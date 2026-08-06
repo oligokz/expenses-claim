@@ -1,4 +1,25 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { sendMail, templates } = require('./_lib/mail');
+
+/** Resolve an approver's display name from the approvers list, for the email. */
+async function approverName(token, siteId, email) {
+  if (!email) return '';
+  try {
+    const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=200`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) return email;
+    const rows = ((await res.json()).value || []).map((i) => i.fields || {});
+    const hit = rows.find(
+      (f) => (f.ApproverEmail || '').toLowerCase() === email.toLowerCase()
+    );
+    return hit?.Title || email;
+  } catch {
+    return email;
+  }
+}
 
 async function createRequisitionItem(token, siteId, fields) {
   const listName = process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions';
@@ -127,13 +148,56 @@ module.exports = async function handler(req, res) {
       throw writeErr;
     }
 
-    const itemId = created?.id || 'unknown';
+    const itemId   = created?.id || 'unknown';
+    const claimRef = `REQ-${itemId}`;
+
+    /* Notify, but never at the cost of the record. The row is already written;
+     * if mail fails the requisition still exists, so we report the failure
+     * rather than throwing it and making the client think nothing was saved. */
+    let notified = false;
+    let mailError = null;
+    if (reportingManager) {
+      try {
+        const name = await approverName(token, siteId, reportingManager);
+        const fmtMoney = estimatedTotalSGD.toLocaleString('en-SG', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        });
+
+        const toApprover = templates.requisitionSubmitted({
+          claimRef,
+          requester: user.name,
+          item:      `${qty} × ${category}`,
+          totalSGD:  fmtMoney,
+          vendor:    vendorName,
+          project:   projectCustomer || '',
+        });
+        // Replies go to the requester, not into the no-reply mailbox.
+        await sendMail(token, { to: reportingManager, replyTo: user.email, ...toApprover });
+
+        const toRequester = templates.requisitionReceipt({
+          claimRef,
+          item:         `${qty} × ${category}`,
+          totalSGD:     fmtMoney,
+          approverName: name,
+        });
+        await sendMail(token, { to: user.email, ...toRequester });
+
+        notified = true;
+      } catch (mailErr) {
+        mailError = mailErr.message;
+        console.error('[requisition] mail failed:', mailErr.message);
+      }
+    }
+
     return res.status(200).json({
       success: true,
       itemId,
-      claimRef: `REQ-${itemId}`,
+      claimRef,
       estimatedTotal,
       estimatedTotalSGD,
+      notified,
+      mailError,
     });
   } catch (err) {
     const status = err.status || 500;
