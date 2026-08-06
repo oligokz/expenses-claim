@@ -16,6 +16,25 @@ const SENDER = () => process.env.MAIL_SENDER || 'noreply@creoxtech.com';
 const baseUrl = () =>
   (process.env.APP_BASE_URL || 'https://app.creoxtech.com').replace(/\/+$/, '');
 
+const LOGO_FILE = 'creox.png';
+const logoUrl = () => `${baseUrl()}/${LOGO_FILE}`;
+const LOGO_CID = 'creoxlogo';
+
+/* Fetched once per warm function, from the app's own public folder rather than
+ * the function bundle, which does not reliably include static assets. Null on
+ * failure, in which case the mail falls back to a remote <img src>. */
+let _logo;
+async function logoBytes() {
+  if (_logo !== undefined) return _logo;
+  try {
+    const res = await fetch(logoUrl());
+    _logo = res.ok ? Buffer.from(await res.arrayBuffer()).toString('base64') : null;
+  } catch {
+    _logo = null;
+  }
+  return _logo;
+}
+
 /** Minimal HTML escape, every value below comes from user input. */
 function esc(s) {
   return String(s ?? '')
@@ -33,11 +52,33 @@ async function sendMail(token, { to, subject, html, replyTo }) {
   const recipients = (Array.isArray(to) ? to : [to]).filter(Boolean);
   if (!recipients.length) throw new Error('sendMail: no recipients');
 
+  /* Outlook blocks remote images until the reader allows them, so the logo goes
+   * in as an inline attachment and the remote URL is rewritten to point at it.
+   * If the fetch failed, the HTML keeps the remote src and degrades to alt
+   * text, which is where this started. */
+  const logo = await logoBytes();
+  let content = html;
+  if (logo) {
+    content = content.split(logoUrl()).join(`cid:${LOGO_CID}`);
+  }
+
   const message = {
     subject,
-    body: { contentType: 'HTML', content: html },
+    body: { contentType: 'HTML', content },
     toRecipients: recipients.map((address) => ({ emailAddress: { address } })),
   };
+  if (logo) {
+    message.attachments = [
+      {
+        '@odata.type': '#microsoft.graph.fileAttachment',
+        name: LOGO_FILE,
+        contentType: 'image/png',
+        contentBytes: logo,
+        contentId: LOGO_CID,
+        isInline: true,
+      },
+    ];
+  }
   // A no-reply sender means questions go nowhere; point replies at a human.
   if (replyTo) message.replyTo = [{ emailAddress: { address: replyTo } }];
 
@@ -71,13 +112,13 @@ function layout({ heading, intro, rows, action, footer }) {
     )
     .join('');
 
-  /* The logo is white-on-transparent, so it needs the dark bar the app uses.
-   * Outlook won't render SVG, the alt text is styled to stand in as a
-   * wordmark there, so the header looks deliberate either way. Swap the src
-   * for a PNG if you want the mark itself to show in Outlook too. */
-  const header = `<tr><td style="background:#111111;padding:18px 28px;border-radius:12px 12px 0 0">
-      <img src="${baseUrl()}/logo.svg" width="120" height="30" alt="CREOX"
-           style="display:block;border:0;height:30px;color:#ffffff;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:2px" />
+  /* creox.png is the dark logo on transparency, so it sits on a light bar
+   * rather than the app's dark one. The source is square with generous padding,
+   * hence the modest render size. sendMail rewrites this src to a cid: when it
+   * can attach the image inline. */
+  const header = `<tr><td style="padding:20px 28px 4px;border-bottom:1px solid #eeeeee">
+      <img src="${logoUrl()}" width="104" height="104" alt="CREOX"
+           style="display:block;border:0;width:104px;height:104px;color:#111111;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:2px" />
     </td></tr>`;
 
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#f5f5f5;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a">
