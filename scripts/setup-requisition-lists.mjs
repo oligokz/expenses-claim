@@ -1,17 +1,29 @@
 /**
  * One-shot setup for the Purchase Requisition module's SharePoint lists.
  *
- *   node scripts/setup-requisition-lists.mjs          # create / repair
- *   node scripts/setup-requisition-lists.mjs --dry    # show what it would do
+ *   node scripts/setup-requisition-lists.mjs --dry         # print the column plan
+ *   node scripts/setup-requisition-lists.mjs --delegated   # sign in as yourself
+ *   node scripts/setup-requisition-lists.mjs               # app-only, needs a secret
  *
- * Reads credentials from .env (run `npx vercel env pull .env` first).
  * Safe to re-run: it creates what's missing and leaves existing columns alone.
  *
- * NOTE ON PERMISSIONS: creating a list needs the app registration to hold
- * Sites.Manage.All or Sites.FullControl.All. Sites.ReadWrite.All is enough to
- * write *items* but NOT to create a *list* — if this fails with 403, either get
- * that permission granted, or build the two lists by hand from the column table
- * printed by --dry.
+ * TWO AUTH PATHS
+ *
+ * --delegated (recommended here): device-code sign-in as a real person. Prints a
+ * code, you open a browser and approve, and the script then acts with YOUR
+ * SharePoint permissions. Needs no client secret — which matters because this
+ * project's Vercel env vars are marked Sensitive and are therefore write-only:
+ * `vercel env pull` returns the literal placeholder [SENSITIVE], and the real
+ * secret cannot be retrieved by anyone. Add --site <url> if SP_SITE_URL isn't
+ * readable either; with no --site it lists the sites you can see and stops.
+ *
+ * default (app-only): client-credentials using AZURE_CLIENT_SECRET from .env.
+ * Also requires the app registration to hold Sites.Manage.All or
+ * Sites.FullControl.All — Sites.ReadWrite.All can write *items* but cannot
+ * create a *list*.
+ *
+ * If both paths are blocked, --dry prints the full column table to build the
+ * two lists by hand in the SharePoint UI.
  */
 
 import { readFileSync } from 'node:fs';
@@ -19,7 +31,23 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DRY = process.argv.includes('--dry');
+const ARGV = process.argv.slice(2);
+const DRY = ARGV.includes('--dry');
+const DELEGATED = ARGV.includes('--delegated');
+
+const argValue = (flag) => {
+  const i = ARGV.indexOf(flag);
+  return i !== -1 && ARGV[i + 1] && !ARGV[i + 1].startsWith('--') ? ARGV[i + 1] : null;
+};
+
+/* Public tenant id — same value the SPA ships in src/lib/constants.ts, so this
+ * is not a secret. Override with --tenant if it ever changes. */
+const DEFAULT_TENANT = '7b788342-e05a-443d-a6eb-43624b103a65';
+
+/* Microsoft's own first-party public client ("Microsoft Graph Command Line
+ * Tools"). It's the client the Graph PowerShell SDK signs in with, it supports
+ * device code, and it needs no registration of our own. */
+const DEVICE_CODE_CLIENT = '14d82eec-204b-4c2f-b7e8-296a70dab67e';
 
 /* ── env ── */
 function loadEnv() {
@@ -43,11 +71,36 @@ function loadEnv() {
 }
 loadEnv();
 
-const REQUIRED = ['AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'SP_SITE_URL'];
-const missing = REQUIRED.filter((k) => !process.env[k]);
-if (missing.length && !DRY) {
-  console.error(`Missing env vars: ${missing.join(', ')}`);
-  process.exit(1);
+// Vercel's "Sensitive" env vars are write-only: `vercel env pull` writes the
+// literal placeholder [SENSITIVE] rather than the value, and no one can read
+// the real value back. Treat that placeholder as absent everywhere.
+const readable = (k) => {
+  const v = process.env[k];
+  return v && v !== '[SENSITIVE]' ? v : null;
+};
+
+const TENANT = argValue('--tenant') || readable('AZURE_TENANT_ID') || DEFAULT_TENANT;
+const SITE_URL = argValue('--site') || readable('SP_SITE_URL');
+
+if (!DRY && !DELEGATED) {
+  const need = ['AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET'].filter((k) => !readable(k));
+  if (need.length) {
+    console.error(
+      `App-only auth needs real values for: ${need.join(', ')}\n\n` +
+      (process.env.AZURE_CLIENT_SECRET === '[SENSITIVE]'
+        ? 'Those came back from Vercel as the placeholder [SENSITIVE]. Vercel marks\n' +
+          'them Sensitive, which makes them write-only — nobody can pull the real\n' +
+          'value back, so this path is closed unless you mint a new client secret.\n\n'
+        : '') +
+      'Use the delegated path instead — it needs no secret:\n' +
+      '  node scripts/setup-requisition-lists.mjs --delegated'
+    );
+    process.exit(1);
+  }
+  if (!SITE_URL) {
+    console.error('No SP_SITE_URL. Pass it explicitly:  --site https://<tenant>.sharepoint.com/sites/<name>');
+    process.exit(1);
+  }
 }
 
 const REQ_LIST = process.env.SP_REQUISITION_LIST_NAME   || 'Purchase Requisitions';
@@ -125,23 +178,97 @@ const SEED_CATEGORIES = [
   'Others',
 ];
 
-/* ── graph ── */
-async function getToken() {
+/* ── auth ── */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function getAppToken() {
   const res = await fetch(
-    `https://login.microsoftonline.com/${process.env.AZURE_TENANT_ID}/oauth2/v2.0/token`,
+    `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: process.env.AZURE_CLIENT_ID,
-        client_secret: process.env.AZURE_CLIENT_SECRET,
+        client_id: readable('AZURE_CLIENT_ID'),
+        client_secret: readable('AZURE_CLIENT_SECRET'),
         scope: 'https://graph.microsoft.com/.default',
       }).toString(),
     }
   );
   if (!res.ok) throw new Error(`Token failed (${res.status}): ${await res.text()}`);
   return (await res.json()).access_token;
+}
+
+/**
+ * Device-code sign-in. Prints a URL + code, then polls until the browser side
+ * completes. Acts as the signed-in person, so no client secret is involved.
+ */
+async function getDelegatedToken() {
+  const scope = 'https://graph.microsoft.com/Sites.Manage.All offline_access openid profile';
+
+  const startRes = await fetch(
+    `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/devicecode`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: DEVICE_CODE_CLIENT, scope }).toString(),
+    }
+  );
+  if (!startRes.ok)
+    throw new Error(`Device code request failed (${startRes.status}): ${await startRes.text()}`);
+  const flow = await startRes.json();
+
+  console.log('\n──────────────────────────────────────────────────');
+  console.log(`  Open:  ${flow.verification_uri}`);
+  console.log(`  Code:  ${flow.user_code}`);
+  console.log('──────────────────────────────────────────────────');
+  console.log('  Sign in with your work account, then wait here.\n');
+
+  const deadline = Date.now() + (flow.expires_in || 900) * 1000;
+  let interval = (flow.interval || 5) * 1000;
+
+  while (Date.now() < deadline) {
+    await sleep(interval);
+    const res = await fetch(
+      `https://login.microsoftonline.com/${TENANT}/oauth2/v2.0/token`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+          client_id: DEVICE_CODE_CLIENT,
+          device_code: flow.device_code,
+        }).toString(),
+      }
+    );
+    const data = await res.json();
+    if (res.ok && data.access_token) {
+      console.log('  ✓ signed in\n');
+      return data.access_token;
+    }
+    if (data.error === 'authorization_pending') continue;
+    if (data.error === 'slow_down') { interval += 5000; continue; }
+    if (data.error === 'authorization_declined') throw new Error('Sign-in was declined.');
+    if (data.error === 'expired_token') break;
+    throw new Error(`${data.error}: ${data.error_description || 'sign-in failed'}`);
+  }
+  throw new Error('Sign-in timed out — re-run and complete the browser step sooner.');
+}
+
+const getToken = () => (DELEGATED ? getDelegatedToken() : getAppToken());
+
+/** List the sites the signed-in identity can see, to find SP_SITE_URL. */
+async function listSites(token) {
+  const data = await graph(token, '/sites?search=*&$select=displayName,webUrl&$top=100');
+  const sites = (data.value || []).filter((s) => s.webUrl);
+  if (!sites.length) {
+    console.log('No sites visible to this account.');
+    return;
+  }
+  console.log(`Sites you can see (${sites.length}):\n`);
+  for (const s of sites) console.log(`  ${s.displayName || '(no name)'}\n    ${s.webUrl}`);
+  console.log('\nRe-run with the right one, e.g.:');
+  console.log(`  node scripts/setup-requisition-lists.mjs --delegated --site ${sites[0].webUrl}`);
 }
 
 async function graph(token, path, init = {}) {
@@ -232,7 +359,7 @@ async function seedCategories(token, siteId, listId) {
 
 /* ── main ── */
 async function main() {
-  if (DRY && missing.length) {
+  if (DRY && !SITE_URL) {
     console.log('DRY RUN (no credentials) — column plan only:\n');
     console.log(`${REQ_LIST}:`);
     for (const c of REQ_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
@@ -243,12 +370,20 @@ async function main() {
     return;
   }
 
-  console.log(`Site: ${process.env.SP_SITE_URL}${DRY ? '  (DRY RUN)' : ''}\n`);
+  console.log(
+    `Auth: ${DELEGATED ? 'delegated (sign-in as you)' : 'app-only'}${DRY ? '  ·  DRY RUN' : ''}`
+  );
   const token = await getToken();
 
-  const url  = new URL(process.env.SP_SITE_URL);
+  // Without a site URL there's nothing to target — show what's reachable and stop.
+  if (!SITE_URL) {
+    await listSites(token);
+    return;
+  }
+
+  const url  = new URL(SITE_URL);
   const site = await graph(token, `/sites/${url.hostname}:${url.pathname}`);
-  console.log(`Resolved site: ${site.displayName || site.name}\n`);
+  console.log(`Site: ${site.displayName || site.name}  (${SITE_URL})\n`);
 
   console.log(`[1/2] ${REQ_LIST}`);
   await ensureList(token, site.id, REQ_LIST, REQ_COLUMNS);
