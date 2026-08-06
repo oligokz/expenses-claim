@@ -81,6 +81,11 @@ export const DEFAULT_REQUISITION_CATEGORIES: { name: string }[] = [
 /** Selecting this category reveals the "If others" free-text field. */
 export const REQUISITION_OTHER = "Others"
 
+/* Idle sign-out. 30 minutes is the usual range for internal finance and HR
+ * tools; banking runs shorter, general SaaS longer. Change here, not in App. */
+export const IDLE_TIMEOUT_MS = 30 * 60 * 1000
+export const IDLE_WARN_MS = 2 * 60 * 1000
+
 export const DEPARTMENTS = [
   "Finance & Operations",
   "Human Resources",

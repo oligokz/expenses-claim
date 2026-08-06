@@ -62,6 +62,25 @@ export async function initAuth(): Promise<AccountInfo | null> {
   return account
 }
 
+/**
+ * Drop the local session without touching the tenant SSO session.
+ *
+ * Used by the idle timeout. A full logoutRedirect would sign the person out of
+ * every Microsoft app in the browser, which is far more than an idle app should
+ * do on their behalf.
+ */
+export async function clearSession(): Promise<void> {
+  try {
+    if (msalInstance && account) {
+      await msalInstance.clearCache({ account })
+    }
+  } catch {
+    // Falling through still leaves the UI locked, which is the point.
+  }
+  account = null
+  sessionStorage.clear()
+}
+
 /** Sign the user out and return to the app origin. */
 export async function logout(): Promise<void> {
   if (!msalInstance) return

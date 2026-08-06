@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, Send } from "lucide-react"
+import { Loader2, LogOut, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
@@ -20,7 +20,8 @@ import {
 } from "@/components/ClaimConfirmation"
 import { Button } from "@/components/ui/button"
 
-import { initAuth, logout } from "@/lib/auth"
+import { clearSession, initAuth, logout } from "@/lib/auth"
+import { useIdleTimeout } from "@/lib/useIdleTimeout"
 import {
   fetchApprovers,
   fetchRates,
@@ -29,7 +30,11 @@ import {
   type UploadMeta,
 } from "@/lib/api"
 import { fmt, num, toSGD } from "@/lib/currency"
-import { FALLBACK_RATES } from "@/lib/constants"
+import {
+  FALLBACK_RATES,
+  IDLE_TIMEOUT_MS,
+  IDLE_WARN_MS,
+} from "@/lib/constants"
 import type {
   ApproverOption,
   ClaimantForm,
@@ -106,6 +111,7 @@ export default function App() {
   const [errors, setErrors] = useState<FormErrors>({})
   const [result, setResult] = useState<SubmitResult | null>(null)
   const [retrying, setRetrying] = useState(false)
+  const [idledOut, setIdledOut] = useState(false)
 
   const didInit = useRef(false)
 
@@ -212,6 +218,28 @@ export default function App() {
       }
     })()
   }, [loadRates])
+
+  /* Sign out after a spell of inactivity. Covers the approval page too, since
+   * that renders through here. */
+  useIdleTimeout({
+    idleMs: IDLE_TIMEOUT_MS,
+    warnMs: IDLE_WARN_MS,
+    enabled: authState === "ready" && !idledOut,
+    onWarn: (reset) => {
+      toast.warning("You will be signed out shortly", {
+        description: "There has been no activity for a while.",
+        duration: IDLE_WARN_MS,
+        action: { label: "Stay signed in", onClick: reset },
+      })
+    },
+    onIdle: () => {
+      // Drop the local session and show a dead end rather than bouncing
+      // straight back through SSO, which would sign most people in again
+      // without a prompt and defeat the point.
+      void clearSession()
+      setIdledOut(true)
+    },
+  })
 
   /* Refresh rates every 5 minutes once signed in. */
   useEffect(() => {
@@ -374,6 +402,29 @@ export default function App() {
     window.location.pathname.replace(/\/+$/, "") === "/approve"
       ? new URLSearchParams(window.location.search).get("t")
       : null
+
+  /* ── Idled out ── */
+  if (idledOut) {
+    return (
+      <div className="grid min-h-dvh place-items-center bg-background px-6 text-center">
+        <div className="flex max-w-sm flex-col items-center gap-3">
+          <span className="grid size-12 place-items-center rounded-full bg-secondary text-muted-foreground">
+            <LogOut className="size-5" />
+          </span>
+          <h1 className="font-display text-lg font-semibold tracking-tight">
+            Signed out
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            You were signed out after a period of inactivity. Nothing you
+            submitted has been affected.
+          </p>
+          <Button className="mt-2" onClick={() => window.location.reload()}>
+            Sign in again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   /* ── Non-ready states ── */
   if (authState !== "ready") {
