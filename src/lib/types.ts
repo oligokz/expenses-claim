@@ -55,6 +55,14 @@ export interface RequisitionCategoryOption {
   name: string
 }
 
+/** Someone permitted to approve a requisition — admin-managed in SharePoint. */
+export interface ApproverOption {
+  name: string
+  email: string
+  stage: string
+  department: string
+}
+
 export interface RequisitionForm {
   department: string
   jobTitle: string
@@ -76,6 +84,7 @@ export interface RequisitionForm {
 export interface RequisitionErrors {
   department?: string
   jobTitle?: string
+  reportingManager?: string
   itemCategory?: string
   itemCategoryOther?: string
   description?: string

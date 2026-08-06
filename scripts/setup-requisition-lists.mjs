@@ -105,6 +105,7 @@ if (!DRY && !DELEGATED) {
 
 const REQ_LIST = process.env.SP_REQUISITION_LIST_NAME   || 'Purchase Requisitions';
 const CAT_LIST = process.env.SP_REQCATEGORIES_LIST_NAME || 'Requisition Categories';
+const APR_LIST = process.env.SP_REQAPPROVERS_LIST_NAME  || 'Requisition Approvers';
 
 /* ── column definitions ── */
 const text      = ()      => ({ text: {} });
@@ -164,6 +165,23 @@ const REQ_COLUMNS = [
 const CAT_COLUMNS = [
   { name: 'Active',    ...yesNo() },
   { name: 'SortOrder', ...number(0) },
+];
+
+/* Who may approve a requisition. A bounded list rather than a directory picker:
+ * letting any employee nominate any colleague as the approver of their own
+ * spend is a control weakness, not just a UX choice. Title holds the display
+ * name; column names avoid anything SharePoint might reserve. */
+const APR_COLUMNS = [
+  { name: 'ApproverEmail', ...text() },
+  { name: 'ApprovalStage', ...choice('Reporting Manager', 'Final Approval', 'Both') },
+  { name: 'Department',    ...text() },   // blank = approves for every department
+  { name: 'Active',        ...yesNo() },
+  { name: 'SortOrder',     ...number(0) },
+];
+
+/* Seeded for testing only — real approvers get added in SharePoint. */
+const SEED_APPROVERS = [
+  { name: 'Bernard Lim', email: 'bernard.lim@creoxtech.com', stage: 'Both' },
 ];
 
 const SEED_CATEGORIES = [
@@ -427,6 +445,38 @@ async function seedCategories(token, siteId, listId) {
   }
 }
 
+/** Seed approver rows, skipping any email already present. */
+async function seedApprovers(token, siteId, listId) {
+  const data = await graph(token, `/sites/${siteId}/lists/${listId}/items?$expand=fields&$top=200`);
+  const have = new Set(
+    (data.value || []).map((i) => (i.fields?.ApproverEmail || '').toLowerCase()).filter(Boolean)
+  );
+  const absent = SEED_APPROVERS.filter((a) => !have.has(a.email.toLowerCase()));
+  if (!absent.length) {
+    console.log('  ✓ approvers already seeded');
+    return;
+  }
+  console.log(`  seeding ${absent.length} approver(s)`);
+  if (DRY) return;
+  for (let i = 0; i < absent.length; i++) {
+    const a = absent[i];
+    await graph(token, `/sites/${siteId}/lists/${listId}/items`, {
+      method: 'POST',
+      body: JSON.stringify({
+        fields: {
+          Title:         a.name,
+          ApproverEmail: a.email,
+          ApprovalStage: a.stage,
+          Department:    '',
+          Active:        true,
+          SortOrder:     (i + 1) * 10,
+        },
+      }),
+    });
+    console.log(`    ✓ ${a.name} <${a.email}> — ${a.stage}`);
+  }
+}
+
 /* ── column indexing ──
  * my-requests.js filters each list server-side on the requester's email using
  * the `HonorNonIndexedQueriesWarningMayFailRandomly` header. That header does
@@ -506,14 +556,18 @@ async function main() {
   const site = await graph(token, `/sites/${url.hostname}:${url.pathname}`);
   console.log(`Site: ${site.displayName || site.name}  (${SITE_URL})\n`);
 
-  console.log(`[1/3] ${REQ_LIST}`);
+  console.log(`[1/4] ${REQ_LIST}`);
   await ensureList(token, site.id, REQ_LIST, REQ_COLUMNS);
 
-  console.log(`\n[2/3] ${CAT_LIST}`);
+  console.log(`\n[2/4] ${CAT_LIST}`);
   const catId = await ensureList(token, site.id, CAT_LIST, CAT_COLUMNS);
   if (catId) await seedCategories(token, site.id, catId);
 
-  console.log('\n[3/3] Indexing the email columns my-requests.js filters on');
+  console.log(`\n[3/4] ${APR_LIST}`);
+  const aprId = await ensureList(token, site.id, APR_LIST, APR_COLUMNS);
+  if (aprId) await seedApprovers(token, site.id, aprId);
+
+  console.log('\n[4/4] Indexing the email columns my-requests.js filters on');
   await indexColumns(token, site.id);
 
   console.log('\nDone.');

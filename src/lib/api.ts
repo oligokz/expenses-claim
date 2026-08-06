@@ -1,5 +1,6 @@
 import { getApiToken } from "./auth"
 import type {
+  ApproverOption,
   LineRow,
   ClaimantForm,
   LeaveTypeOption,
@@ -175,6 +176,27 @@ export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
     return types.length ? types : DEFAULT_LEAVE_TYPES
   } catch {
     return DEFAULT_LEAVE_TYPES
+  }
+}
+
+/**
+ * GET /api/approvers — who may approve, from SharePoint.
+ * `stage` is "reporting" (stage 1) or "final" (stage 2); those marked Both
+ * appear for either. Returns [] if the list isn't set up yet, which the form
+ * treats as "fall back to typing an address".
+ */
+export async function fetchApprovers(
+  stage: "reporting" | "final",
+): Promise<ApproverOption[]> {
+  try {
+    const token = await getApiToken()
+    const res = await fetch(`/api/approvers?stage=${stage}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    const data = await res.json()
+    return (data.approvers as ApproverOption[]) || []
+  } catch {
+    return []
   }
 }
 

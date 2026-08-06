@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/select"
 
 import {
+  fetchApprovers,
   fetchRequisitionCategories,
   submitRequisition,
   uploadReceipt,
@@ -40,6 +41,7 @@ import {
 } from "@/lib/constants"
 import { fmt, num, toSGD } from "@/lib/currency"
 import type {
+  ApproverOption,
   Rates,
   RequisitionCategoryOption,
   RequisitionErrors,
@@ -65,6 +67,7 @@ const blankForm = (): RequisitionForm => ({
 /** DOM ids for required controls, in document order — used to focus the first invalid field. */
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
+  reportingManager: "req-manager",
   itemCategory: "req-cat",
   itemCategoryOther: "req-cat-other",
   description: "req-desc",
@@ -76,6 +79,7 @@ const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
 }
 const FIELD_ORDER: (keyof RequisitionErrors)[] = [
   "department",
+  "reportingManager",
   "itemCategory",
   "itemCategoryOther",
   "description",
@@ -99,6 +103,7 @@ export function PurchaseRequisition({
   const [errors, setErrors] = useState<RequisitionErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [categories, setCategories] = useState<RequisitionCategoryOption[]>([])
+  const [approvers, setApprovers] = useState<ApproverOption[]>([])
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
@@ -109,6 +114,9 @@ export function PurchaseRequisition({
     let alive = true
     fetchRequisitionCategories().then((c) => {
       if (alive) setCategories(c)
+    })
+    fetchApprovers("reporting").then((a) => {
+      if (alive) setApprovers(a)
     })
     return () => {
       alive = false
@@ -163,6 +171,10 @@ export function PurchaseRequisition({
   const handleSubmit = async () => {
     const found: RequisitionErrors = {}
     if (!form.department) found.department = "Select a department"
+    // Only required once there's a list to pick from — otherwise the free-text
+    // fallback stays optional, as it was before.
+    if (approvers.length > 0 && !form.reportingManager)
+      found.reportingManager = "Select the approver"
     if (!form.itemCategory) found.itemCategory = "Select an item category"
     if (showOther && !form.itemCategoryOther.trim())
       found.itemCategoryOther = "Describe the category"
@@ -358,18 +370,58 @@ export function PurchaseRequisition({
               />
             </div>
 
+            {/* Approvers come from a bounded SharePoint list. If it can't be
+                read we fall back to a free-text address rather than blocking
+                the whole form on it. */}
             <div className="flex flex-col gap-1.5">
-              <FieldLabel
-                htmlFor="req-manager"
-                text="Reporting manager (email)"
-              />
-              <Input
-                id="req-manager"
-                type="email"
-                value={form.reportingManager}
-                onChange={(e) => update("reportingManager", e.target.value)}
-                placeholder="Optional — who should approve this"
-                className="bg-card"
+              {approvers.length > 0 ? (
+                <>
+                  <FieldLabel
+                    id="req-manager-label"
+                    text="Reporting manager"
+                    required
+                  />
+                  <Select
+                    value={form.reportingManager || undefined}
+                    onValueChange={(v) => update("reportingManager", v)}
+                  >
+                    <SelectTrigger
+                      id="req-manager"
+                      className="w-full bg-card"
+                      aria-labelledby="req-manager-label"
+                      aria-required="true"
+                      aria-invalid={!!errors.reportingManager || undefined}
+                    >
+                      <SelectValue placeholder="Select approver" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {approvers.map((a) => (
+                        <SelectItem key={a.email} value={a.email}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <>
+                  <FieldLabel
+                    htmlFor="req-manager"
+                    text="Reporting manager (email)"
+                  />
+                  <Input
+                    id="req-manager"
+                    type="email"
+                    value={form.reportingManager}
+                    onChange={(e) => update("reportingManager", e.target.value)}
+                    placeholder="Optional — who should approve this"
+                    className="bg-card"
+                  />
+                </>
+              )}
+              <FieldError
+                id="req-manager-error"
+                message={errors.reportingManager}
               />
             </div>
           </div>
