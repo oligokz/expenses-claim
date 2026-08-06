@@ -123,7 +123,7 @@ function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project,
 }
 
 /** Tell the requester the outcome of a stage, or of the whole request. */
-function decisionNotice({ claimRef, item, decision, decidedBy, stageLabel, comment, complete }) {
+function decisionNotice({ claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl }) {
   const approved = decision === 'approved';
   return {
     subject: `Purchase requisition ${claimRef} was ${decision}`,
@@ -144,7 +144,10 @@ function decisionNotice({ claimRef, item, decision, decidedBy, stageLabel, comme
         [approved ? 'Approved by' : 'Rejected by', decidedBy],
         ['Comment', comment || ''],
       ],
-      action: { href: `${baseUrl()}/`, label: 'View my requests' },
+      action:
+        complete && approved && pdfUrl
+          ? { href: pdfUrl, label: 'Open the signed PDF' }
+          : { href: `${baseUrl()}/`, label: 'View my requests' },
     }),
   };
 }

@@ -219,7 +219,14 @@ export async function submitApproval(args: {
   comment: string
   /** PNG data URL; omitted on rejection. */
   signature?: string
-}): Promise<{ decision: string; claimRef: string; complete?: boolean; nextApprover?: string | null }> {
+}): Promise<{
+  decision: string
+  claimRef: string
+  complete?: boolean
+  nextApprover?: string | null
+  /** Present once the final approval composes the signed document. */
+  pdfUrl?: string | null
+}> {
   const apiToken = await getApiToken()
   const res = await fetch("/api/approval", {
     method: "POST",

@@ -27,6 +27,7 @@ interface Outcome {
   claimRef: string
   complete?: boolean
   nextApprover?: string | null
+  pdfUrl?: string | null
 }
 
 export function ApprovalPage({ token }: { token: string }) {
@@ -123,6 +124,17 @@ export function ApprovalPage({ token }: { token: string }) {
                 {outcome.claimRef}
               </div>
             </div>
+            {outcome.pdfUrl && (
+              <Button
+                size="lg"
+                variant="outline"
+                className="mt-5 h-12 w-full text-sm font-semibold"
+                onClick={() => window.open(outcome.pdfUrl!, "_blank", "noopener")}
+              >
+                <FileText className="size-4" />
+                Open the signed PDF
+              </Button>
+            )}
           </div>
         </Card>
       </Shell>

@@ -6,6 +6,7 @@ const {
   assertActionable, isExpectedApprover, stageOf, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
+const { buildRequisitionPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
@@ -34,12 +35,10 @@ async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
 
   const driveId = await getDriveId(token, siteId);
   const month = todayIso().slice(0, 7);
-  const path = ['Requisition Attachments', month, claimRef, 'signatures', `stage${stageN}.png`]
-    .map(encodeURIComponent)
-    .join('/');
+  const segments = ['Requisition Attachments', month, claimRef, 'signatures', `stage${stageN}.png`];
 
   const res = await fetch(
-    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${path}:/content`,
+    `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${segments.map(encodeURIComponent).join('/')}:/content`,
     {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'image/png' },
@@ -47,8 +46,48 @@ async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
     }
   );
   if (!res.ok) throw new Error(`Signature upload failed (${res.status})`);
-  const saved = await res.json();
-  return saved.webUrl || path;
+  await res.json();
+  // Store the drive path, not the webUrl: the PDF composer has to fetch these
+  // bytes back, and a path is what Graph can resolve.
+  return segments.join('/');
+}
+
+/**
+ * Compose and store the signed PDF. Called once, after the final approval.
+ * Failure here must not undo the approval — the row is the record and the PDF
+ * can be rebuilt from it, so we report the problem and carry on.
+ */
+async function renderPdf(token, siteId, mod, itemId, claimRef) {
+  const fields = await getRow(token, siteId, mod, itemId);
+
+  const signatures = [];
+  for (const stage of mod.stages) {
+    const path = fields[stage.signatureField];
+    let png = null;
+    if (path) {
+      try {
+        png = await fetchDriveFile(token, siteId, path);
+      } catch (e) {
+        console.error('[approval] signature fetch failed:', e.message);
+      }
+    }
+    signatures.push({
+      stage: stage.n,
+      label: stage.label,
+      name:  fields[stage.signedNameField] || fields[stage.approverField] || '',
+      date:  fields[stage.dateField] || '',
+      png,
+    });
+  }
+
+  const bytes = await buildRequisitionPdf({ fields, claimRef, signatures });
+  const month = (fields.SubmissionDate || todayIso()).slice(0, 7);
+  const { webUrl } = await storePdf(token, siteId, bytes, claimRef, month);
+
+  if (webUrl) {
+    await patchRow(token, siteId, mod, itemId, { ApprovedPdfUrl: webUrl });
+  }
+  return webUrl;
 }
 
 /* ── GET: what the approver is being asked to sign ── */
@@ -170,6 +209,7 @@ async function handlePost(req, res) {
   }
 
   let nextApprover = null;
+  let pdfUrl = '';
   if (next) {
     // Route to whoever is registered for the next stage.
     const candidates = await approversFor(token, siteId, next.label);
@@ -212,6 +252,14 @@ async function handlePost(req, res) {
     // Last stage — the request is fully approved.
     patch.Status = 'Approved';
     await patchRow(token, siteId, mod, itemId, patch);
+
+    try {
+      pdfUrl = await renderPdf(token, siteId, mod, itemId, claimRef);
+    } catch (e) {
+      // The approval stands regardless; the PDF is a rendering of the row and
+      // can be rebuilt. Better a missing document than a lost decision.
+      console.error('[approval] pdf render failed:', e.message);
+    }
   }
 
   if (requesterEmail) {
@@ -220,7 +268,7 @@ async function handlePost(req, res) {
         to: requesterEmail,
         ...templates.decisionNotice({
           claimRef, item, decision: 'approved', decidedBy: user.name,
-          stageLabel: stage.label, comment, complete: !next,
+          stageLabel: stage.label, comment, complete: !next, pdfUrl,
         }),
       });
     } catch (e) {
@@ -234,6 +282,7 @@ async function handlePost(req, res) {
     claimRef,
     complete: !next,
     nextApprover: nextApprover?.name || null,
+    pdfUrl: pdfUrl || null,
   });
 }
 
