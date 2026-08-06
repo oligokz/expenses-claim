@@ -231,10 +231,10 @@ export function MyRequests() {
 
                 <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
                   <div className="truncate text-sm">{r.title || "-"}</div>
+                  {/* Category and date only. Description and vendor are real
+                      free text and push this line past the row on a phone. */}
                   <div className="truncate text-xs text-muted-foreground">
                     {fmtDate(r.date)}
-                    {r.detail ? ` · ${r.detail}` : ""}
-                    {r.meta ? ` · ${r.meta}` : ""}
                   </div>
                 </div>
 
