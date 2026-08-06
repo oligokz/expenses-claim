@@ -109,19 +109,14 @@ function layout({ heading, intro, rows, action, footer }) {
  * the token only identifies the request and stage, the approver still signs in
  * with Entra, so a forwarded email cannot approve anything.
  */
-function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project, stageLabel, token, ttlDays }) {
+function approvalRequest({ kind, claimRef, requester, rows = [], stageLabel, token, ttlDays }) {
+  const what = (kind || 'Request').toLowerCase();
   return {
-    subject: `Purchase requisition ${claimRef} needs your approval`,
+    subject: `${kind || 'Request'} ${claimRef} needs your approval`,
     html: layout({
-      heading: 'A purchase requisition needs your approval',
-      intro: `${requester} submitted a requisition and you are the ${stageLabel.toLowerCase()} for it.`,
-      rows: [
-        ['Reference', claimRef],
-        ['Item', item],
-        ['Estimated cost', `SGD ${totalSGD}`],
-        ['Vendor', vendor],
-        ['Project / customer', project],
-      ],
+      heading: `A ${what} needs your approval`,
+      intro: `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
+      rows: [['Reference', claimRef], ...rows],
       action: {
         href: `${baseUrl()}/approve?t=${encodeURIComponent(token)}`,
         label: 'Review and sign',
@@ -132,19 +127,20 @@ function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project,
 }
 
 /** Tell the requester the outcome of a stage, or of the whole request. */
-function decisionNotice({ claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl }) {
+function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl }) {
   const approved = decision === 'approved';
+  const what = (kind || 'Request').toLowerCase();
   return {
-    subject: `Purchase requisition ${claimRef} was ${decision}`,
+    subject: `${kind || 'Request'} ${claimRef} was ${decision}`,
     html: layout({
       heading: approved
         ? complete
-          ? 'Your requisition is fully approved'
-          : `${stageLabel} approved your requisition`
-        : 'Your requisition was rejected',
+          ? `Your ${what} is approved`
+          : `${stageLabel} approved your ${what}`
+        : `Your ${what} was rejected`,
       intro: approved
         ? complete
-          ? 'Both approvals are in. You can go ahead with the purchase.'
+          ? 'No further approval is needed.'
           : 'It has moved to the next approver.'
         : `${decidedBy} rejected this request.`,
       rows: [

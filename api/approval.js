@@ -125,8 +125,11 @@ async function handleGet(req, res) {
 
   return res.status(200).json({
     claimRef,
+    kind: mod.kind,
     stage: stage.n,
     stageLabel: stage.label,
+    // Only requisitions ask for a drawing; the rest are approve or reject.
+    requiresSignature: !!mod.signature,
     actionable,
     reason,
     status: fields.Status || 'Pending',
@@ -136,7 +139,7 @@ async function handleGet(req, res) {
 
 /* ── POST: record the decision ── */
 async function handlePost(req, res) {
-  const { mod, stage, itemId } = await readToken(req.body?.token);
+  const { mod, moduleName, stage, itemId } = await readToken(req.body?.token);
   const user = await verifyUserToken(req);
   const { decision, comment = '', signature } = req.body || {};
 
@@ -154,8 +157,19 @@ async function handlePost(req, res) {
   // Re-checked here, not just on GET, the page could have been left open.
   assertActionable(fields, stage, (await readToken(req.body.token)).jti);
 
-  const item = `${fields.Quantity ?? ''} × ${fields.ItemCategoryOther || fields.ItemCategory || ''}`.trim();
-  const requesterEmail = fields.RequestorEmail || '';
+  const summary = mod.summarise(fields);
+  const item = summary.title || '';
+  const requesterEmail = summary.requesterEmail || '';
+
+  /** Append to whichever notes column this module uses. */
+  const noteWith = (verb) => {
+    if (!mod.notesField) return {};
+    const existing = fields[mod.notesField] || '';
+    return {
+      [mod.notesField]:
+        `${existing}\n[${stage.label}] ${verb} by ${user.name}${comment ? `: ${comment}` : ''}`.trim(),
+    };
+  };
 
   /* ── rejection ends it ── */
   if (decision === 'reject') {
@@ -165,7 +179,7 @@ async function handlePost(req, res) {
       [stage.signedNameField]: user.name,
       [stage.tokenField]:  '',            // spend the link
       Status:              'Rejected',
-      ApprovalNotes:       `${fields.ApprovalNotes || ''}\n[${stage.label}] Rejected by ${user.name}: ${comment}`.trim(),
+      ...noteWith('Rejected'),
     });
 
     if (requesterEmail) {
@@ -174,8 +188,8 @@ async function handlePost(req, res) {
           to: requesterEmail,
           replyTo: user.email,
           ...templates.decisionNotice({
-            claimRef, item, decision: 'rejected', decidedBy: user.name,
-            stageLabel: stage.label, comment, complete: true,
+            kind: mod.kind, claimRef, item, decision: 'rejected',
+            decidedBy: user.name, stageLabel: stage.label, comment, complete: true,
           }),
         });
       } catch (e) {
@@ -187,7 +201,7 @@ async function handlePost(req, res) {
 
   /* ── approval ── */
   let signatureUrl = '';
-  if (signature) {
+  if (signature && stage.signatureField) {
     try {
       signatureUrl = await saveSignature(token, siteId, signature, claimRef, stage.n);
     } catch (e) {
@@ -208,14 +222,12 @@ async function handlePost(req, res) {
     [stage.statusField]:     'Approved',
     [stage.dateField]:       nowIso(),
     [stage.signedNameField]: user.name,
-    [stage.signatureField]:  signatureUrl,
     [stage.tokenField]:      '',
-    ApprovalStage:           stage.nextStage,
   };
-  if (comment) {
-    patch.ApprovalNotes =
-      `${fields.ApprovalNotes || ''}\n[${stage.label}] Approved by ${user.name}: ${comment}`.trim();
-  }
+  // Single-stage modules have neither a signature column nor a stage column.
+  if (stage.signatureField) patch[stage.signatureField] = signatureUrl;
+  if (mod.stageField) patch[mod.stageField] = stage.nextStage;
+  if (comment) Object.assign(patch, noteWith('Approved'));
 
   let nextApprover = null;
   let pdfUrl = '';
@@ -229,7 +241,7 @@ async function handlePost(req, res) {
     ) || { name: nextEmail, email: nextEmail };
 
     const { token: nextToken, jti } = await mintToken({
-      module: 'requisition', itemId, stage: next.n, approver: nextEmail,
+      module: moduleName, itemId, stage: next.n, approver: nextEmail,
     });
     patch[next.tokenField] = jti;
 
@@ -240,12 +252,10 @@ async function handlePost(req, res) {
         to: nextApprover.email,
         replyTo: requesterEmail || undefined,
         ...templates.approvalRequest({
+          kind:       mod.kind,
           claimRef,
-          requester:  fields.RequestorName || '',
-          item,
-          totalSGD:   Number(fields.EstimatedTotalSGD || 0).toFixed(2),
-          vendor:     fields.VendorName || '',
-          project:    fields.ProjectCustomer || '',
+          requester:  summary.requester,
+          rows:       summary.rows,
           stageLabel: next.label,
           token:      nextToken,
           ttlDays:    TOKEN_TTL_DAYS,
@@ -259,12 +269,14 @@ async function handlePost(req, res) {
     patch.Status = 'Approved';
     await patchRow(token, siteId, mod, itemId, patch);
 
-    try {
-      pdfUrl = await renderPdf(token, siteId, mod, itemId, claimRef);
-    } catch (e) {
-      // The approval stands regardless; the PDF is a rendering of the row and
-      // can be rebuilt. Better a missing document than a lost decision.
-      console.error('[approval] pdf render failed:', e.message);
+    if (mod.pdf) {
+      try {
+        pdfUrl = await renderPdf(token, siteId, mod, itemId, claimRef);
+      } catch (e) {
+        // The approval stands regardless; the PDF is a rendering of the row and
+        // can be rebuilt. Better a missing document than a lost decision.
+        console.error('[approval] pdf render failed:', e.message);
+      }
     }
   }
 
@@ -273,8 +285,9 @@ async function handlePost(req, res) {
       await sendMail(token, {
         to: requesterEmail,
         ...templates.decisionNotice({
-          claimRef, item, decision: 'approved', decidedBy: user.name,
-          stageLabel: stage.label, comment, complete: !next, pdfUrl,
+          kind: mod.kind, claimRef, item, decision: 'approved',
+          decidedBy: user.name, stageLabel: stage.label,
+          comment, complete: !next, pdfUrl,
         }),
       });
     } catch (e) {

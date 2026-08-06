@@ -87,6 +87,7 @@ export async function submitClaim({
       employeeName: claimant.employee,
       employeeEmail: claimant.email,
       department: claimant.dept,
+      approverEmail: claimant.approverEmail,
       submissionDate: claimant.subDate,
       lineItems,
       notes,
@@ -139,6 +140,7 @@ interface LeaveArgs {
   endPortion: string
   days: number
   reason: string
+  approverEmail: string
 }
 
 /** POST /api/leave, creates a leave request. Returns the new id + ref. */
@@ -187,11 +189,12 @@ export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
  * treats as "fall back to typing an address".
  */
 export async function fetchApprovers(
-  stage: "reporting" | "final",
+  stage: "reporting" | "final" | "all",
 ): Promise<ApproverOption[]> {
   try {
     const token = await getApiToken()
-    const res = await fetch(`/api/approvers?stage=${stage}`, {
+    const query = stage === "all" ? "" : `?stage=${stage}`
+    const res = await fetch(`/api/approvers${query}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     const data = await res.json()

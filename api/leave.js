@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { notifyApprover } = require('./_lib/notify');
 
 // Mirror of src/lib/leave.ts, recomputed server-side so the stored Days value
 // is trusted, not taken from the client.
@@ -68,7 +69,7 @@ module.exports = async function handler(req, res) {
     const {
       department, leaveType, startDate, endDate,
       startPortion = 'Full', endPortion = 'Full',
-      reason,
+      reason, approverEmail,
     } = req.body;
 
     if (!department || !leaveType || !startDate || !endDate)
@@ -94,6 +95,7 @@ module.exports = async function handler(req, res) {
       Days:           days,
       Reason:         reason || '',
       Status:         'Pending',
+      ApproverEmail:  approverEmail || '',
     };
 
     let created;
@@ -109,7 +111,13 @@ module.exports = async function handler(req, res) {
     }
 
     const itemId = created?.id || 'unknown';
-    return res.status(200).json({ success: true, itemId, claimRef: `LEAVE-${itemId}`, days });
+    const { notified, mailError } = await notifyApprover(token, siteId, {
+      moduleName: 'leave', itemId, approverEmail,
+    });
+
+    return res.status(200).json({
+      success: true, itemId, claimRef: `LEAVE-${itemId}`, days, notified, mailError,
+    });
   } catch (err) {
     const status = err.status || 500;
     if (status >= 500) console.error('[leave] ERROR:', err.message);

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DEPARTMENTS } from "@/lib/constants"
-import type { ClaimantForm, FormErrors } from "@/lib/types"
+import type { ApproverOption, ClaimantForm, FormErrors } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 interface ClaimantInfoProps {
@@ -19,6 +19,7 @@ interface ClaimantInfoProps {
   onChange: <K extends keyof ClaimantForm>(field: K, val: ClaimantForm[K]) => void
   identityLocked: boolean
   errors: FormErrors
+  approvers: ApproverOption[]
 }
 
 export function ClaimantInfo({
@@ -26,6 +27,7 @@ export function ClaimantInfo({
   onChange,
   identityLocked,
   errors,
+  approvers,
 }: ClaimantInfoProps) {
   return (
     <SectionCard icon={<User />} title="Claimant Information">
@@ -83,6 +85,37 @@ export function ClaimantInfo({
           </Select>
           <FieldError id="claimant-dept-error" message={errors.dept} />
         </div>
+
+        {approvers.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel id="claimant-approver-label" text="Approver" required />
+            <Select
+              value={value.approverEmail || undefined}
+              onValueChange={(v) => onChange("approverEmail", v)}
+            >
+              <SelectTrigger
+                id="claimant-approver"
+                className="w-full bg-card"
+                aria-labelledby="claimant-approver-label"
+                aria-required="true"
+                aria-invalid={!!errors.approverEmail || undefined}
+              >
+                <SelectValue placeholder="Select approver" />
+              </SelectTrigger>
+              <SelectContent>
+                {approvers.map((a) => (
+                  <SelectItem key={a.email} value={a.email}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FieldError
+              id="claimant-approver-error"
+              message={errors.approverEmail}
+            />
+          </div>
+        )}
       </div>
     </SectionCard>
   )

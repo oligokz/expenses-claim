@@ -13,12 +13,14 @@ export interface ClaimantForm {
   email: string
   dept: string
   subDate: string // ISO yyyy-mm-dd
+  approverEmail: string
 }
 
 /** Per-field validation messages, keyed by the field that failed. */
 export interface FormErrors {
   employee?: string
   dept?: string
+  approverEmail?: string
   subDate?: string
   cat?: string
   receiptDate?: string
@@ -40,6 +42,7 @@ export interface LeaveForm {
   /** Applies to single-day requests: Full / AM (½) / PM (½). */
   portion: LeavePortion
   reason: string
+  approverEmail: string
 }
 
 export interface LeaveErrors {
@@ -48,6 +51,7 @@ export interface LeaveErrors {
   startDate?: string
   endDate?: string
   reason?: string
+  approverEmail?: string
 }
 
 /** A selectable requisition item category, admin-managed in SharePoint, with code defaults as fallback. */
@@ -102,8 +106,12 @@ export interface RequisitionErrors {
 /** What an approver is shown before signing, from GET /api/approval. */
 export interface ApprovalView {
   claimRef: string
+  /** "Purchase requisition", "Leave request", "Expense claim". */
+  kind: string
   stage: number
   stageLabel: string
+  /** Only requisitions ask for a drawn signature. */
+  requiresSignature: boolean
   /** False when the link is spent, superseded, or the request already decided. */
   actionable: boolean
   reason: string

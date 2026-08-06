@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { notifyApprover } = require('./_lib/notify');
 
 async function createListItem(token, siteId, fields) {
   const listName = process.env.SP_LIST_NAME;
@@ -53,7 +54,7 @@ module.exports = async function handler(req, res) {
     const user = await verifyUserToken(req);
 
     const { department, submissionDate, lineItems, notes,
-            exchangeRates, receiptCount } = req.body;
+            exchangeRates, receiptCount, approverEmail } = req.body;
 
     const employeeName  = user.name;
     const employeeEmail = user.email;
@@ -87,6 +88,7 @@ module.exports = async function handler(req, res) {
       TotalAmountSGD: parseFloat((item.amountSGD || 0).toFixed(2)),
       Notes:          notes || '',
       Status:         'Pending',
+      ApproverEmail:  approverEmail || '',
       ReceiptCount:   receiptCount || 0,
       ExchangeRates:  JSON.stringify(exchangeRates || {}),
     };
@@ -108,7 +110,10 @@ module.exports = async function handler(req, res) {
     }
     const itemId   = created?.id || 'unknown';
     const claimRef = `EXP-${itemId}`;
-    return res.status(200).json({ success: true, itemId, claimRef });
+    const { notified, mailError } = await notifyApprover(token, siteId, {
+      moduleName: 'expense', itemId, approverEmail,
+    });
+    return res.status(200).json({ success: true, itemId, claimRef, notified, mailError });
 
   } catch(err) {
     const status = err.status || 500;

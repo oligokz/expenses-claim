@@ -13,7 +13,13 @@ const crypto = require('node:crypto');
 const MODULES = {
   requisition: {
     refPrefix: 'REQ',
+    kind: 'Purchase requisition',
     listName: () => process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions',
+    // Requisitions carry the whole ceremony; leave and expense do not.
+    signature: true,
+    pdf: true,
+    stageField: 'ApprovalStage',
+    notesField: 'ApprovalNotes',
     stages: [
       {
         n: 1,
@@ -59,6 +65,86 @@ const MODULES = {
         ['Vendor contact', f.VendorContact || ''],
         ['Project / customer', f.ProjectCustomer || ''],
       ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
+    }),
+  },
+
+  /* Leave and expense reuse the whole mechanism with one stage and no drawing.
+   * They also predate it: their lists already carry ApproverEmail, DecisionDate
+   * and ApproverComments, filled in by hand until now, so the stage maps onto
+   * those rather than introducing a parallel set. Neither has an ApprovalStage
+   * column, hence stageField: null. */
+  leave: {
+    refPrefix: 'LEAVE',
+    kind: 'Leave request',
+    listName: () => process.env.SP_LEAVE_LIST_NAME || 'Leave Requests',
+    signature: false,
+    pdf: false,
+    stageField: null,
+    notesField: 'ApproverComments',
+    stages: [
+      {
+        n: 1,
+        label: 'Approver',
+        listValue: 'Reporting Manager',
+        nextStage: null,
+        approverField: 'ApproverEmail',
+        statusField: 'Status',
+        dateField: 'DecisionDate',
+        tokenField: 'Stage1TokenId',
+        signatureField: null,
+        signedNameField: 'Stage1SignedName',
+      },
+    ],
+    summarise: (f) => ({
+      title: f.LeaveType || 'Leave',
+      description: f.Reason || '',
+      requester: f.EmployeeName || '',
+      requesterEmail: f.EmployeeEmail || '',
+      department: f.Department || '',
+      submittedOn: f.StartDate || '',
+      rows: [
+        ['Start', String(f.StartDate || '').slice(0, 10)],
+        ['End', String(f.EndDate || '').slice(0, 10)],
+        ['Days', String(f.Days ?? '')],
+      ].filter(([, v]) => v && v.trim() !== ''),
+    }),
+  },
+
+  expense: {
+    refPrefix: 'EXP',
+    kind: 'Expense claim',
+    listName: () => process.env.SP_LIST_NAME || 'ExpenseClaims',
+    signature: false,
+    pdf: false,
+    stageField: null,
+    notesField: 'ApproverComments',
+    stages: [
+      {
+        n: 1,
+        label: 'Approver',
+        listValue: 'Reporting Manager',
+        nextStage: null,
+        approverField: 'ApproverEmail',
+        statusField: 'Status',
+        dateField: 'DecisionDate',
+        tokenField: 'Stage1TokenId',
+        signatureField: null,
+        signedNameField: 'Stage1SignedName',
+      },
+    ],
+    summarise: (f) => ({
+      title: f.Category || 'Expense',
+      description: f.Description || '',
+      requester: f.EmployeeName || '',
+      requesterEmail: f.EmployeeEmail || '',
+      department: f.Department || '',
+      submittedOn: f.SubmissionDate || '',
+      rows: [
+        ['Quantity', String(f.Quantity ?? '')],
+        ['Amount', `${f.Currency || 'SGD'} ${Number(f.Amount || 0).toFixed(2)}`],
+        ['Total (SGD)', `SGD ${Number(f.TotalAmountSGD || 0).toFixed(2)}`],
+        ['Notes', f.Notes || ''],
+      ].filter(([, v]) => v && v.trim() !== ''),
     }),
   },
 };
@@ -122,7 +208,14 @@ async function readToken(token) {
   if (!mod) throw badToken('Unknown approval type');
   const stage = stageOf(mod, payload.stage);
   if (!stage) throw badToken('Unknown approval stage');
-  return { mod, stage, itemId: payload.itemId, approver: payload.approver, jti: payload.jti };
+  return {
+    mod,
+    moduleName: payload.module,
+    stage,
+    itemId: payload.itemId,
+    approver: payload.approver,
+    jti: payload.jti,
+  };
 }
 
 /* ── SharePoint row access ── */

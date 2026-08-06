@@ -194,6 +194,18 @@ const APR_COLUMNS = [
 /* Seeded for testing only, real approvers get added in SharePoint. */
 const SEED_APPROVERS = [
   { name: 'Bernard Lim', email: 'bernard.lim@creoxtech.com', stage: 'Both' },
+  { name: 'Joanne Lee',  email: 'Joanne.lee@creoxtech.com',  stage: 'Both' },
+];
+
+/* Leave and expense join the approval flow with one stage and no signature.
+ * Their lists already carry ApproverEmail, DecisionDate and ApproverComments
+ * from when approvals were done by hand, so only the mechanics are missing. */
+const SINGLE_STAGE_COLUMNS = [
+  { name: 'ApproverEmail',    ...text() },
+  { name: 'DecisionDate',     ...dateOnly() },
+  { name: 'ApproverComments', ...multiline() },
+  { name: 'Stage1TokenId',    ...text() },
+  { name: 'Stage1SignedName', ...text() },
 ];
 
 const SEED_CATEGORIES = [
@@ -568,18 +580,27 @@ async function main() {
   const site = await graph(token, `/sites/${url.hostname}:${url.pathname}`);
   console.log(`Site: ${site.displayName || site.name}  (${SITE_URL})\n`);
 
-  console.log(`[1/4] ${REQ_LIST}`);
+  console.log(`[1/5] ${REQ_LIST}`);
   await ensureList(token, site.id, REQ_LIST, REQ_COLUMNS);
 
-  console.log(`\n[2/4] ${CAT_LIST}`);
+  console.log(`\n[2/5] ${CAT_LIST}`);
   const catId = await ensureList(token, site.id, CAT_LIST, CAT_COLUMNS);
   if (catId) await seedCategories(token, site.id, catId);
 
-  console.log(`\n[3/4] ${APR_LIST}`);
+  console.log(`\n[3/5] ${APR_LIST}`);
   const aprId = await ensureList(token, site.id, APR_LIST, APR_COLUMNS);
   if (aprId) await seedApprovers(token, site.id, aprId);
 
-  console.log('\n[4/4] Indexing the email columns my-requests.js filters on');
+  console.log('\n[4/5] Leave and expense approval columns');
+  for (const listName of [
+    readable('SP_LIST_NAME') || 'ExpenseClaims',
+    process.env.SP_LEAVE_LIST_NAME || 'Leave Requests',
+  ]) {
+    console.log(`  ${listName}`);
+    await ensureList(token, site.id, listName, SINGLE_STAGE_COLUMNS);
+  }
+
+  console.log('\n[5/5] Indexing the email columns my-requests.js filters on');
   await indexColumns(token, site.id);
 
   console.log('\nDone.');

@@ -58,9 +58,9 @@ export function ApprovalPage({ token }: { token: string }) {
   }, [token])
 
   const decide = async (decision: "approve" | "reject") => {
-    // A signature is the point of the exercise on approval; a rejection just
-    // needs a reason, so we don't demand one there.
-    if (decision === "approve" && !signature) {
+    // Only modules that ask for a drawing require one. A rejection never does;
+    // it just needs a reason.
+    if (decision === "approve" && view?.requiresSignature && !signature) {
       toast.error("Please sign before approving")
       return
     }
@@ -187,7 +187,7 @@ export function ApprovalPage({ token }: { token: string }) {
     <Shell>
       <div className="mb-6">
         <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          Approve purchase requisition
+          Approve {(view.kind || "request").toLowerCase()}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {view.claimRef} · {view.stageLabel} · submitted by {view.requester}
@@ -232,10 +232,12 @@ export function ApprovalPage({ token }: { token: string }) {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel id="signature-label" text="Signature" required />
-              <SignaturePad onChange={setSignature} disabled={!!busy} />
-            </div>
+            {view.requiresSignature && (
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel id="signature-label" text="Signature" required />
+                <SignaturePad onChange={setSignature} disabled={!!busy} />
+              </div>
+            )}
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button

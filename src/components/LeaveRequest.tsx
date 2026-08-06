@@ -28,10 +28,20 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
-import { fetchLeaveTypes, submitLeave, uploadReceipt } from "@/lib/api"
+import {
+  fetchApprovers,
+  fetchLeaveTypes,
+  submitLeave,
+  uploadReceipt,
+} from "@/lib/api"
 import { DEPARTMENTS } from "@/lib/constants"
 import { computeLeaveDays } from "@/lib/leave"
-import type { LeaveErrors, LeaveForm, LeaveTypeOption } from "@/lib/types"
+import type {
+  ApproverOption,
+  LeaveErrors,
+  LeaveForm,
+  LeaveTypeOption,
+} from "@/lib/types"
 
 const todayIso = () => {
   const d = new Date()
@@ -45,6 +55,7 @@ const blankForm = (): LeaveForm => ({
   endDate: todayIso(),
   portion: "Full",
   reason: "",
+  approverEmail: "",
 })
 
 const dayLabel = (n: number) => `${n} ${n === 1 ? "day" : "days"}`
@@ -55,12 +66,16 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const [errors, setErrors] = useState<LeaveErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [types, setTypes] = useState<LeaveTypeOption[]>([])
+  const [approvers, setApprovers] = useState<ApproverOption[]>([])
   const [submitted, setSubmitted] = useState<{ ref: string; days: number } | null>(null)
 
   useEffect(() => {
     let alive = true
     fetchLeaveTypes().then((t) => {
       if (alive) setTypes(t)
+    })
+    fetchApprovers("all").then((a) => {
+      if (alive) setApprovers(a)
     })
     return () => {
       alive = false
@@ -95,6 +110,8 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const handleSubmit = async () => {
     const found: LeaveErrors = {}
     if (!form.department) found.department = "Select a department"
+    if (approvers.length > 0 && !form.approverEmail)
+      found.approverEmail = "Select an approver"
     if (!form.leaveType) found.leaveType = "Select a leave type"
     if (!form.startDate) found.startDate = "Choose a start date"
     if (!form.endDate) found.endDate = "Choose an end date"
@@ -121,6 +138,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
         endPortion: "Full",
         days,
         reason: form.reason,
+        approverEmail: form.approverEmail,
       })
 
       let failed = 0
@@ -243,6 +261,37 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
               </Select>
               <FieldError id="leave-dept-error" message={errors.department} />
             </div>
+
+            {approvers.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <FieldLabel id="leave-approver-label" text="Approver" required />
+                <Select
+                  value={form.approverEmail || undefined}
+                  onValueChange={(v) => update("approverEmail", v)}
+                >
+                  <SelectTrigger
+                    id="leave-approver"
+                    className="w-full bg-card"
+                    aria-labelledby="leave-approver-label"
+                    aria-required="true"
+                    aria-invalid={!!errors.approverEmail || undefined}
+                  >
+                    <SelectValue placeholder="Select approver" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {approvers.map((a) => (
+                      <SelectItem key={a.email} value={a.email}>
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldError
+                  id="leave-approver-error"
+                  message={errors.approverEmail}
+                />
+              </div>
+            )}
           </div>
         </SectionCard>
 
