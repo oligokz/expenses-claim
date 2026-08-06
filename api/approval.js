@@ -221,7 +221,7 @@ async function handlePost(req, res) {
     // The next approver was chosen by the requester at submit and is already on
     // the row; look up their display name only so the email reads properly.
     const nextEmail = (fields[next.approverField] || '').trim();
-    const candidates = await approversFor(token, siteId, next.label);
+    const candidates = await approversFor(token, siteId, next.listValue);
     nextApprover = candidates.find(
       (c) => c.email.toLowerCase() === nextEmail.toLowerCase()
     ) || { name: nextEmail, email: nextEmail };

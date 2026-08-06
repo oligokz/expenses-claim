@@ -17,7 +17,11 @@ const MODULES = {
     stages: [
       {
         n: 1,
-        label: 'Reporting Manager',
+        // What people see. `listValue` is the ApprovalStage choice stored in
+        // SharePoint — renaming the display must not break matching against
+        // existing rows or the Requisition Approvers list.
+        label: 'First Approver',
+        listValue: 'Reporting Manager',
         nextStage: 'Final Approval',
         approverField: 'ReportingManager',
         statusField: 'ReportingManagerStatus',
@@ -28,7 +32,8 @@ const MODULES = {
       },
       {
         n: 2,
-        label: 'Final Approval',
+        label: 'Second Approver',
+        listValue: 'Final Approval',
         nextStage: 'Complete',
         approverField: 'FinalApprover',
         statusField: 'FinalApprovalStatus',

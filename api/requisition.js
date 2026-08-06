@@ -205,7 +205,7 @@ module.exports = async function handler(req, res) {
           totalSGD:   fmtMoney,
           vendor:     vendorName,
           project:    projectCustomer || '',
-          stageLabel: 'Reporting Manager',
+          stageLabel: 'First Approver',
           token:      approvalToken,
           ttlDays:    TOKEN_TTL_DAYS,
         });

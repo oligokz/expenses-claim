@@ -71,8 +71,18 @@ function layout({ heading, intro, rows, action, footer }) {
     )
     .join('');
 
+  /* The logo is white-on-transparent, so it needs the dark bar the app uses.
+   * Outlook won't render SVG — the alt text is styled to stand in as a
+   * wordmark there, so the header looks deliberate either way. Swap the src
+   * for a PNG if you want the mark itself to show in Outlook too. */
+  const header = `<tr><td style="background:#111111;padding:18px 28px;border-radius:12px 12px 0 0">
+      <img src="${baseUrl()}/logo.svg" width="120" height="30" alt="CREOX"
+           style="display:block;border:0;height:30px;color:#ffffff;font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:20px;font-weight:700;letter-spacing:2px" />
+    </td></tr>`;
+
   return `<!doctype html><html><body style="margin:0;padding:24px;background:#f5f5f5;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1a1a1a">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;border:1px solid #e5e5e5">
+    ${header}
     <tr><td style="padding:28px 28px 20px">
       <h1 style="margin:0 0 8px;font-size:19px;font-weight:700">${esc(heading)}</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5">${esc(intro)}</p>

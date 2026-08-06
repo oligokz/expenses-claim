@@ -411,7 +411,7 @@ export function PurchaseRequisition({
                 <>
                   <FieldLabel
                     id="req-manager-label"
-                    text="Reporting manager"
+                    text="First approver"
                     required
                   />
                   <Select
@@ -440,7 +440,7 @@ export function PurchaseRequisition({
                 <>
                   <FieldLabel
                     htmlFor="req-manager"
-                    text="Reporting manager (email)"
+                    text="First approver (email)"
                   />
                   <Input
                     id="req-manager"
@@ -466,7 +466,7 @@ export function PurchaseRequisition({
                 <>
                   <FieldLabel
                     id="req-final-approver-label"
-                    text="Final approver (optional)"
+                    text="Second approver (optional)"
                   />
                   <Select
                     value={form.finalApprover || undefined}
@@ -496,7 +496,7 @@ export function PurchaseRequisition({
                 <>
                   <FieldLabel
                     htmlFor="req-final-approver"
-                    text="Final approver (email)"
+                    text="Second approver (email, optional)"
                   />
                   <Input
                     id="req-final-approver"
