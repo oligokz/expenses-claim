@@ -257,18 +257,50 @@ async function getDelegatedToken() {
 
 const getToken = () => (DELEGATED ? getDelegatedToken() : getAppToken());
 
-/** List the sites the signed-in identity can see, to find SP_SITE_URL. */
+/**
+ * List the sites the signed-in identity can see, with each site's user-visible
+ * lists. SP_SITE_URL is sealed as [SENSITIVE], so the way to find the site the
+ * app already writes to is to look for the lists it already writes to.
+ */
 async function listSites(token) {
-  const data = await graph(token, '/sites?search=*&$select=displayName,webUrl&$top=100');
+  const data = await graph(token, '/sites?search=*&$select=id,displayName,webUrl&$top=100');
   const sites = (data.value || []).filter((s) => s.webUrl);
   if (!sites.length) {
     console.log('No sites visible to this account.');
     return;
   }
+
+  // Lists the app already uses, so we can spot the site it's wired to.
+  const KNOWN = [
+    'expense', 'claim', 'leave', 'requisition', 'purchase', 'attachment',
+  ];
+
   console.log(`Sites you can see (${sites.length}):\n`);
-  for (const s of sites) console.log(`  ${s.displayName || '(no name)'}\n    ${s.webUrl}`);
-  console.log('\nRe-run with the right one, e.g.:');
-  console.log(`  node scripts/setup-requisition-lists.mjs --delegated --site ${sites[0].webUrl}`);
+  for (const s of sites) {
+    console.log(`  ${s.displayName || '(no name)'}`);
+    console.log(`    ${s.webUrl}`);
+    try {
+      const ld = await graph(
+        token,
+        `/sites/${s.id}/lists?$select=displayName,list&$top=100`
+      );
+      const lists = (ld.value || []).filter((l) => l.list && !l.list.hidden);
+      if (!lists.length) {
+        console.log('      (no visible lists)');
+      } else {
+        for (const l of lists) {
+          const hit = KNOWN.some((k) => (l.displayName || '').toLowerCase().includes(k));
+          console.log(`      ${hit ? '*' : '-'} ${l.displayName}`);
+        }
+      }
+    } catch (e) {
+      console.log(`      (couldn't read lists: ${e.status || '?'})`);
+    }
+    console.log('');
+  }
+  console.log('* = name suggests this app already uses it\n');
+  console.log('Re-run against the right site:');
+  console.log('  node scripts/setup-requisition-lists.mjs --delegated --site <webUrl>');
 }
 
 async function graph(token, path, init = {}) {
