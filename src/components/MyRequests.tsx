@@ -207,19 +207,18 @@ export function MyRequests() {
       {state === "ready" && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           {/* Header row (desktop only) */}
-          <div className="hidden grid-cols-[7rem_1fr_9rem_7rem_3rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+          <div className="hidden grid-cols-[7rem_1fr_9rem_10rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
             <div>Reference</div>
             <div>Details</div>
             <div className="text-right">Amount</div>
             <div className="text-right">Status</div>
-            <div className="sr-only">Document</div>
           </div>
 
           <ul className="divide-y">
             {visible.map((r) => (
               <li
                 key={r.id}
-                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3.5 sm:grid-cols-[7rem_1fr_9rem_7rem_3rem] sm:items-center"
+                className="grid grid-cols-2 gap-x-4 gap-y-1.5 px-5 py-3.5 sm:grid-cols-[7rem_1fr_9rem_10rem] sm:items-center"
               >
                 <div className="min-w-0">
                   <div className="font-mono text-sm font-semibold tabular-nums">
@@ -249,17 +248,18 @@ export function MyRequests() {
                   )}
                 </div>
 
-                <div className="text-right">
+                {/* Status and document share a cell so that on mobile they sit
+                    under the amount in the right-hand column, where the space
+                    is, rather than stranded mid-row. col-start-2 pins them
+                    there; sm+ lets the grid place them normally. */}
+                <div className="col-start-2 flex items-center justify-end gap-1 sm:col-start-auto">
                   <StatusBadge status={r.status} />
-                </div>
-
-                {/* Only fully approved requisitions have a document to open. */}
-                <div className="flex justify-end">
+                  {/* Only fully approved requisitions have a document to open. */}
                   {r.pdfUrl ? (
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 text-muted-foreground hover:text-foreground"
+                      className="-mr-2 size-8 shrink-0 text-muted-foreground hover:text-foreground"
                       title={`Open the signed PDF for ${r.ref}`}
                       aria-label={`Open the signed PDF for ${r.ref}`}
                       onClick={() => window.open(r.pdfUrl, "_blank", "noopener")}
