@@ -194,7 +194,14 @@ async function handlePost(req, res) {
     }
   }
 
-  const next = stageOf(mod, stage.n + 1);
+  /* How many stages a request has is decided by how many approvers the
+   * requester nominated, not by the module. A blank next-stage approver means
+   * this approval is the last one. */
+  const candidateNext = stageOf(mod, stage.n + 1);
+  const next =
+    candidateNext && (fields[candidateNext.approverField] || '').trim()
+      ? candidateNext
+      : null;
   const patch = {
     [stage.statusField]:     'Approved',
     [stage.dateField]:       todayIso(),
@@ -211,21 +218,18 @@ async function handlePost(req, res) {
   let nextApprover = null;
   let pdfUrl = '';
   if (next) {
-    // Route to whoever is registered for the next stage.
+    // The next approver was chosen by the requester at submit and is already on
+    // the row; look up their display name only so the email reads properly.
+    const nextEmail = (fields[next.approverField] || '').trim();
     const candidates = await approversFor(token, siteId, next.label);
-    nextApprover = candidates[0] || null;
-    if (!nextApprover) {
-      return res.status(500).json({
-        error: `No active approver is configured for "${next.label}". Add one to the Requisition Approvers list.`,
-      });
-    }
+    nextApprover = candidates.find(
+      (c) => c.email.toLowerCase() === nextEmail.toLowerCase()
+    ) || { name: nextEmail, email: nextEmail };
+
     const { token: nextToken, jti } = await mintToken({
-      module: 'requisition', itemId, stage: next.n, approver: nextApprover.email,
+      module: 'requisition', itemId, stage: next.n, approver: nextEmail,
     });
-    patch[next.approverField] = nextApprover.email;
-    patch[next.tokenField]    = jti;
-    patch.__nextToken         = undefined; // not a column; kept out of the write below
-    delete patch.__nextToken;
+    patch[next.tokenField] = jti;
 
     await patchRow(token, siteId, mod, itemId, patch);
 

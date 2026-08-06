@@ -255,6 +255,7 @@ interface RequisitionArgs {
   vendorEmail: string
   projectCustomer: string
   reportingManager: string
+  finalApprover: string
   quotationAttached: boolean
   exchangeRates: Rates
 }

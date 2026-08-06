@@ -74,7 +74,7 @@ module.exports = async function handler(req, res) {
       itemCategory, itemCategoryOther, description,
       quantity, unitPrice, currency = 'SGD',
       vendorName, vendorContact, vendorEmail,
-      projectCustomer, reportingManager,
+      projectCustomer, reportingManager, finalApprover,
       quotationAttached, exchangeRates,
     } = req.body;
 
@@ -146,7 +146,11 @@ module.exports = async function handler(req, res) {
       ApprovalStage:          'Reporting Manager',
       ReportingManager:       reportingManager || '',
       ReportingManagerStatus: 'Pending',
-      FinalApprovalStatus:    'Pending',
+      // Both approvers are chosen at submit. An empty FinalApprover means one
+      // stage is enough, and stage 1 becomes the final approval — the same
+      // shape leave and expense will use.
+      FinalApprover:          finalApprover || '',
+      FinalApprovalStatus:    finalApprover ? 'Pending' : '',
     };
 
     let created;

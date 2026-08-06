@@ -163,7 +163,9 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   ensure(200);
   section('Approvals');
 
-  for (const sig of signatures) {
+  // A stage nobody was nominated for never happened — don't print an empty
+  // signature block for it.
+  for (const sig of signatures.filter((s) => s.name || s.png)) {
     ensure(110);
     text(sig.label, { size: 10, f: bold });
     y -= 14;

@@ -48,6 +48,9 @@ import type {
   RequisitionForm,
 } from "@/lib/types"
 
+/** Radix Select can't hold an empty string as a value, so "none" needs a token. */
+const NONE = "__none__"
+
 const blankForm = (): RequisitionForm => ({
   department: "",
   jobTitle: "",
@@ -62,12 +65,14 @@ const blankForm = (): RequisitionForm => ({
   vendorEmail: "",
   projectCustomer: "",
   reportingManager: "",
+  finalApprover: "",
 })
 
 /** DOM ids for required controls, in document order — used to focus the first invalid field. */
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
   reportingManager: "req-manager",
+  finalApprover: "req-final-approver",
   itemCategory: "req-cat",
   itemCategoryOther: "req-cat-other",
   description: "req-desc",
@@ -80,6 +85,7 @@ const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
 const FIELD_ORDER: (keyof RequisitionErrors)[] = [
   "department",
   "reportingManager",
+  "finalApprover",
   "itemCategory",
   "itemCategoryOther",
   "description",
@@ -104,6 +110,7 @@ export function PurchaseRequisition({
   const [submitting, setSubmitting] = useState(false)
   const [categories, setCategories] = useState<RequisitionCategoryOption[]>([])
   const [approvers, setApprovers] = useState<ApproverOption[]>([])
+  const [finalApprovers, setFinalApprovers] = useState<ApproverOption[]>([])
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
@@ -118,6 +125,9 @@ export function PurchaseRequisition({
     })
     fetchApprovers("reporting").then((a) => {
       if (alive) setApprovers(a)
+    })
+    fetchApprovers("final").then((a) => {
+      if (alive) setFinalApprovers(a)
     })
     return () => {
       alive = false
@@ -176,6 +186,22 @@ export function PurchaseRequisition({
     // fallback stays optional, as it was before.
     if (approvers.length > 0 && !form.reportingManager)
       found.reportingManager = "Select the approver"
+    // Optional on purpose: leaving it blank makes stage 1 the final approval,
+    // which is the single-stage shape leave and expense will want.
+    /* Two stages signed by one person is one stage wearing a hat — but only
+       complain when there's actually an alternative to choose. While a single
+       approver is configured, insisting on two distinct people would make the
+       flow impossible rather than safer. */
+    const sameBoth =
+      form.reportingManager &&
+      form.finalApprover &&
+      form.reportingManager.toLowerCase() === form.finalApprover.toLowerCase()
+    const hasAlternative = finalApprovers.some(
+      (a) => a.email.toLowerCase() !== form.reportingManager.toLowerCase(),
+    )
+    if (sameBoth && hasAlternative) {
+      found.finalApprover = "Pick someone other than the first approver"
+    }
     if (!form.itemCategory) found.itemCategory = "Select an item category"
     if (showOther && !form.itemCategoryOther.trim())
       found.itemCategoryOther = "Describe the category"
@@ -223,6 +249,7 @@ export function PurchaseRequisition({
           vendorEmail: form.vendorEmail,
           projectCustomer: form.projectCustomer,
           reportingManager: form.reportingManager,
+          finalApprover: form.finalApprover,
           quotationAttached: files.length > 0,
           exchangeRates: rates,
         })
@@ -428,6 +455,62 @@ export function PurchaseRequisition({
               <FieldError
                 id="req-manager-error"
                 message={errors.reportingManager}
+              />
+            </div>
+
+            {/* Stage 2. Both approvers are chosen up front so the whole route is
+                visible before submitting, rather than the second one appearing
+                out of a config the requester can't see. */}
+            <div className="flex flex-col gap-1.5">
+              {finalApprovers.length > 0 ? (
+                <>
+                  <FieldLabel
+                    id="req-final-approver-label"
+                    text="Final approver (optional)"
+                  />
+                  <Select
+                    value={form.finalApprover || undefined}
+                    onValueChange={(v) =>
+                      update("finalApprover", v === NONE ? "" : v)
+                    }
+                  >
+                    <SelectTrigger
+                      id="req-final-approver"
+                      className="w-full bg-card"
+                      aria-labelledby="req-final-approver-label"
+                      aria-invalid={!!errors.finalApprover || undefined}
+                    >
+                      <SelectValue placeholder="No second approval needed" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>No second approval</SelectItem>
+                      {finalApprovers.map((a) => (
+                        <SelectItem key={a.email} value={a.email}>
+                          {a.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              ) : (
+                <>
+                  <FieldLabel
+                    htmlFor="req-final-approver"
+                    text="Final approver (email)"
+                  />
+                  <Input
+                    id="req-final-approver"
+                    type="email"
+                    value={form.finalApprover}
+                    onChange={(e) => update("finalApprover", e.target.value)}
+                    placeholder="Optional — second approval"
+                    className="bg-card"
+                  />
+                </>
+              )}
+              <FieldError
+                id="req-final-approver-error"
+                message={errors.finalApprover}
               />
             </div>
           </div>

@@ -77,14 +77,17 @@ export interface RequisitionForm {
   vendorContact: string
   vendorEmail: string
   projectCustomer: string
-  /** Optional routing hint for whoever runs the approval — see PurchaseRequisition. */
+  /** Stage 1 approver — mirrors "Reporting Manager" on the paper form. */
   reportingManager: string
+  /** Stage 2 approver — mirrors "Final Approval" on the paper form. */
+  finalApprover: string
 }
 
 export interface RequisitionErrors {
   department?: string
   jobTitle?: string
   reportingManager?: string
+  finalApprover?: string
   itemCategory?: string
   itemCategoryOther?: string
   description?: string
