@@ -3,7 +3,7 @@ import type {
   LineRow,
   ClaimantForm,
   LeaveTypeOption,
-  MyClaim,
+  MyRequest,
   Rates,
   RequisitionCategoryOption,
   SubmitResponse,
@@ -23,15 +23,25 @@ export async function fetchRates(): Promise<Rates> {
   return { SGD: 1, ...d.rates }
 }
 
-/** GET /api/my-claims — the signed-in user's own past claims (newest first). */
-export async function fetchMyClaims(): Promise<MyClaim[]> {
+/**
+ * GET /api/my-requests — the signed-in user's own submissions across all three
+ * modules (newest first). `warnings` carries per-list failures so a single
+ * unreadable list degrades one row group rather than the whole page.
+ */
+export async function fetchMyRequests(): Promise<{
+  requests: MyRequest[]
+  warnings: string[]
+}> {
   const token = await getApiToken()
-  const res = await fetch("/api/my-claims", {
+  const res = await fetch("/api/my-requests", {
     headers: { Authorization: `Bearer ${token}` },
   })
   const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Failed to load your claims")
-  return (data.claims as MyClaim[]) || []
+  if (!res.ok) throw new Error(data.error || "Failed to load your requests")
+  return {
+    requests: (data.requests as MyRequest[]) || [],
+    warnings: (data.warnings as string[]) || [],
+  }
 }
 
 interface SubmitArgs {

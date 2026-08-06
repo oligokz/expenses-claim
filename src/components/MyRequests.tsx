@@ -1,14 +1,32 @@
-import { useEffect, useState } from "react"
-import { AlertCircle, Inbox, Loader2 } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import {
+  AlertCircle,
+  AlertTriangle,
+  CalendarDays,
+  Inbox,
+  Loader2,
+  Receipt,
+  ShoppingCart,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { fetchMyClaims } from "@/lib/api"
+import { fetchMyRequests } from "@/lib/api"
 import { fmt } from "@/lib/currency"
-import type { MyClaim } from "@/lib/types"
+import type { MyRequest, RequestType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type LoadState = "loading" | "ready" | "error"
+type Filter = "all" | RequestType
+
+const TYPE_META: Record<
+  RequestType,
+  { label: string; short: string; icon: typeof Receipt }
+> = {
+  expense: { label: "Expense", short: "Expense", icon: Receipt },
+  leave: { label: "Leave", short: "Leave", icon: CalendarDays },
+  requisition: { label: "Purchase", short: "Purchase", icon: ShoppingCart },
+}
 
 /** SharePoint returns dates as ISO timestamps — show them as dd/mm/yyyy. */
 function fmtDate(s: string) {
@@ -41,16 +59,29 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+function TypeBadge({ type }: { type: RequestType }) {
+  const { label, icon: Icon } = TYPE_META[type]
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+      {label}
+    </span>
+  )
+}
+
 export function MyRequests() {
   const [state, setState] = useState<LoadState>("loading")
-  const [claims, setClaims] = useState<MyClaim[]>([])
+  const [requests, setRequests] = useState<MyRequest[]>([])
+  const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState("")
+  const [filter, setFilter] = useState<Filter>("all")
 
   const load = () => {
     setState("loading")
-    fetchMyClaims()
-      .then((c) => {
-        setClaims(c)
+    fetchMyRequests()
+      .then(({ requests, warnings }) => {
+        setRequests(requests)
+        setWarnings(warnings)
         setState("ready")
       })
       .catch((e: Error) => {
@@ -61,18 +92,79 @@ export function MyRequests() {
 
   useEffect(load, [])
 
+  const counts = useMemo(() => {
+    const c: Record<Filter, number> = {
+      all: requests.length,
+      expense: 0,
+      leave: 0,
+      requisition: 0,
+    }
+    for (const r of requests) c[r.type]++
+    return c
+  }, [requests])
+
+  const visible = useMemo(
+    () => (filter === "all" ? requests : requests.filter((r) => r.type === filter)),
+    [requests, filter],
+  )
+
+  const FILTERS: Filter[] = ["all", "expense", "leave", "requisition"]
+
   return (
     <div>
       <div className="mb-6 flex items-end justify-between gap-3">
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          My Requests
-        </h1>
-        {state === "ready" && claims.length > 0 && (
+        <div>
+          <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+            My Requests
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Everything you've submitted — expenses, leave and purchases.
+          </p>
+        </div>
+        {state === "ready" && requests.length > 0 && (
           <Button variant="outline" size="sm" onClick={load}>
             Refresh
           </Button>
         )}
       </div>
+
+      {/* A list that failed to load shouldn't silently look like "nothing here". */}
+      {state === "ready" && warnings.length > 0 && (
+        <div className="mb-4 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+          <div className="min-w-0 text-sm">
+            <p className="font-medium">Some requests couldn't be loaded</p>
+            <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+              {warnings.map((w) => (
+                <li key={w} className="break-words">
+                  {w}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {state === "ready" && requests.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              onClick={() => setFilter(f)}
+              aria-pressed={filter === f}
+              className={cn(
+                "rounded-full border px-3 py-1.5 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/50",
+                filter === f
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "bg-card text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {f === "all" ? "All" : TYPE_META[f].short} ({counts[f]})
+            </button>
+          ))}
+        </div>
+      )}
 
       {state === "loading" && (
         <div className="flex items-center justify-center gap-2 rounded-xl border bg-card py-16 text-sm text-muted-foreground">
@@ -91,49 +183,72 @@ export function MyRequests() {
         </div>
       )}
 
-      {state === "ready" && claims.length === 0 && (
+      {state === "ready" && requests.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-card py-16 text-center">
           <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <Inbox className="size-6" />
           </span>
-          <p className="text-sm font-medium">No claims yet</p>
+          <p className="text-sm font-medium">Nothing submitted yet</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Your submitted expense claims will appear here with their approval status.
+            Your expense claims, leave requests and purchase requisitions will
+            appear here.
           </p>
         </div>
       )}
 
-      {state === "ready" && claims.length > 0 && (
+      {state === "ready" && requests.length > 0 && visible.length === 0 && (
+        <div className="rounded-xl border bg-card py-12 text-center text-sm text-muted-foreground">
+          No {filter === "all" ? "" : TYPE_META[filter as RequestType].short.toLowerCase()}{" "}
+          requests.
+        </div>
+      )}
+
+      {state === "ready" && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           {/* Header row (desktop only) */}
-          <div className="hidden grid-cols-[7rem_1fr_8rem_7rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+          <div className="hidden grid-cols-[7rem_1fr_9rem_7rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
             <div>Reference</div>
-            <div>Category</div>
-            <div className="text-right">Total (SGD)</div>
+            <div>Details</div>
+            <div className="text-right">Amount</div>
             <div className="text-right">Status</div>
           </div>
 
           <ul className="divide-y">
-            {claims.map((c) => (
+            {visible.map((r) => (
               <li
-                key={c.id}
-                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3.5 sm:grid-cols-[7rem_1fr_8rem_7rem] sm:items-center"
+                key={r.id}
+                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3.5 sm:grid-cols-[7rem_1fr_9rem_7rem] sm:items-center"
               >
-                <div className="font-mono text-sm font-semibold tabular-nums">
-                  {c.claimRef}
-                </div>
-                <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
-                  <div className="truncate text-sm">{c.category || "—"}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {fmtDate(c.submissionDate)}
-                    {c.description ? ` · ${c.description}` : ""}
+                <div className="min-w-0">
+                  <div className="font-mono text-sm font-semibold tabular-nums">
+                    {r.ref}
+                  </div>
+                  <div className="mt-0.5">
+                    <TypeBadge type={r.type} />
                   </div>
                 </div>
-                <div className="text-right font-mono text-sm font-semibold tabular-nums">
-                  SGD {fmt(c.totalSGD)}
+
+                <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
+                  <div className="truncate text-sm">{r.title || "—"}</div>
+                  <div className="truncate text-xs text-muted-foreground">
+                    {fmtDate(r.date)}
+                    {r.detail ? ` · ${r.detail}` : ""}
+                    {r.meta ? ` · ${r.meta}` : ""}
+                  </div>
                 </div>
+
+                {/* Leave carries no money value — show its duration instead of a
+                    misleading SGD 0.00. */}
+                <div className="text-right font-mono text-sm font-semibold tabular-nums">
+                  {r.amountSGD === null ? (
+                    <span className="text-muted-foreground">{r.meta || "—"}</span>
+                  ) : (
+                    `SGD ${fmt(r.amountSGD)}`
+                  )}
+                </div>
+
                 <div className="text-right">
-                  <StatusBadge status={c.status} />
+                  <StatusBadge status={r.status} />
                 </div>
               </li>
             ))}

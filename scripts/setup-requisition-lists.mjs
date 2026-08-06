@@ -389,6 +389,57 @@ async function seedCategories(token, siteId, listId) {
   }
 }
 
+/* ── column indexing ──
+ * my-requests.js filters each list server-side on the requester's email using
+ * the `HonorNonIndexedQueriesWarningMayFailRandomly` header. That header does
+ * what it says once a list passes SharePoint's 5,000-item view threshold, so
+ * the email column each query filters on should be indexed before then.
+ */
+const INDEX_TARGETS = [
+  // SP_LIST_NAME is sealed as [SENSITIVE]; 'ExpenseClaims' is the name observed
+  // on the Forms site. Override with the env var if it differs.
+  { list: readable('SP_LIST_NAME') || 'ExpenseClaims', column: 'EmployeeEmail' },
+  { list: process.env.SP_LEAVE_LIST_NAME || 'Leave Requests', column: 'EmployeeEmail' },
+  { list: REQ_LIST, column: 'RequestorEmail' },
+];
+
+async function indexColumns(token, siteId) {
+  for (const target of INDEX_TARGETS) {
+    console.log(`  ${target.list} → ${target.column}`);
+    const list = await findList(token, siteId, target.list);
+    if (!list) {
+      console.log('    ! list not found — skipped');
+      continue;
+    }
+    const cols = await graph(
+      token,
+      `/sites/${siteId}/lists/${list.id}/columns?$select=id,name,indexed`
+    );
+    const col = (cols.value || []).find((c) => c.name === target.column);
+    if (!col) {
+      console.log('    ! column not found — skipped');
+      continue;
+    }
+    if (col.indexed) {
+      console.log('    ✓ already indexed');
+      continue;
+    }
+    if (DRY) {
+      console.log('    would index');
+      continue;
+    }
+    try {
+      await graph(token, `/sites/${siteId}/lists/${list.id}/columns/${col.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ indexed: true }),
+      });
+      console.log('    ✓ indexed');
+    } catch (e) {
+      console.log(`    ! failed: ${e.message.slice(0, 160)}`);
+    }
+  }
+}
+
 /* ── main ── */
 async function main() {
   if (DRY && !SITE_URL) {
@@ -417,12 +468,15 @@ async function main() {
   const site = await graph(token, `/sites/${url.hostname}:${url.pathname}`);
   console.log(`Site: ${site.displayName || site.name}  (${SITE_URL})\n`);
 
-  console.log(`[1/2] ${REQ_LIST}`);
+  console.log(`[1/3] ${REQ_LIST}`);
   await ensureList(token, site.id, REQ_LIST, REQ_COLUMNS);
 
-  console.log(`\n[2/2] ${CAT_LIST}`);
+  console.log(`\n[2/3] ${CAT_LIST}`);
   const catId = await ensureList(token, site.id, CAT_LIST, CAT_COLUMNS);
   if (catId) await seedCategories(token, site.id, catId);
+
+  console.log('\n[3/3] Indexing the email columns my-requests.js filters on');
+  await indexColumns(token, site.id);
 
   console.log('\nDone.');
   if (!DRY) {

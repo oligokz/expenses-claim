@@ -97,16 +97,18 @@ export interface SubmitResponse {
   error?: string
 }
 
-/** A past expense claim, as returned by GET /api/my-claims. */
-export interface MyClaim {
+export type RequestType = "expense" | "leave" | "requisition"
+
+/** One past submission of any type, as returned by GET /api/my-requests. */
+export interface MyRequest {
   id: string
-  claimRef: string
-  submissionDate: string
-  category: string
-  description: string
-  amount: number
-  currency: string
-  totalSGD: number
+  ref: string
+  type: RequestType
+  date: string
+  title: string
+  detail: string
+  /** null for leave, which has no money value — `meta` carries the days instead. */
+  amountSGD: number | null
+  meta: string
   status: string
-  department: string
 }
