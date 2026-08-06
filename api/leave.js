@@ -1,6 +1,6 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 
-// Mirror of src/lib/leave.ts — recomputed server-side so the stored Days value
+// Mirror of src/lib/leave.ts, recomputed server-side so the stored Days value
 // is trusted, not taken from the client.
 function computeDays(start, end, portion) {
   if (!start || !end) return 0;

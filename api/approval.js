@@ -9,7 +9,7 @@ const { sendMail, templates } = require('./_lib/mail');
 const { buildRequisitionPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
-// Decisions record the moment, not just the day — the PDF shows a real time.
+// Decisions record the moment, not just the day, the PDF shows a real time.
 const nowIso = () => new Date().toISOString();
 
 /** Approvers for a stage, from the admin-managed list. */
@@ -56,7 +56,7 @@ async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
 
 /**
  * Compose and store the signed PDF. Called once, after the final approval.
- * Failure here must not undo the approval — the row is the record and the PDF
+ * Failure here must not undo the approval, the row is the record and the PDF
  * can be rebuilt from it, so we report the problem and carry on.
  */
 async function renderPdf(token, siteId, mod, itemId, claimRef) {
@@ -151,7 +151,7 @@ async function handlePost(req, res) {
   if (!isExpectedApprover(fields, stage, user.email))
     return res.status(403).json({ error: 'This approval is addressed to someone else.' });
 
-  // Re-checked here, not just on GET — the page could have been left open.
+  // Re-checked here, not just on GET, the page could have been left open.
   assertActionable(fields, stage, (await readToken(req.body.token)).jti);
 
   const item = `${fields.Quantity ?? ''} × ${fields.ItemCategoryOther || fields.ItemCategory || ''}`.trim();
@@ -255,7 +255,7 @@ async function handlePost(req, res) {
       console.error('[approval] next-stage mail failed:', e.message);
     }
   } else {
-    // Last stage — the request is fully approved.
+    // Last stage, the request is fully approved.
     patch.Status = 'Approved';
     await patchRow(token, siteId, mod, itemId, patch);
 

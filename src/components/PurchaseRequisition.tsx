@@ -68,7 +68,7 @@ const blankForm = (): RequisitionForm => ({
   finalApprover: "",
 })
 
-/** DOM ids for required controls, in document order — used to focus the first invalid field. */
+/** DOM ids for required controls, in document order, used to focus the first invalid field. */
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
   reportingManager: "req-manager",
@@ -169,7 +169,7 @@ export function PurchaseRequisition({
 
   const showOther = form.itemCategory === REQUISITION_OTHER
 
-  /* Estimated total — quantity × unit price, converted for the committed figure. */
+  /* Estimated total, quantity × unit price, converted for the committed figure. */
   const { estimatedTotal, estimatedTotalSGD, hasAmount } = useMemo(() => {
     const total = num(form.quantity) * num(form.unitPrice)
     return {
@@ -182,13 +182,13 @@ export function PurchaseRequisition({
   const handleSubmit = async () => {
     const found: RequisitionErrors = {}
     if (!form.department) found.department = "Select a department"
-    // Only required once there's a list to pick from — otherwise the free-text
+    // Only required once there's a list to pick from, otherwise the free-text
     // fallback stays optional, as it was before.
     if (approvers.length > 0 && !form.reportingManager)
       found.reportingManager = "Select the approver"
     // Optional on purpose: leaving it blank makes stage 1 the final approval,
     // which is the single-stage shape leave and expense will want.
-    /* Two stages signed by one person is one stage wearing a hat — but only
+    /* Two stages signed by one person is one stage wearing a hat, but only
        complain when there's actually an alternative to choose. While a single
        approver is configured, insisting on two distinct people would make the
        flow impossible rather than safer. */
@@ -644,7 +644,7 @@ export function PurchaseRequisition({
               </div>
             </div>
 
-            {/* Committed figure — the requester sees the converted total before submitting. */}
+            {/* Committed figure, the requester sees the converted total before submitting. */}
             <div className="flex items-center justify-between rounded-xl border bg-muted/50 px-4 py-3">
               <div className="min-w-0">
                 <div className="text-sm text-muted-foreground">
@@ -657,7 +657,7 @@ export function PurchaseRequisition({
                 )}
               </div>
               <span className="font-mono text-base font-bold tabular-nums">
-                {hasAmount ? `SGD ${fmt(estimatedTotalSGD)}` : "—"}
+                {hasAmount ? `SGD ${fmt(estimatedTotalSGD)}` : "-"}
               </span>
             </div>
           </div>

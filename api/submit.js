@@ -68,7 +68,7 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    // One expense per submission — write it to flat columns.
+    // One expense per submission, write it to flat columns.
     const item = lineItems[0] || {};
 
     const fields = {

@@ -16,7 +16,7 @@ import {
 } from "./constants"
 import { toSGD, num } from "./currency"
 
-/** GET /api/rates — returns { rates } (1 SGD → currency). Throws on failure. */
+/** GET /api/rates, returns { rates } (1 SGD → currency). Throws on failure. */
 export async function fetchRates(): Promise<Rates> {
   const r = await fetch("/api/rates")
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
@@ -26,7 +26,7 @@ export async function fetchRates(): Promise<Rates> {
 }
 
 /**
- * GET /api/my-requests — the signed-in user's own submissions across all three
+ * GET /api/my-requests, the signed-in user's own submissions across all three
  * modules (newest first). `warnings` carries per-list failures so a single
  * unreadable list degrades one row group rather than the whole page.
  */
@@ -54,7 +54,7 @@ interface SubmitArgs {
   rates: Rates
 }
 
-/** POST /api/submit — creates the claim. Returns the new item id and claim reference. */
+/** POST /api/submit, creates the claim. Returns the new item id and claim reference. */
 export async function submitClaim({
   claimant,
   rows,
@@ -110,7 +110,7 @@ export interface UploadMeta {
 }
 
 /**
- * POST /api/upload — uploads one receipt.
+ * POST /api/upload, uploads one receipt.
  * Throws on failure so the caller can report per-receipt results honestly.
  * The claim itself is already submitted, so a failure here is recoverable (retry).
  */
@@ -141,7 +141,7 @@ interface LeaveArgs {
   reason: string
 }
 
-/** POST /api/leave — creates a leave request. Returns the new id + ref. */
+/** POST /api/leave, creates a leave request. Returns the new id + ref. */
 export async function submitLeave(
   args: LeaveArgs,
 ): Promise<{ itemId: string; claimRef: string }> {
@@ -163,7 +163,7 @@ export async function submitLeave(
 }
 
 /**
- * GET /api/leave-types — admin-managed leave types from SharePoint.
+ * GET /api/leave-types, admin-managed leave types from SharePoint.
  * Falls back to the built-in defaults if the list isn't configured yet.
  */
 export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
@@ -181,7 +181,7 @@ export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
 }
 
 /**
- * GET /api/approvers — who may approve, from SharePoint.
+ * GET /api/approvers, who may approve, from SharePoint.
  * `stage` is "reporting" (stage 1) or "final" (stage 2); those marked Both
  * appear for either. Returns [] if the list isn't set up yet, which the form
  * treats as "fall back to typing an address".
@@ -201,7 +201,7 @@ export async function fetchApprovers(
   }
 }
 
-/** GET /api/approval — what this approver is being asked to sign. */
+/** GET /api/approval, what this approver is being asked to sign. */
 export async function fetchApproval(token: string): Promise<ApprovalView> {
   const apiToken = await getApiToken()
   const res = await fetch(`/api/approval?t=${encodeURIComponent(token)}`, {
@@ -212,7 +212,7 @@ export async function fetchApproval(token: string): Promise<ApprovalView> {
   return data as ApprovalView
 }
 
-/** POST /api/approval — record an approve or reject decision. */
+/** POST /api/approval, record an approve or reject decision. */
 export async function submitApproval(args: {
   token: string
   decision: "approve" | "reject"
@@ -260,7 +260,7 @@ interface RequisitionArgs {
   exchangeRates: Rates
 }
 
-/** POST /api/requisition — creates a purchase requisition. Returns the new id + ref. */
+/** POST /api/requisition, creates a purchase requisition. Returns the new id + ref. */
 export async function submitRequisition(args: RequisitionArgs): Promise<{
   itemId: string
   claimRef: string
@@ -293,7 +293,7 @@ export async function submitRequisition(args: RequisitionArgs): Promise<{
 }
 
 /**
- * GET /api/requisition-categories — admin-managed item categories from SharePoint.
+ * GET /api/requisition-categories, admin-managed item categories from SharePoint.
  * Falls back to the built-in defaults if the list isn't configured yet.
  */
 export async function fetchRequisitionCategories(): Promise<

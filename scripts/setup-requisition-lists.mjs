@@ -11,7 +11,7 @@
  *
  * --delegated (recommended here): device-code sign-in as a real person. Prints a
  * code, you open a browser and approve, and the script then acts with YOUR
- * SharePoint permissions. Needs no client secret — which matters because this
+ * SharePoint permissions. Needs no client secret, which matters because this
  * project's Vercel env vars are marked Sensitive and are therefore write-only:
  * `vercel env pull` returns the literal placeholder [SENSITIVE], and the real
  * secret cannot be retrieved by anyone. Add --site <url> if SP_SITE_URL isn't
@@ -19,7 +19,7 @@
  *
  * default (app-only): client-credentials using AZURE_CLIENT_SECRET from .env.
  * Also requires the app registration to hold Sites.Manage.All or
- * Sites.FullControl.All — Sites.ReadWrite.All can write *items* but cannot
+ * Sites.FullControl.All, Sites.ReadWrite.All can write *items* but cannot
  * create a *list*.
  *
  * If both paths are blocked, --dry prints the full column table to build the
@@ -40,7 +40,7 @@ const argValue = (flag) => {
   return i !== -1 && ARGV[i + 1] && !ARGV[i + 1].startsWith('--') ? ARGV[i + 1] : null;
 };
 
-/* Public tenant id — same value the SPA ships in src/lib/constants.ts, so this
+/* Public tenant id, same value the SPA ships in src/lib/constants.ts, so this
  * is not a secret. Override with --tenant if it ever changes. */
 const DEFAULT_TENANT = '7b788342-e05a-443d-a6eb-43624b103a65';
 
@@ -89,10 +89,10 @@ if (!DRY && !DELEGATED) {
       `App-only auth needs real values for: ${need.join(', ')}\n\n` +
       (process.env.AZURE_CLIENT_SECRET === '[SENSITIVE]'
         ? 'Those came back from Vercel as the placeholder [SENSITIVE]. Vercel marks\n' +
-          'them Sensitive, which makes them write-only — nobody can pull the real\n' +
+          'them Sensitive, which makes them write-only, nobody can pull the real\n' +
           'value back, so this path is closed unless you mint a new client secret.\n\n'
         : '') +
-      'Use the delegated path instead — it needs no secret:\n' +
+      'Use the delegated path instead, it needs no secret:\n' +
       '  node scripts/setup-requisition-lists.mjs --delegated'
     );
     process.exit(1);
@@ -118,7 +118,7 @@ const choice    = (...c)  => ({ choice: { choices: c, displayAs: 'dropDownMenu' 
 const APPROVAL_STATES = ['Pending', 'Approved', 'Rejected'];
 
 const REQ_COLUMNS = [
-  // Requestor — identity comes from the verified token, never the client.
+  // Requestor, identity comes from the verified token, never the client.
   { name: 'RequestorName',     ...text() },
   { name: 'RequestorEmail',    ...text() },
   { name: 'Department',        ...text() },
@@ -145,7 +145,7 @@ const REQ_COLUMNS = [
   // Project
   { name: 'ProjectCustomer',   ...multiline() },
 
-  // Approval — written empty by the API. Whoever runs the approval (a person
+  // Approval, written empty by the API. Whoever runs the approval (a person
   // editing this list, a Power Automate flow, or a future in-app view) fills
   // these in. Shaped now so none of those needs a data migration later.
   { name: 'Status',                 ...choice(...APPROVAL_STATES) },
@@ -161,7 +161,7 @@ const REQ_COLUMNS = [
   // Approval mechanics. The token id is the nonce from the emailed link: it is
   // matched on use and then cleared, which is what makes a link single-use and
   // stops a decision being replayed. Signatures are stored as file paths, not
-  // base64 in a column — a PNG would risk SharePoint's ~64k text limit.
+  // base64 in a column, a PNG would risk SharePoint's ~64k text limit.
   { name: 'Stage1TokenId',       ...text() },
   { name: 'Stage2TokenId',       ...text() },
   { name: 'Stage1SignatureUrl',  ...text() },
@@ -172,7 +172,7 @@ const REQ_COLUMNS = [
 ];
 
 // Mirrors the "Leave Types" list shape: Title is the category name.
-// NOT 'Order' — SharePoint reserves that as a built-in hidden field, so creating
+// NOT 'Order', SharePoint reserves that as a built-in hidden field, so creating
 // it returns 409 nameAlreadyExists and the value never round-trips.
 const CAT_COLUMNS = [
   { name: 'Active',    ...yesNo() },
@@ -191,7 +191,7 @@ const APR_COLUMNS = [
   { name: 'SortOrder',     ...number(0) },
 ];
 
-/* Seeded for testing only — real approvers get added in SharePoint. */
+/* Seeded for testing only, real approvers get added in SharePoint. */
 const SEED_APPROVERS = [
   { name: 'Bernard Lim', email: 'bernard.lim@creoxtech.com', stage: 'Both' },
 ];
@@ -284,7 +284,7 @@ async function getDelegatedToken() {
     if (data.error === 'expired_token') break;
     throw new Error(`${data.error}: ${data.error_description || 'sign-in failed'}`);
   }
-  throw new Error('Sign-in timed out — re-run and complete the browser step sooner.');
+  throw new Error('Sign-in timed out, re-run and complete the browser step sooner.');
 }
 
 const getToken = () => (DELEGATED ? getDelegatedToken() : getAppToken());
@@ -373,7 +373,7 @@ async function ensureList(token, siteId, displayName, columns) {
     return created.id;
   }
 
-  console.log(`  list "${displayName}" already exists — checking columns`);
+  console.log(`  list "${displayName}" already exists, checking columns`);
   const have = new Set(
     ((await graph(token, `/sites/${siteId}/lists/${existing.id}/columns?$select=name`)).value || [])
       .map((c) => c.name)
@@ -395,9 +395,9 @@ async function ensureList(token, siteId, displayName, columns) {
     } catch (e) {
       // A name that collides with a built-in hidden field (SharePoint reserves
       // e.g. 'Order') 409s even though it never showed up in the column list.
-      // Report it and keep going — aborting here would skip later steps.
+      // Report it and keep going, aborting here would skip later steps.
       if (e.status === 409) {
-        console.log(`    ! ${col.name}: name reserved by SharePoint — rename it`);
+        console.log(`    ! ${col.name}: name reserved by SharePoint, rename it`);
       } else {
         console.log(`    ! ${col.name}: ${e.message.slice(0, 160)}`);
       }
@@ -485,7 +485,7 @@ async function seedApprovers(token, siteId, listId) {
         },
       }),
     });
-    console.log(`    ✓ ${a.name} <${a.email}> — ${a.stage}`);
+    console.log(`    ✓ ${a.name} <${a.email}>, ${a.stage}`);
   }
 }
 
@@ -508,7 +508,7 @@ async function indexColumns(token, siteId) {
     console.log(`  ${target.list} → ${target.column}`);
     const list = await findList(token, siteId, target.list);
     if (!list) {
-      console.log('    ! list not found — skipped');
+      console.log('    ! list not found, skipped');
       continue;
     }
     const cols = await graph(
@@ -517,7 +517,7 @@ async function indexColumns(token, siteId) {
     );
     const col = (cols.value || []).find((c) => c.name === target.column);
     if (!col) {
-      console.log('    ! column not found — skipped');
+      console.log('    ! column not found, skipped');
       continue;
     }
     if (col.indexed) {
@@ -543,11 +543,11 @@ async function indexColumns(token, siteId) {
 /* ── main ── */
 async function main() {
   if (DRY && !SITE_URL) {
-    console.log('DRY RUN (no credentials) — column plan only:\n');
+    console.log('DRY RUN (no credentials), column plan only:\n');
     console.log(`${REQ_LIST}:`);
     for (const c of REQ_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
     console.log(`\n${CAT_LIST}:`);
-    console.log(`  ${'Title'.padEnd(24)} text (built-in — the category name)`);
+    console.log(`  ${'Title'.padEnd(24)} text (built-in, the category name)`);
     for (const c of CAT_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
     console.log(`\nSeed rows: ${SEED_CATEGORIES.join(', ')}`);
     return;
@@ -558,7 +558,7 @@ async function main() {
   );
   const token = await getToken();
 
-  // Without a site URL there's nothing to target — show what's reachable and stop.
+  // Without a site URL there's nothing to target, show what's reachable and stop.
   if (!SITE_URL) {
     await listSites(token);
     return;
@@ -603,7 +603,7 @@ main().catch((err) => {
   console.error(`\nFAILED: ${err.message}`);
   if (err.status === 403) {
     console.error(
-      '\n403 — the app registration lacks Sites.Manage.All / Sites.FullControl.All.\n' +
+      '\n403, the app registration lacks Sites.Manage.All / Sites.FullControl.All.\n' +
       'Either get that granted, or run with --dry and build the lists by hand.'
     );
   }

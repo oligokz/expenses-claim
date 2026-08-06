@@ -16,7 +16,7 @@ const SENDER = () => process.env.MAIL_SENDER || 'noreply@creoxtech.com';
 const baseUrl = () =>
   (process.env.APP_BASE_URL || 'https://app.creoxtech.com').replace(/\/+$/, '');
 
-/** Minimal HTML escape — every value below comes from user input. */
+/** Minimal HTML escape, every value below comes from user input. */
 function esc(s) {
   return String(s ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -24,7 +24,7 @@ function esc(s) {
 }
 
 /**
- * Send one message. Throws on failure — callers decide whether that should
+ * Send one message. Throws on failure, callers decide whether that should
  * fail the request. For notifications it should NOT: the record is already
  * written, and losing it because mail bounced would be worse than a silent
  * notification.
@@ -72,7 +72,7 @@ function layout({ heading, intro, rows, action, footer }) {
     .join('');
 
   /* The logo is white-on-transparent, so it needs the dark bar the app uses.
-   * Outlook won't render SVG — the alt text is styled to stand in as a
+   * Outlook won't render SVG, the alt text is styled to stand in as a
    * wordmark there, so the header looks deliberate either way. Swap the src
    * for a PNG if you want the mark itself to show in Outlook too. */
   const header = `<tr><td style="background:#111111;padding:18px 28px;border-radius:12px 12px 0 0">
@@ -106,7 +106,7 @@ function layout({ heading, intro, rows, action, footer }) {
 
 /**
  * Ask an approver to review and sign. The link carries a single-use token, but
- * the token only identifies the request and stage — the approver still signs in
+ * the token only identifies the request and stage, the approver still signs in
  * with Entra, so a forwarded email cannot approve anything.
  */
 function approvalRequest({ claimRef, requester, item, totalSGD, vendor, project, stageLabel, token, ttlDays }) {

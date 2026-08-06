@@ -1,11 +1,11 @@
 // Shared helpers for the /api functions.
 // Vercel ignores files under api/ whose path segment starts with "_",
-// so this is NOT exposed as a route — it's importable by submit.js / upload.js.
+// so this is NOT exposed as a route, it's importable by submit.js / upload.js.
 
 let _cachedToken = null, _tokenExpiry = 0, _siteId = null, _driveId = null;
 let _jwks = null;
 
-/* ── App-only token (client credentials) — used for the actual Graph writes ── */
+/* ── App-only token (client credentials), used for the actual Graph writes ── */
 async function getAppToken() {
   const now = Date.now();
   if (_cachedToken && now < _tokenExpiry) return _cachedToken;
@@ -63,7 +63,7 @@ async function getDriveId(token, siteId) {
   return _driveId;
 }
 
-/* ── User token verification — proves WHO is submitting ──
+/* ── User token verification, proves WHO is submitting ──
  * Validates the bearer token the SPA obtained via MSAL against the tenant's
  * public keys (JWKS). Checks signature, issuer, audience, expiry, and that the
  * required scope is present. Returns the verified identity on success; throws
@@ -126,7 +126,7 @@ async function verifyUserToken(req) {
   return { name, email, claims: payload };
 }
 
-/* ── CORS — explicit origin allowlist (no wildcard) ──
+/* ── CORS, explicit origin allowlist (no wildcard) ──
  * ALLOWED_ORIGINS is a comma-separated env var, e.g.
  *   "http://localhost:3000,https://your-app.vercel.app"
  * Echoes the request origin back only if it's on the list.

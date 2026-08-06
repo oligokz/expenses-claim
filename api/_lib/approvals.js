@@ -1,7 +1,7 @@
 // Approval mechanics, shared across modules.
 //
 // Only 'requisition' is registered today. Leave and expense can join by adding
-// a MODULES entry plus the matching SharePoint columns — the token scheme, the
+// a MODULES entry plus the matching SharePoint columns, the token scheme, the
 // sign-in gate, the state machine and the signature handling are all generic.
 // Stage count is per-module config because leave almost certainly wants one
 // stage where a purchase wants two.
@@ -18,7 +18,7 @@ const MODULES = {
       {
         n: 1,
         // What people see. `listValue` is the ApprovalStage choice stored in
-        // SharePoint — renaming the display must not break matching against
+        // SharePoint, renaming the display must not break matching against
         // existing rows or the Requisition Approvers list.
         label: 'First Approver',
         listValue: 'Reporting Manager',
@@ -104,7 +104,7 @@ function badToken(msg) {
   return e;
 }
 
-/** Verify a token's signature and shape. Does NOT check single-use — see consume(). */
+/** Verify a token's signature and shape. Does NOT check single-use, see consume(). */
 async function readToken(token) {
   if (!token) throw badToken('Missing approval token');
   const { jwtVerify } = await import('jose');

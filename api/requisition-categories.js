@@ -3,7 +3,7 @@ const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/s
 // Admin-managed item categories from the "Requisition Categories" SharePoint list,
 // so procurement can add a category without a redeploy.
 // Columns expected: Title (the category name), Active (yes/no), SortOrder (number).
-// Not 'Order' — SharePoint reserves that name for a built-in hidden field, so a
+// Not 'Order', SharePoint reserves that name for a built-in hidden field, so a
 // column called Order cannot be created and its value never round-trips.
 async function listCategories(token, siteId) {
   const listName = process.env.SP_REQCATEGORIES_LIST_NAME || 'Requisition Categories';

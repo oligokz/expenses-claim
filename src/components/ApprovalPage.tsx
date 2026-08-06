@@ -167,7 +167,7 @@ export function ApprovalPage({ token }: { token: string }) {
   }
 
   /* A spent link or an already-decided request is a state to explain, not an
-     error to throw — the approver has done nothing wrong. */
+     error to throw, the approver has done nothing wrong. */
   if (!view.actionable) {
     return (
       <Shell>

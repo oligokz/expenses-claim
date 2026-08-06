@@ -1,7 +1,7 @@
 import type { LeavePortion } from "./types"
 
 /**
- * Leave days = weekdays (Mon–Fri) between start and end inclusive.
+ * Leave days = weekdays (Mon-Fri) between start and end inclusive.
  * A single-day request can be a half-day (AM/PM = 0.5). Multi-day requests are
  * counted as full weekdays. (Public holidays are not excluded yet.)
  */

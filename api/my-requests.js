@@ -25,7 +25,7 @@ const SOURCES = [
       return {
         title:     f.LeaveType || 'Leave',
         detail:    [f.StartDate, f.EndDate].filter(Boolean).map((d) => String(d).slice(0, 10)).join(' → '),
-        amountSGD: null, // leave has no money — the UI shows `meta` instead
+        amountSGD: null, // leave has no money, the UI shows `meta` instead
         meta:      days ? `${days} ${days === 1 ? 'day' : 'days'}` : '',
       };
     },
@@ -40,6 +40,8 @@ const SOURCES = [
       detail:    f.Description || '',
       amountSGD: f.EstimatedTotalSGD ?? 0,
       meta:      f.VendorName || '',
+      // Only present once the final approval composed the signed document.
+      pdfUrl:    f.ApprovedPdfUrl || '',
     }),
   },
 ];
@@ -65,7 +67,7 @@ async function listFor(token, siteId, source, email) {
   });
 
   if (!res.ok) {
-    // One missing or unreadable list must not blank out the whole page — report
+    // One missing or unreadable list must not blank out the whole page, report
     // it alongside whatever else did load.
     const txt = await res.text();
     return { items: [], warning: `${source.type}: ${res.status} ${txt.slice(0, 200)}` };

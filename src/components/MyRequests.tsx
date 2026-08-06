@@ -3,6 +3,7 @@ import {
   AlertCircle,
   AlertTriangle,
   CalendarDays,
+  FileDown,
   Inbox,
   Loader2,
   Receipt,
@@ -28,9 +29,9 @@ const TYPE_META: Record<
   requisition: { label: "Purchase", short: "Purchase", icon: ShoppingCart },
 }
 
-/** SharePoint returns dates as ISO timestamps — show them as dd/mm/yyyy. */
+/** SharePoint returns dates as ISO timestamps, show them as dd/mm/yyyy. */
 function fmtDate(s: string) {
-  if (!s) return "—"
+  if (!s) return "-"
   const d = new Date(s)
   return isNaN(d.getTime())
     ? s
@@ -206,18 +207,19 @@ export function MyRequests() {
       {state === "ready" && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
           {/* Header row (desktop only) */}
-          <div className="hidden grid-cols-[7rem_1fr_9rem_7rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+          <div className="hidden grid-cols-[7rem_1fr_9rem_7rem_3rem] gap-4 border-b bg-secondary/50 px-5 py-3 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
             <div>Reference</div>
             <div>Details</div>
             <div className="text-right">Amount</div>
             <div className="text-right">Status</div>
+            <div className="sr-only">Document</div>
           </div>
 
           <ul className="divide-y">
             {visible.map((r) => (
               <li
                 key={r.id}
-                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3.5 sm:grid-cols-[7rem_1fr_9rem_7rem] sm:items-center"
+                className="grid grid-cols-2 gap-x-4 gap-y-1 px-5 py-3.5 sm:grid-cols-[7rem_1fr_9rem_7rem_3rem] sm:items-center"
               >
                 <div className="min-w-0">
                   <div className="font-mono text-sm font-semibold tabular-nums">
@@ -229,7 +231,7 @@ export function MyRequests() {
                 </div>
 
                 <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
-                  <div className="truncate text-sm">{r.title || "—"}</div>
+                  <div className="truncate text-sm">{r.title || "-"}</div>
                   <div className="truncate text-xs text-muted-foreground">
                     {fmtDate(r.date)}
                     {r.detail ? ` · ${r.detail}` : ""}
@@ -237,11 +239,11 @@ export function MyRequests() {
                   </div>
                 </div>
 
-                {/* Leave carries no money value — show its duration instead of a
+                {/* Leave carries no money value, show its duration instead of a
                     misleading SGD 0.00. */}
                 <div className="text-right font-mono text-sm font-semibold tabular-nums">
                   {r.amountSGD === null ? (
-                    <span className="text-muted-foreground">{r.meta || "—"}</span>
+                    <span className="text-muted-foreground">{r.meta || "-"}</span>
                   ) : (
                     `SGD ${fmt(r.amountSGD)}`
                   )}
@@ -249,6 +251,22 @@ export function MyRequests() {
 
                 <div className="text-right">
                   <StatusBadge status={r.status} />
+                </div>
+
+                {/* Only fully approved requisitions have a document to open. */}
+                <div className="flex justify-end">
+                  {r.pdfUrl ? (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 text-muted-foreground hover:text-foreground"
+                      title={`Open the signed PDF for ${r.ref}`}
+                      aria-label={`Open the signed PDF for ${r.ref}`}
+                      onClick={() => window.open(r.pdfUrl, "_blank", "noopener")}
+                    >
+                      <FileDown className="size-4" />
+                    </Button>
+                  ) : null}
                 </div>
               </li>
             ))}

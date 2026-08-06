@@ -69,7 +69,7 @@ export function DateField({
     try {
       pickerRef.current?.showPicker?.()
     } catch {
-      /* unsupported — typing still works */
+      /* unsupported, typing still works */
     }
   }
 
@@ -96,7 +96,7 @@ export function DateField({
       >
         <CalendarDays className="size-4" />
       </button>
-      {/* Hidden native picker — provides the calendar popup; value stays ISO. */}
+      {/* Hidden native picker, provides the calendar popup; value stays ISO. */}
       <input
         ref={pickerRef}
         type="date"

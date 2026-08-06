@@ -46,7 +46,7 @@ export async function initAuth(): Promise<AccountInfo | null> {
 
   if (!account) {
     // redirectUri is the origin, so signing in would otherwise drop the path a
-    // deep link arrived on — which is exactly what an approval link is. Stash
+    // deep link arrived on, which is exactly what an approval link is. Stash
     // it and put it back once we're through.
     sessionStorage.setItem(
       RETURN_PATH_KEY,

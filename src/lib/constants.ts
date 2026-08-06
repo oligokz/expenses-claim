@@ -1,4 +1,4 @@
-// Public configuration only — no secrets live here.
+// Public configuration only, no secrets live here.
 
 export const DISPLAY_CURRENCIES = [
   "USD",
@@ -141,7 +141,7 @@ export const FALLBACK_RATES: Record<string, number> = {
   SEK: 7.9,
 }
 
-// Microsoft Entra ID (MSAL) — clientId + tenantId are public values, safe in the browser.
+// Microsoft Entra ID (MSAL), clientId + tenantId are public values, safe in the browser.
 export const AUTH = {
   clientId: "b492e36f-a837-4b02-87cd-b6f363fb694f",
   tenantId: "7b788342-e05a-443d-a6eb-43624b103a65",

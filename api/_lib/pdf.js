@@ -1,6 +1,6 @@
 // Renders the approved requisition as a PDF.
 //
-// Composed once, when the final approval lands — not generated at submit and
+// Composed once, when the final approval lands, not generated at submit and
 // patched at each stage. The SharePoint row is the record; this is a rendering
 // of it, so it can always be rebuilt from the row and there is no half-signed
 // artifact to reconcile if something fails midway.
@@ -12,8 +12,8 @@ const { getDriveId } = require('./sharepoint');
 
 /* The CREOX mark from public/logo.svg, path data only (240 x 60 viewBox).
  * Drawn as vector rather than a raster: no rasteriser is needed, it stays
- * crisp at any zoom, and the source SVG is white-on-transparent — invisible on
- * white paper — so it has to be recoloured at draw time anyway. */
+ * crisp at any zoom, and the source SVG is white-on-transparent, invisible on
+ * white paper, so it has to be recoloured at draw time anyway. */
 const LOGO_VIEWBOX = [240, 60];
 const LOGO_PATHS = [
   'M19.7746 47.6751L0 36.1536V23.8376L19.7746 35.3502V47.6751Z',
@@ -123,7 +123,7 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
     });
   };
 
-  /* Wrap to the available width — descriptions are free text and will overflow
+  /* Wrap to the available width, descriptions are free text and will overflow
      the page otherwise. */
   const wrap = (s, size, maxWidth) => {
     const words = String(s ?? '').split(/\s+/).filter(Boolean);
@@ -152,7 +152,7 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
     page.drawSvgPath(d, { x: MARGIN, y, scale: logoScale, color: colour(INK) });
   }
 
-  // Status sits on the logo line, hard right — the first thing worth knowing.
+  // Status sits on the logo line, hard right, the first thing worth knowing.
   const statusLabel = (fields.Status || 'Pending').toUpperCase();
   page.drawText(statusLabel, {
     x: MARGIN + width - bold.widthOfTextAtSize(statusLabel, 10),
@@ -219,7 +219,7 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   }
   y -= 14;
 
-  // The committed figure gets a panel — it's what the approval is really about.
+  // The committed figure gets a panel, it's what the approval is really about.
   ensure(46);
   page.drawRectangle({
     x: MARGIN, y: y - 11, width, height: 32, color: colour(PANEL),

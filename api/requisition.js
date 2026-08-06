@@ -87,7 +87,7 @@ module.exports = async function handler(req, res) {
 
     /* Approving your own spend is a control weakness, but blocking it by
      * default would make the flow untestable while one person is the only
-     * seeded approver. Off unless BLOCK_SELF_APPROVAL=true — switch it on
+     * seeded approver. Off unless BLOCK_SELF_APPROVAL=true, switch it on
      * before real users touch this. */
     if (
       process.env.BLOCK_SELF_APPROVAL === 'true' &&
@@ -144,13 +144,13 @@ module.exports = async function handler(req, res) {
       // Approval columns are written empty on purpose. The requisition lands as
       // Pending at the first stage; who fills these in (a person editing the
       // list, a Power Automate flow, or a future in-app view) is not decided
-      // here — the shape just has to support all three without a migration.
+      // here, the shape just has to support all three without a migration.
       Status:                 'Pending',
       ApprovalStage:          'Reporting Manager',
       ReportingManager:       reportingManager || '',
       ReportingManagerStatus: 'Pending',
       // Both approvers are chosen at submit. An empty FinalApprover means one
-      // stage is enough, and stage 1 becomes the final approval — the same
+      // stage is enough, and stage 1 becomes the final approval, the same
       // shape leave and expense will use.
       FinalApprover:          finalApprover || '',
       FinalApprovalStatus:    finalApprover ? 'Pending' : '',
@@ -184,7 +184,7 @@ module.exports = async function handler(req, res) {
           maximumFractionDigits: 2,
         });
 
-        /* The approval link's nonce can only be stored once the row exists —
+        /* The approval link's nonce can only be stored once the row exists -
          * the item id is part of what the token authorises. Write it back, then
          * send; a link whose nonce isn't on the row is rejected as spent. */
         const { token: approvalToken, jti } = await mintToken({

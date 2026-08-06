@@ -27,7 +27,7 @@ export interface FormErrors {
 
 export type LeavePortion = "Full" | "AM" | "PM"
 
-/** A selectable leave type — admin-managed in SharePoint, with code defaults as fallback. */
+/** A selectable leave type, admin-managed in SharePoint, with code defaults as fallback. */
 export interface LeaveTypeOption {
   name: string
 }
@@ -50,12 +50,12 @@ export interface LeaveErrors {
   reason?: string
 }
 
-/** A selectable requisition item category — admin-managed in SharePoint, with code defaults as fallback. */
+/** A selectable requisition item category, admin-managed in SharePoint, with code defaults as fallback. */
 export interface RequisitionCategoryOption {
   name: string
 }
 
-/** Someone permitted to approve a requisition — admin-managed in SharePoint. */
+/** Someone permitted to approve a requisition, admin-managed in SharePoint. */
 export interface ApproverOption {
   name: string
   email: string
@@ -77,9 +77,9 @@ export interface RequisitionForm {
   vendorContact: string
   vendorEmail: string
   projectCustomer: string
-  /** Stage 1 approver — mirrors "Reporting Manager" on the paper form. */
+  /** Stage 1 approver, mirrors "Reporting Manager" on the paper form. */
   reportingManager: string
-  /** Stage 2 approver — mirrors "Final Approval" on the paper form. */
+  /** Stage 2 approver, mirrors "Final Approval" on the paper form. */
   finalApprover: string
 }
 
@@ -138,8 +138,10 @@ export interface MyRequest {
   date: string
   title: string
   detail: string
-  /** null for leave, which has no money value — `meta` carries the days instead. */
+  /** null for leave, which has no money value, `meta` carries the days instead. */
   amountSGD: number | null
   meta: string
   status: string
+  /** Set once a requisition is fully approved and its PDF has been composed. */
+  pdfUrl?: string
 }

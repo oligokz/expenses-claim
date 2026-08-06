@@ -40,7 +40,7 @@ import { cn } from "@/lib/utils"
 
 type AuthState = "loading" | "ready" | "redirecting" | "error"
 
-/** DOM ids for required controls, in document order — used to focus the first invalid field. */
+/** DOM ids for required controls, in document order, used to focus the first invalid field. */
 const FIELD_IDS: Partial<Record<keyof FormErrors, string>> = {
   employee: "claimant-employee",
   dept: "claimant-dept",
@@ -473,7 +473,7 @@ export default function App() {
               </div>
             </div>
 
-            {/* Mobile sticky action bar — keeps the total + Submit in the thumb zone. */}
+            {/* Mobile sticky action bar, keeps the total + Submit in the thumb zone. */}
             <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] lg:hidden">
               <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
                 <div className="min-w-0">
