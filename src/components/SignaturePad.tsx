@@ -102,7 +102,7 @@ export function SignaturePad({
           onPointerUp={end}
           onPointerLeave={end}
           onPointerCancel={end}
-          aria-label="Signature area — draw your signature"
+          aria-label="Signature area. Draw your signature"
           role="img"
           className="block h-40 w-full touch-none"
           style={{ cursor: disabled ? "not-allowed" : "crosshair" }}

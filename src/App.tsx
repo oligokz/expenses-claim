@@ -290,7 +290,7 @@ export default function App() {
         toast.success(`Submitted as ${claimRef}`)
       } else {
         toast.warning(
-          `Submitted as ${claimRef} — ${failed.length} receipt(s) need a retry`,
+          `Submitted as ${claimRef}. ${failed.length} receipt(s) need a retry`,
         )
       }
 

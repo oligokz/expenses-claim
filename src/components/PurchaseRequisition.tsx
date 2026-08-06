@@ -275,7 +275,7 @@ export function PurchaseRequisition({
 
       if (failed > 0)
         toast.warning(
-          `Requisition submitted (${claimRef}) — ${failed} attachment(s) need a retry`,
+          `Requisition submitted (${claimRef}). ${failed} attachment(s) need a retry`,
         )
       else toast.success(`Requisition submitted (${claimRef})`)
 
@@ -447,7 +447,7 @@ export function PurchaseRequisition({
                     type="email"
                     value={form.reportingManager}
                     onChange={(e) => update("reportingManager", e.target.value)}
-                    placeholder="Optional — who should approve this"
+                    placeholder="Optional. Who should approve this"
                     className="bg-card"
                   />
                 </>
@@ -503,7 +503,7 @@ export function PurchaseRequisition({
                     type="email"
                     value={form.finalApprover}
                     onChange={(e) => update("finalApprover", e.target.value)}
-                    placeholder="Optional — second approval"
+                    placeholder="Optional. Second approval"
                     className="bg-card"
                   />
                 </>

@@ -43,7 +43,7 @@ export function ClaimConfirmation({
       await navigator.clipboard.writeText(claimRef)
       toast.success("Reference copied")
     } catch {
-      toast.error("Couldn't copy — select the reference manually")
+      toast.error("Couldn't copy. Select the reference manually")
     }
   }
 
@@ -103,7 +103,7 @@ export function ClaimConfirmation({
             <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
               {failed.map((f, i) => (
                 <li key={`${f.file.name}-${i}`} className="truncate">
-                  {f.file.name} — didn’t upload
+                  {f.file.name}: didn’t upload
                 </li>
               ))}
             </ul>

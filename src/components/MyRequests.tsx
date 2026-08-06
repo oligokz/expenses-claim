@@ -118,7 +118,7 @@ export function MyRequests() {
             My Requests
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Everything you've submitted — expenses, leave and purchases.
+            Everything you've submitted: expenses, leave and purchases.
           </p>
         </div>
         {state === "ready" && requests.length > 0 && (

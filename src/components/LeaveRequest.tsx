@@ -139,7 +139,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
       }
 
       if (failed > 0)
-        toast.warning(`Leave submitted (${claimRef}) — ${failed} attachment(s) need a retry`)
+        toast.warning(`Leave submitted (${claimRef}). ${failed} attachment(s) need a retry`)
       else toast.success(`Leave submitted (${claimRef})`)
 
       setSubmitted({ ref: claimRef, days })
@@ -336,7 +336,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
             value={form.reason}
             onChange={(e) => update("reason", e.target.value)}
             aria-label="Reason for leave"
-            placeholder="Optional — add any context for your manager"
+            placeholder="Optional. Add any context for your manager"
             className="min-h-24 resize-y bg-card"
           />
         </SectionCard>
