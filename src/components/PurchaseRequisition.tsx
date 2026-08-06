@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
@@ -47,9 +48,6 @@ import type {
   RequisitionErrors,
   RequisitionForm,
 } from "@/lib/types"
-
-/** Radix Select can't hold an empty string as a value, so "none" needs a token. */
-const NONE = "__none__"
 
 const blankForm = (): RequisitionForm => ({
   department: "",
@@ -109,8 +107,12 @@ export function PurchaseRequisition({
   const [errors, setErrors] = useState<RequisitionErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [categories, setCategories] = useState<RequisitionCategoryOption[]>([])
-  const [approvers, setApprovers] = useState<ApproverOption[]>([])
-  const [finalApprovers, setFinalApprovers] = useState<ApproverOption[]>([])
+  // null until loaded, so the field can show a placeholder rather than flashing
+  // its free-text fallback on every tab switch.
+  const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
+  const [finalApprovers, setFinalApprovers] = useState<ApproverOption[] | null>(
+    null,
+  )
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
@@ -123,12 +125,12 @@ export function PurchaseRequisition({
     fetchRequisitionCategories().then((c) => {
       if (alive) setCategories(c)
     })
-    fetchApprovers("reporting").then((a) => {
-      if (alive) setApprovers(a)
-    })
-    fetchApprovers("final").then((a) => {
-      if (alive) setFinalApprovers(a)
-    })
+    fetchApprovers("reporting")
+      .then((a) => alive && setApprovers(a))
+      .catch(() => alive && setApprovers([]))
+    fetchApprovers("final")
+      .then((a) => alive && setFinalApprovers(a))
+      .catch(() => alive && setFinalApprovers([]))
     return () => {
       alive = false
     }
@@ -184,7 +186,7 @@ export function PurchaseRequisition({
     if (!form.department) found.department = "Select a department"
     // Only required once there's a list to pick from, otherwise the free-text
     // fallback stays optional, as it was before.
-    if (approvers.length > 0 && !form.reportingManager)
+    if ((approvers?.length ?? 0) > 0 && !form.reportingManager)
       found.reportingManager = "Select the approver"
     // Optional on purpose: leaving it blank makes stage 1 the final approval,
     // which is the single-stage shape leave and expense will want.
@@ -196,7 +198,7 @@ export function PurchaseRequisition({
       form.reportingManager &&
       form.finalApprover &&
       form.reportingManager.toLowerCase() === form.finalApprover.toLowerCase()
-    const hasAlternative = finalApprovers.some(
+    const hasAlternative = (finalApprovers ?? []).some(
       (a) => a.email.toLowerCase() !== form.reportingManager.toLowerCase(),
     )
     if (sameBoth && hasAlternative) {
@@ -403,116 +405,29 @@ export function PurchaseRequisition({
               />
             </div>
 
-            {/* Approvers come from a bounded SharePoint list. If it can't be
-                read we fall back to a free-text address rather than blocking
-                the whole form on it. */}
-            <div className="flex flex-col gap-1.5">
-              {approvers.length > 0 ? (
-                <>
-                  <FieldLabel
-                    id="req-manager-label"
-                    text="First approver"
-                    required
-                  />
-                  <Select
-                    value={form.reportingManager || undefined}
-                    onValueChange={(v) => update("reportingManager", v)}
-                  >
-                    <SelectTrigger
-                      id="req-manager"
-                      className="w-full bg-card"
-                      aria-labelledby="req-manager-label"
-                      aria-required="true"
-                      aria-invalid={!!errors.reportingManager || undefined}
-                    >
-                      <SelectValue placeholder="Select approver" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {approvers.map((a) => (
-                        <SelectItem key={a.email} value={a.email}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              ) : (
-                <>
-                  <FieldLabel
-                    htmlFor="req-manager"
-                    text="First approver (email)"
-                  />
-                  <Input
-                    id="req-manager"
-                    type="email"
-                    value={form.reportingManager}
-                    onChange={(e) => update("reportingManager", e.target.value)}
-                    placeholder="Optional. Who should approve this"
-                    className="bg-card"
-                  />
-                </>
-              )}
-              <FieldError
-                id="req-manager-error"
-                message={errors.reportingManager}
-              />
-            </div>
+            {/* Approvers come from a bounded SharePoint list. Both stages are
+                chosen up front so the whole route is visible before submitting,
+                rather than the second appearing out of a config the requester
+                cannot see. */}
+            <ApproverField
+              id="req-manager"
+              label="First approver"
+              required
+              value={form.reportingManager}
+              onChange={(v) => update("reportingManager", v)}
+              approvers={approvers}
+              error={errors.reportingManager}
+            />
 
-            {/* Stage 2. Both approvers are chosen up front so the whole route is
-                visible before submitting, rather than the second one appearing
-                out of a config the requester can't see. */}
-            <div className="flex flex-col gap-1.5">
-              {finalApprovers.length > 0 ? (
-                <>
-                  <FieldLabel
-                    id="req-final-approver-label"
-                    text="Second approver (optional)"
-                  />
-                  <Select
-                    value={form.finalApprover || undefined}
-                    onValueChange={(v) =>
-                      update("finalApprover", v === NONE ? "" : v)
-                    }
-                  >
-                    <SelectTrigger
-                      id="req-final-approver"
-                      className="w-full bg-card"
-                      aria-labelledby="req-final-approver-label"
-                      aria-invalid={!!errors.finalApprover || undefined}
-                    >
-                      <SelectValue placeholder="No second approval needed" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>No second approval</SelectItem>
-                      {finalApprovers.map((a) => (
-                        <SelectItem key={a.email} value={a.email}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </>
-              ) : (
-                <>
-                  <FieldLabel
-                    htmlFor="req-final-approver"
-                    text="Second approver (email, optional)"
-                  />
-                  <Input
-                    id="req-final-approver"
-                    type="email"
-                    value={form.finalApprover}
-                    onChange={(e) => update("finalApprover", e.target.value)}
-                    placeholder="Optional. Second approval"
-                    className="bg-card"
-                  />
-                </>
-              )}
-              <FieldError
-                id="req-final-approver-error"
-                message={errors.finalApprover}
-              />
-            </div>
+            <ApproverField
+              id="req-final-approver"
+              label="Second approver (optional)"
+              value={form.finalApprover}
+              onChange={(v) => update("finalApprover", v)}
+              approvers={finalApprovers}
+              error={errors.finalApprover}
+              allowNone
+            />
           </div>
         </SectionCard>
 

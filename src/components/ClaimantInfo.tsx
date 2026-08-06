@@ -1,4 +1,5 @@
 import { Lock, User } from "lucide-react"
+import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
@@ -19,7 +20,8 @@ interface ClaimantInfoProps {
   onChange: <K extends keyof ClaimantForm>(field: K, val: ClaimantForm[K]) => void
   identityLocked: boolean
   errors: FormErrors
-  approvers: ApproverOption[]
+  /** null while loading; see ApproverField. */
+  approvers: ApproverOption[] | null
 }
 
 export function ClaimantInfo({
@@ -86,36 +88,15 @@ export function ClaimantInfo({
           <FieldError id="claimant-dept-error" message={errors.dept} />
         </div>
 
-        {approvers.length > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <FieldLabel id="claimant-approver-label" text="Approver" required />
-            <Select
-              value={value.approverEmail || undefined}
-              onValueChange={(v) => onChange("approverEmail", v)}
-            >
-              <SelectTrigger
-                id="claimant-approver"
-                className="w-full bg-card"
-                aria-labelledby="claimant-approver-label"
-                aria-required="true"
-                aria-invalid={!!errors.approverEmail || undefined}
-              >
-                <SelectValue placeholder="Select approver" />
-              </SelectTrigger>
-              <SelectContent>
-                {approvers.map((a) => (
-                  <SelectItem key={a.email} value={a.email}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <FieldError
-              id="claimant-approver-error"
-              message={errors.approverEmail}
-            />
-          </div>
-        )}
+        <ApproverField
+          id="claimant-approver"
+          label="Approver"
+          required
+          value={value.approverEmail}
+          onChange={(v) => onChange("approverEmail", v)}
+          approvers={approvers}
+          error={errors.approverEmail}
+        />
       </div>
     </SectionCard>
   )

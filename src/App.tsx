@@ -90,7 +90,7 @@ export default function App() {
     subDate: todayIso(),
     approverEmail: "",
   })
-  const [approvers, setApprovers] = useState<ApproverOption[]>([])
+  const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
   // Exactly one expense entry per submission.
   const [row, setRow] = useState<LineRow>(newRow)
   const [files, setFiles] = useState<File[]>([])
@@ -202,7 +202,9 @@ export default function App() {
         setIdentityLocked(true)
         setAuthState("ready")
         void loadRates(false)
-        void fetchApprovers("all").then(setApprovers)
+        void fetchApprovers("all")
+          .then(setApprovers)
+          .catch(() => setApprovers([]))
       } catch (e) {
         console.error("Auth init failed", e)
         setAuthError((e as Error).message)
@@ -238,7 +240,7 @@ export default function App() {
     const found: FormErrors = {}
     if (!claimant.employee) found.employee = "Enter the employee name"
     if (!claimant.dept) found.dept = "Select a department"
-    if (approvers.length > 0 && !claimant.approverEmail)
+    if ((approvers?.length ?? 0) > 0 && !claimant.approverEmail)
       found.approverEmail = "Select an approver"
     if (!row.cat) found.cat = "Select an expense category"
     if (!row.receiptDate) found.receiptDate = "Choose the date on the receipt"

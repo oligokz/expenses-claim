@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
+import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
 import { DateField } from "@/components/DateField"
 import { FieldError } from "@/components/FieldError"
@@ -66,7 +67,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const [errors, setErrors] = useState<LeaveErrors>({})
   const [submitting, setSubmitting] = useState(false)
   const [types, setTypes] = useState<LeaveTypeOption[]>([])
-  const [approvers, setApprovers] = useState<ApproverOption[]>([])
+  const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
   const [submitted, setSubmitted] = useState<{ ref: string; days: number } | null>(null)
 
   useEffect(() => {
@@ -74,9 +75,9 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
     fetchLeaveTypes().then((t) => {
       if (alive) setTypes(t)
     })
-    fetchApprovers("all").then((a) => {
-      if (alive) setApprovers(a)
-    })
+    fetchApprovers("all")
+      .then((a) => alive && setApprovers(a))
+      .catch(() => alive && setApprovers([]))
     return () => {
       alive = false
     }
@@ -110,7 +111,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const handleSubmit = async () => {
     const found: LeaveErrors = {}
     if (!form.department) found.department = "Select a department"
-    if (approvers.length > 0 && !form.approverEmail)
+    if ((approvers?.length ?? 0) > 0 && !form.approverEmail)
       found.approverEmail = "Select an approver"
     if (!form.leaveType) found.leaveType = "Select a leave type"
     if (!form.startDate) found.startDate = "Choose a start date"
@@ -262,36 +263,15 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
               <FieldError id="leave-dept-error" message={errors.department} />
             </div>
 
-            {approvers.length > 0 && (
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel id="leave-approver-label" text="Approver" required />
-                <Select
-                  value={form.approverEmail || undefined}
-                  onValueChange={(v) => update("approverEmail", v)}
-                >
-                  <SelectTrigger
-                    id="leave-approver"
-                    className="w-full bg-card"
-                    aria-labelledby="leave-approver-label"
-                    aria-required="true"
-                    aria-invalid={!!errors.approverEmail || undefined}
-                  >
-                    <SelectValue placeholder="Select approver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {approvers.map((a) => (
-                      <SelectItem key={a.email} value={a.email}>
-                        {a.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError
-                  id="leave-approver-error"
-                  message={errors.approverEmail}
-                />
-              </div>
-            )}
+            <ApproverField
+              id="leave-approver"
+              label="Approver"
+              required
+              value={form.approverEmail}
+              onChange={(v) => update("approverEmail", v)}
+              approvers={approvers}
+              error={errors.approverEmail}
+            />
           </div>
         </SectionCard>
 

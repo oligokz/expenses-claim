@@ -188,20 +188,33 @@ export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
  * appear for either. Returns [] if the list isn't set up yet, which the form
  * treats as "fall back to typing an address".
  */
+/* Cached for the session. Switching tabs remounts the forms, and refetching
+ * each time made the approver field visibly flip from its fallback to the
+ * dropdown on every switch. Failures are not cached, so they retry. */
+const approverCache = new Map<string, Promise<ApproverOption[]>>()
+
 export async function fetchApprovers(
   stage: "reporting" | "final" | "all",
 ): Promise<ApproverOption[]> {
-  try {
+  const hit = approverCache.get(stage)
+  if (hit) return hit
+
+  const request = (async () => {
     const token = await getApiToken()
     const query = stage === "all" ? "" : `?stage=${stage}`
     const res = await fetch(`/api/approvers${query}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
     const data = await res.json()
+    if (!res.ok) throw new Error(data.error || "Failed to load approvers")
     return (data.approvers as ApproverOption[]) || []
-  } catch {
-    return []
-  }
+  })().catch((e) => {
+    approverCache.delete(stage)
+    throw e
+  })
+
+  approverCache.set(stage, request)
+  return request
 }
 
 /** GET /api/approval, what this approver is being asked to sign. */
