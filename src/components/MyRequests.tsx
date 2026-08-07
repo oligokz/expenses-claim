@@ -229,7 +229,7 @@ export function MyRequests() {
                   </div>
                 </div>
 
-                <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
+                <div className="order-2 col-span-2 min-w-0 sm:order-none sm:col-span-1">
                   <div className="truncate text-sm">{r.title || "-"}</div>
                   {/* Category and date only. Description and vendor are real
                       free text and push this line past the row on a phone. */}
@@ -248,11 +248,12 @@ export function MyRequests() {
                   )}
                 </div>
 
-                {/* Status and document share a cell so that on mobile they sit
-                    under the amount in the right-hand column, where the space
-                    is, rather than stranded mid-row. col-start-2 pins them
-                    there; sm+ lets the grid place them normally. */}
-                <div className="col-start-2 flex items-center justify-end gap-1 sm:col-start-auto">
+                {/* Status and document share a cell. On mobile order-3 puts
+                    them after the details, so they land bottom right rather
+                    than stranded between the reference and the title;
+                    col-start-2 keeps them in the right-hand column. sm+ lets
+                    the grid place them normally. */}
+                <div className="order-3 col-start-2 -mt-1 flex items-center justify-end gap-1 sm:order-none sm:col-start-auto sm:mt-0">
                   <StatusBadge status={r.status} />
                   {/* Only fully approved requisitions have a document to open. */}
                   {r.pdfUrl ? (
