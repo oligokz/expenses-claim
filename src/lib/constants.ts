@@ -86,17 +86,15 @@ export const REQUISITION_OTHER = "Others"
 export const IDLE_TIMEOUT_MS = 30 * 60 * 1000
 export const IDLE_WARN_MS = 2 * 60 * 1000
 
+// Shared by all three modules (expense, leave, requisition). SharePoint stores
+// Department as free text, so this list can change without touching any column.
 export const DEPARTMENTS = [
-  "Finance & Operations",
-  "Human Resources",
-  "Sales & Marketing",
-  "Information Technology",
-  "Research & Development",
-  "Legal & Compliance",
-  "Executive & Management",
-  "Customer Success",
+  "R&D",
+  "Sales",
   "Procurement",
-  "Other",
+  "Operations",
+  "Marketing",
+  "Others",
 ]
 
 export const CURRENCY_NAMES: Record<string, string> = {
