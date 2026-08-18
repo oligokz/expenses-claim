@@ -13,14 +13,12 @@ export interface ClaimantForm {
   email: string
   dept: string
   subDate: string // ISO yyyy-mm-dd
-  approverEmail: string
 }
 
 /** Per-field validation messages, keyed by the field that failed. */
 export interface FormErrors {
   employee?: string
   dept?: string
-  approverEmail?: string
   subDate?: string
   cat?: string
   receiptDate?: string

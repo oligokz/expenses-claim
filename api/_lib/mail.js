@@ -198,6 +198,30 @@ function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel,
   };
 }
 
+/* Tell a watcher, typically finance or HR, that a request cleared its last
+ * approval. Separate from decisionNotice because that one is written to the
+ * requester ("your claim is approved"), which reads wrong for a third party. */
+function completionNotice({ kind, claimRef, item, requester, department, approvedBy, rows = [], pdfUrl }) {
+  return {
+    subject: `${kind || 'Request'} ${claimRef} is fully approved`,
+    html: layout({
+      heading: `${kind || 'Request'} fully approved`,
+      intro: 'Every approval stage is complete. The record is in SharePoint.',
+      rows: [
+        ['Reference', claimRef],
+        ['Item', item || ''],
+        ['Requested by', requester || ''],
+        ['Department', department || ''],
+        ['Approved by', approvedBy || ''],
+        ...rows,
+      ].filter(([, v]) => v && String(v).trim() !== ''),
+      action: pdfUrl
+        ? { href: pdfUrl, label: 'Open the signed PDF' }
+        : { href: `${baseUrl()}/`, label: 'Open the forms app' },
+    }),
+  };
+}
+
 /** Confirm to the requester that their requisition was recorded. */
 function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
   return {
@@ -219,5 +243,5 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
 module.exports = {
   sendMail,
   baseUrl,
-  templates: { approvalRequest, requisitionReceipt, decisionNotice },
+  templates: { approvalRequest, requisitionReceipt, decisionNotice, completionNotice },
 };

@@ -55,9 +55,8 @@ export const CATEGORIES = [
 // configured yet. Once it is, the form loads types from there instead.
 export const DEFAULT_LEAVE_TYPES: { name: string }[] = [
   { name: "Annual" },
-  { name: "Medical" },
-  { name: "Unpaid" },
-  { name: "Compassionate" },
+  { name: "Sick" },
+  { name: "Childcare" },
 ]
 
 // Fallback item categories used when the SharePoint "Requisition Categories"

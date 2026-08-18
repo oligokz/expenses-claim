@@ -1,5 +1,4 @@
 import { Lock, User } from "lucide-react"
-import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
@@ -12,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { DEPARTMENTS } from "@/lib/constants"
-import type { ApproverOption, ClaimantForm, FormErrors } from "@/lib/types"
+import type { ClaimantForm, FormErrors } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 interface ClaimantInfoProps {
@@ -20,8 +19,6 @@ interface ClaimantInfoProps {
   onChange: <K extends keyof ClaimantForm>(field: K, val: ClaimantForm[K]) => void
   identityLocked: boolean
   errors: FormErrors
-  /** null while loading; see ApproverField. */
-  approvers: ApproverOption[] | null
 }
 
 export function ClaimantInfo({
@@ -29,7 +26,6 @@ export function ClaimantInfo({
   onChange,
   identityLocked,
   errors,
-  approvers,
 }: ClaimantInfoProps) {
   return (
     <SectionCard icon={<User />} title="Claimant Information">
@@ -88,15 +84,6 @@ export function ClaimantInfo({
           <FieldError id="claimant-dept-error" message={errors.dept} />
         </div>
 
-        <ApproverField
-          id="claimant-approver"
-          label="Approver"
-          required
-          value={value.approverEmail}
-          onChange={(v) => onChange("approverEmail", v)}
-          approvers={approvers}
-          error={errors.approverEmail}
-        />
       </div>
     </SectionCard>
   )

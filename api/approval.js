@@ -295,6 +295,32 @@ async function handlePost(req, res) {
     }
   }
 
+  /* Copy the watchers once the request has cleared its last stage. Opt-in via
+   * NOTIFY_ON_APPROVED (comma-separated); unset means nobody is copied, which
+   * is the behaviour this had before. Failure must not affect the decision. */
+  if (!next) {
+    const watchers = (process.env.NOTIFY_ON_APPROVED || '')
+      .split(',').map((s) => s.trim()).filter(Boolean);
+    if (watchers.length) {
+      try {
+        await sendMail(token, {
+          to: watchers,
+          replyTo: requesterEmail || undefined,
+          ...templates.completionNotice({
+            kind: mod.kind, claimRef, item,
+            requester:  summary.requester,
+            department: summary.department,
+            approvedBy: user.name,
+            rows:       summary.rows,
+            pdfUrl,
+          }),
+        });
+      } catch (e) {
+        console.error('[approval] watcher mail failed:', e.message);
+      }
+    }
+  }
+
   return res.status(200).json({
     ok: true,
     decision: 'approved',

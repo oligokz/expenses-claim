@@ -87,7 +87,6 @@ export async function submitClaim({
       employeeName: claimant.employee,
       employeeEmail: claimant.email,
       department: claimant.dept,
-      approverEmail: claimant.approverEmail,
       submissionDate: claimant.subDate,
       lineItems,
       notes,

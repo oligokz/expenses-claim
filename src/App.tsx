@@ -23,7 +23,6 @@ import { Button } from "@/components/ui/button"
 import { clearSession, initAuth, logout } from "@/lib/auth"
 import { useIdleTimeout } from "@/lib/useIdleTimeout"
 import {
-  fetchApprovers,
   fetchRates,
   submitClaim,
   uploadReceipt,
@@ -36,7 +35,6 @@ import {
   IDLE_WARN_MS,
 } from "@/lib/constants"
 import type {
-  ApproverOption,
   ClaimantForm,
   FormErrors,
   LineRow,
@@ -51,7 +49,6 @@ type AuthState = "loading" | "ready" | "redirecting" | "error"
 const FIELD_IDS: Partial<Record<keyof FormErrors, string>> = {
   employee: "claimant-employee",
   dept: "claimant-dept",
-  approverEmail: "claimant-approver",
   cat: "line-cat",
   receiptDate: "line-receipt-date",
   amt: "line-amt",
@@ -59,7 +56,6 @@ const FIELD_IDS: Partial<Record<keyof FormErrors, string>> = {
 const FIELD_ORDER: (keyof FormErrors)[] = [
   "employee",
   "dept",
-  "approverEmail",
   "cat",
   "receiptDate",
   "amt",
@@ -93,9 +89,7 @@ export default function App() {
     email: "",
     dept: "",
     subDate: todayIso(),
-    approverEmail: "",
   })
-  const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
   // Exactly one expense entry per submission.
   const [row, setRow] = useState<LineRow>(newRow)
   const [files, setFiles] = useState<File[]>([])
@@ -208,9 +202,6 @@ export default function App() {
         setIdentityLocked(true)
         setAuthState("ready")
         void loadRates(false)
-        void fetchApprovers("all")
-          .then(setApprovers)
-          .catch(() => setApprovers([]))
       } catch (e) {
         console.error("Auth init failed", e)
         setAuthError((e as Error).message)
@@ -268,8 +259,6 @@ export default function App() {
     const found: FormErrors = {}
     if (!claimant.employee) found.employee = "Enter the employee name"
     if (!claimant.dept) found.dept = "Select a department"
-    if ((approvers?.length ?? 0) > 0 && !claimant.approverEmail)
-      found.approverEmail = "Select an approver"
     if (!row.cat) found.cat = "Select an expense category"
     if (!row.receiptDate) found.receiptDate = "Choose the date on the receipt"
     if (!row.amt) found.amt = "Enter the expense amount"
@@ -498,7 +487,6 @@ export default function App() {
                   onChange={updateClaimant}
                   identityLocked={identityLocked}
                   errors={errors}
-                  approvers={approvers}
                 />
                 <LineItems
                   row={row}
