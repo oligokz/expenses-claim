@@ -1,7 +1,14 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 
 // Admin-managed leave types from the "Leave Types" SharePoint list.
-// Columns expected: Name (text), Active (yes/no), Order (number).
+// Columns expected: Title (text), Active (yes/no), and a sort column.
+//
+// The sort column is 'Order0' on the live list: SharePoint reserves 'Order',
+// so creating it through the UI silently lands as 'Order0'. Reading plain
+// 'Order' therefore always came back undefined and every row sorted as 0.
+// Accept whichever name the list actually uses.
+const sortKey = (f) => Number(f.Order0 ?? f.SortOrder ?? f.Order) || 0;
+
 async function listTypes(token, siteId) {
   const listName = process.env.SP_LEAVETYPES_LIST_NAME || 'Leave Types';
   const res = await fetch(
@@ -12,7 +19,7 @@ async function listTypes(token, siteId) {
   const rows = ((await res.json()).value || []).map((i) => i.fields || {});
   return rows
     .filter((f) => f.Active !== false) // treat missing Active as active
-    .sort((a, b) => (Number(a.Order) || 0) - (Number(b.Order) || 0))
+    .sort((a, b) => (sortKey(a) - sortKey(b)))
     .map((f) => ({ name: f.Title || f.Name || '' }))
     .filter((t) => t.name);
 }
