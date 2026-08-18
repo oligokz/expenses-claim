@@ -191,10 +191,24 @@ const APR_COLUMNS = [
   { name: 'SortOrder',     ...number(0) },
 ];
 
-/* Seeded for testing only, real approvers get added in SharePoint. */
+/* The approver roster. Seeding is additive: rows whose email is already in the
+ * list are skipped, and nothing is ever removed, so re-running this is safe but
+ * cannot retire an approver. Deactivate those in SharePoint (Active = No).
+ *
+ * Addresses must be the account's UPN, not a mail alias. A decision is only
+ * accepted when the row matches the signed-in approver's preferred_username
+ * claim, so an alias here would lock that person out of their own approvals.
+ * Ting See Yun is the live example: seeyun.ting@ is the UPN, ting.seeyun@ is
+ * only a secondary proxy address.
+ *
+ * All six approve at either stage, so nothing here is stage-specific yet. */
 const SEED_APPROVERS = [
-  { name: 'Bernard Lim', email: 'bernard.lim@creoxtech.com', stage: 'Both' },
-  { name: 'Joanne Lee',  email: 'Joanne.lee@creoxtech.com',  stage: 'Both' },
+  { name: 'Annie Tham',   email: 'annie.tham@creoxtech.com',   stage: 'Both' },
+  { name: 'Joseph Tay',   email: 'Joseph.tay@creoxtech.com',   stage: 'Both' },
+  { name: 'Michael Ng',   email: 'michael.ng@creoxtech.com',   stage: 'Both' },
+  { name: 'Raymond Oei',  email: 'raymond.oei@creoxtech.com',  stage: 'Both' },
+  { name: 'Ting See Yun', email: 'seeyun.ting@creoxtech.com',  stage: 'Both' },
+  { name: 'Joanne Lee',   email: 'Joanne.lee@creoxtech.com',   stage: 'Both' },
 ];
 
 /* Leave and expense join the approval flow with one stage and no signature.
