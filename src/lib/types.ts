@@ -122,6 +122,18 @@ export interface ApprovalView {
   submittedOn: string
   /** Label/value pairs rendered as the detail table. */
   rows: [string, string][]
+  /** Receipts, MCs or quotations filed against the request. */
+  attachments: ApprovalAttachment[]
+}
+
+export interface ApprovalAttachment {
+  name: string
+  size: number
+  mimeType: string
+  /** Pre-authenticated and short-lived; opens without SharePoint access. */
+  url: string
+  /** The library location, for anyone who does have access. */
+  webUrl: string
 }
 
 export type Rates = Record<string, number>

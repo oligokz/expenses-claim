@@ -2,8 +2,10 @@ import { useEffect, useState } from "react"
 import {
   AlertCircle,
   CheckCircle2,
+  ExternalLink,
   FileText,
   Loader2,
+  Paperclip,
   ThumbsDown,
   ThumbsUp,
   XCircle,
@@ -21,6 +23,14 @@ import { fetchApproval, submitApproval } from "@/lib/api"
 import type { ApprovalView } from "@/lib/types"
 
 type Phase = "loading" | "ready" | "error" | "done"
+
+/** Bytes as a short human figure, so a receipt's weight reads at a glance. */
+function fileSize(bytes: number): string {
+  if (!bytes) return ""
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
 
 interface Outcome {
   decision: string
@@ -218,6 +228,35 @@ export function ApprovalPage({ token }: { token: string }) {
             </table>
           </div>
         </SectionCard>
+
+        {view.attachments?.length > 0 && (
+          <SectionCard
+            icon={<Paperclip />}
+            title={`Attachments (${view.attachments.length})`}
+          >
+            <ul className="flex flex-col gap-2">
+              {view.attachments.map((a) => (
+                <li key={a.name}>
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2.5 transition-colors hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                      {a.name}
+                    </span>
+                    <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                      {fileSize(a.size)}
+                    </span>
+                    <ExternalLink className="size-3.5 shrink-0 text-muted-foreground" />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </SectionCard>
+        )}
 
         <SectionCard icon={<ThumbsUp />} title="Your decision">
           <div className="flex flex-col gap-5">

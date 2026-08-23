@@ -100,7 +100,7 @@ async function sendMail(token, { to, subject, html, replyTo }) {
  * Plain table-based HTML: Outlook's renderer ignores most modern CSS, and these
  * need to survive desktop Outlook, OWA and mobile alike.
  */
-function layout({ heading, intro, rows, action, footer }) {
+function layout({ heading, intro, body, rows, action, footer }) {
   const cells = rows
     .filter(([, v]) => v !== '' && v !== null && v !== undefined)
     .map(
@@ -127,6 +127,13 @@ function layout({ heading, intro, rows, action, footer }) {
     <tr><td style="padding:28px 28px 20px">
       <h1 style="margin:0 0 8px;font-size:19px;font-weight:700">${esc(heading)}</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5">${esc(intro)}</p>
+      ${
+        // Free text (an expense description, a leave reason) reads as prose, not
+        // as another label/value row, so it gets its own block above the table.
+        body
+          ? `<div style="margin:0 0 20px;padding:12px 14px;background:#f7f7f7;border-radius:8px;font-size:14px;line-height:1.5;color:#333">${esc(body).replace(/\n/g, '<br />')}</div>`
+          : ''
+      }
       <table role="presentation" cellpadding="0" cellspacing="0">${cells}</table>
       ${
         action
@@ -150,19 +157,38 @@ function layout({ heading, intro, rows, action, footer }) {
  * the token only identifies the request and stage, the approver still signs in
  * with Entra, so a forwarded email cannot approve anything.
  */
-function approvalRequest({ kind, claimRef, requester, rows = [], stageLabel, token, ttlDays }) {
+function approvalRequest({
+  kind, claimRef, requester, item, description, department, submittedOn,
+  rows = [], stageLabel, token, ttlDays, hasAttachments,
+}) {
   const what = (kind || 'Request').toLowerCase();
+  const subjectItem = item ? `: ${item}` : '';
   return {
-    subject: `${kind || 'Request'} ${claimRef} needs your approval`,
+    // Name the thing in the subject line too. An approver triaging a full inbox
+    // decides from the subject whether this is the one they were waiting on.
+    subject: `${kind || 'Request'} ${claimRef}${subjectItem} needs your approval`,
     html: layout({
       heading: `A ${what} needs your approval`,
       intro: `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
-      rows: [['Reference', claimRef], ...rows],
+      body: description,
+      rows: [
+        ['Reference', claimRef],
+        ['Item', item || ''],
+        ['Requested by', requester || ''],
+        ['Department', department || ''],
+        ['Submitted', submittedOn ? String(submittedOn).slice(0, 10) : ''],
+        ...rows,
+      ],
       action: {
         href: `${baseUrl()}/approve?t=${encodeURIComponent(token)}`,
         label: 'Review and sign',
       },
-      footer: `This link expires in ${ttlDays} days.`,
+      /* Attachments are deliberately not linked from the email. The approval
+       * page shows them behind a sign-in, so a forwarded message never carries
+       * a working link to someone's receipts or medical certificate. */
+      footer:
+        (hasAttachments ? 'Attachments are shown on the approval page. ' : '') +
+        `This link expires in ${ttlDays} days.`,
     }),
   };
 }

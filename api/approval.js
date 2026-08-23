@@ -6,6 +6,7 @@ const {
   assertActionable, isExpectedApprover, stageOf, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
+const { listAttachments } = require('./_lib/attachments');
 const { buildRequisitionPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -123,6 +124,13 @@ async function handleGet(req, res) {
     reason = e.message;
   }
 
+  // Receipts, MCs and quotations, so the decision can be made on the evidence
+  // rather than on the figures alone.
+  const attachments = await listAttachments(token, siteId, claimRef, [
+    fields.SubmissionDate,
+    fields.StartDate,
+  ]);
+
   return res.status(200).json({
     claimRef,
     kind: mod.kind,
@@ -133,6 +141,7 @@ async function handleGet(req, res) {
     actionable,
     reason,
     status: fields.Status || 'Pending',
+    attachments,
     ...mod.summarise(fields),
   });
 }

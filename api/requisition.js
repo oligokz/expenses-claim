@@ -201,16 +201,28 @@ module.exports = async function handler(req, res) {
         );
         if (!patchRes.ok) throw new Error(`Could not store approval token (${patchRes.status})`);
 
+        /* approvalRequest renders a `rows` table. This used to pass totalSGD,
+         * vendor and project as loose keys the template never read, so the
+         * first-stage email arrived with nothing but a reference number. */
         const toApprover = templates.approvalRequest({
+          kind:        getModule('requisition').kind,
           claimRef,
-          requester:  user.name,
-          item:       `${qty} × ${category}`,
-          totalSGD:   fmtMoney,
-          vendor:     vendorName,
-          project:    projectCustomer || '',
+          requester:   user.name,
+          item:        `${qty} × ${category}`,
+          description,
+          department,
+          submittedOn: submissionDate,
+          rows: [
+            ['Unit price',      `${currency} ${Number(price).toFixed(2)}`],
+            ['Estimated total', `SGD ${fmtMoney}`],
+            ['Vendor',          vendorName || ''],
+            ['Vendor contact',  vendorContact || ''],
+            ['Project / customer', projectCustomer || ''],
+          ].filter(([, v]) => v && String(v).trim() !== ''),
           stageLabel: 'First Approver',
           token:      approvalToken,
           ttlDays:    TOKEN_TTL_DAYS,
+          hasAttachments: true,
         });
         // Replies go to the requester, not into the no-reply mailbox.
         await sendMail(token, { to: reportingManager, replyTo: user.email, ...toApprover });

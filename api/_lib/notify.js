@@ -35,13 +35,20 @@ async function notifyApprover(token, siteId, { moduleName, itemId, approverEmail
       // Replies reach the requester rather than the no-reply mailbox.
       replyTo: summary.requesterEmail || undefined,
       ...templates.approvalRequest({
-        kind:       mod.kind,
+        kind:        mod.kind,
         claimRef,
-        requester:  summary.requester,
-        rows:       summary.rows,
-        stageLabel: stage.label,
-        token:      approvalToken,
-        ttlDays:    TOKEN_TTL_DAYS,
+        requester:   summary.requester,
+        // summarise() keeps these out of `rows`; without them the email never
+        // said what was being approved, only how much of it there was.
+        item:        summary.title,
+        description: summary.description,
+        department:  summary.department,
+        submittedOn: summary.submittedOn,
+        rows:        summary.rows,
+        stageLabel:  stage.label,
+        token:       approvalToken,
+        ttlDays:     TOKEN_TTL_DAYS,
+        hasAttachments: true,
       }),
     });
 
