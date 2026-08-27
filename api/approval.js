@@ -7,7 +7,15 @@ const {
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments } = require('./_lib/attachments');
-const { buildRequisitionPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
+const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
+
+/* Which document a module renders once it is fully approved. Keyed by prefix
+ * rather than set on the module config, so approvals.js stays free of any
+ * dependency on the PDF layer. */
+const PDF_BUILDERS = {
+  REQ: buildRequisitionPdf,
+  TRV: buildTravelPdf,
+};
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
 // Decisions record the moment, not just the day, the PDF shows a real time.
@@ -83,7 +91,9 @@ async function renderPdf(token, siteId, mod, itemId, claimRef) {
     });
   }
 
-  const bytes = await buildRequisitionPdf({ fields, claimRef, signatures });
+  const build = PDF_BUILDERS[mod.refPrefix];
+  if (!build) throw new Error(`No PDF builder for ${mod.refPrefix}`);
+  const bytes = await build({ fields, claimRef, signatures });
   const month = (fields.SubmissionDate || todayIso()).slice(0, 7);
   const { webUrl } = await storePdf(token, siteId, bytes, claimRef, month);
 

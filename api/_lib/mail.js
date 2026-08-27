@@ -248,6 +248,26 @@ function completionNotice({ kind, claimRef, item, requester, department, approve
   };
 }
 
+/** Confirm to the requester that their travel request was recorded. */
+function travelReceipt({ claimRef, destination, dates, totalSGD, approverName }) {
+  return {
+    subject: `Your travel request ${claimRef} was recorded`,
+    html: layout({
+      heading: 'Travel request recorded',
+      intro: 'This is your copy for reference.',
+      rows: [
+        ['Reference', claimRef],
+        ['Destination', destination || ''],
+        ['Dates', dates || ''],
+        ['Estimated cost', `SGD ${totalSGD}`],
+        ['Sent to', approverName || ''],
+      ],
+      action: { href: `${baseUrl()}/`, label: 'View my requests' },
+      footer: 'Travel requests need three approvals: reporting manager, Finance/HR, then final approval.',
+    }),
+  };
+}
+
 /** Confirm to the requester that their requisition was recorded. */
 function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
   return {
@@ -269,5 +289,5 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
 module.exports = {
   sendMail,
   baseUrl,
-  templates: { approvalRequest, requisitionReceipt, decisionNotice, completionNotice },
+  templates: { approvalRequest, requisitionReceipt, travelReceipt, decisionNotice, completionNotice },
 };

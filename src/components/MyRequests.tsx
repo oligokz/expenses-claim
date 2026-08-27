@@ -6,6 +6,7 @@ import {
   FileDown,
   Inbox,
   Loader2,
+  Plane,
   Receipt,
   ShoppingCart,
 } from "lucide-react"
@@ -26,6 +27,7 @@ const TYPE_META: Record<
 > = {
   expense: { label: "Expense", short: "Expense", icon: Receipt },
   leave: { label: "Leave", short: "Leave", icon: CalendarDays },
+  travel: { label: "Travel", short: "Travel", icon: Plane },
   requisition: { label: "Purchase", short: "Purchase", icon: ShoppingCart },
 }
 
@@ -98,6 +100,7 @@ export function MyRequests() {
       all: requests.length,
       expense: 0,
       leave: 0,
+      travel: 0,
       requisition: 0,
     }
     for (const r of requests) c[r.type]++
@@ -109,7 +112,7 @@ export function MyRequests() {
     [requests, filter],
   )
 
-  const FILTERS: Filter[] = ["all", "expense", "leave", "requisition"]
+  const FILTERS: Filter[] = ["all", "expense", "leave", "travel", "requisition"]
 
   return (
     <div>
@@ -119,7 +122,7 @@ export function MyRequests() {
             My Requests
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Everything you've submitted: expenses, leave and purchases.
+            Everything you've submitted: expenses, leave, travel and purchases.
           </p>
         </div>
         {state === "ready" && requests.length > 0 && (

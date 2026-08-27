@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { topFolderFor } = require('./_lib/attachments');
 
 async function uploadFile(token, siteId, segments, buffer, mimeType) {
   const driveId = await getDriveId(token, siteId);
@@ -72,12 +73,11 @@ module.exports = async function handler(req, res) {
     //   Leave Attachments       / 2026-06 / LEAVE-5 / 01-mc.pdf
     //   Claims Attachments      / 2026-06 / EXP-12  / 01-receipt.pdf
     //   Requisition Attachments / 2026-06 / REQ-3   / 01-quotation.pdf
+    //   Travel Attachments      / 2026-06 / TRV-7   / 01-flight-quote.pdf
     // so HR can copy a whole month's folder, with each item grouped inside.
     // Type is derived from the reference prefix; month from the item date.
     const ref = meta.claimRef || '';
-    const topFolder   = /^LEAVE-/i.test(ref) ? 'Leave Attachments'
-      : /^REQ-/i.test(ref)                   ? 'Requisition Attachments'
-      : 'Claims Attachments';
+    const topFolder   = topFolderFor(ref);
     const month       = /^\d{4}-\d{2}/.test(meta.date || '')
       ? meta.date.slice(0, 7)
       : 'Undated';

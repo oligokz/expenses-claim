@@ -68,6 +68,80 @@ const MODULES = {
     }),
   },
 
+  /* Travel is the three-stage case the paper form describes: reporting manager,
+   * then Finance/HR, then final approval, each signing its own box. Same
+   * machinery as requisition with one more stage bolted on.
+   *
+   * `listValue` is only used to look up an approver's display name for the
+   * next-stage email, and approversFor() also accepts anyone marked 'Both', so
+   * a value with no exact match in the approvers list degrades to showing the
+   * email rather than failing. */
+  travel: {
+    refPrefix: 'TRV',
+    kind: 'Travel request',
+    listName: () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests',
+    signature: true,
+    pdf: true,
+    stageField: 'ApprovalStage',
+    notesField: 'ApprovalNotes',
+    stages: [
+      {
+        n: 1,
+        label: 'Reporting Manager',
+        listValue: 'Reporting Manager',
+        nextStage: 'Finance/HR',
+        approverField: 'ReportingManager',
+        statusField: 'ReportingManagerStatus',
+        dateField: 'ReportingManagerDate',
+        tokenField: 'Stage1TokenId',
+        signatureField: 'Stage1SignatureUrl',
+        signedNameField: 'Stage1SignedName',
+      },
+      {
+        n: 2,
+        label: 'Finance/HR',
+        listValue: 'Finance/HR',
+        nextStage: 'Final Approval',
+        approverField: 'FinanceApprover',
+        statusField: 'FinanceApprovalStatus',
+        dateField: 'FinanceApprovalDate',
+        tokenField: 'Stage2TokenId',
+        signatureField: 'Stage2SignatureUrl',
+        signedNameField: 'Stage2SignedName',
+      },
+      {
+        n: 3,
+        label: 'Final Approval',
+        listValue: 'Final Approval',
+        nextStage: 'Complete',
+        approverField: 'FinalApprover',
+        statusField: 'FinalApprovalStatus',
+        dateField: 'FinalApprovalDate',
+        tokenField: 'Stage3TokenId',
+        signatureField: 'Stage3SignatureUrl',
+        signedNameField: 'Stage3SignedName',
+      },
+    ],
+    summarise: (f) => ({
+      title: f.Destination ? `Travel to ${f.Destination}` : 'Travel request',
+      description: f.Agenda || '',
+      requester: f.RequestorName || '',
+      requesterEmail: f.RequestorEmail || '',
+      department: f.Department || '',
+      submittedOn: f.SubmissionDate || '',
+      rows: [
+        ['Purpose', f.PurposeOfTravel || ''],
+        ['Event', f.EventName || ''],
+        ['Destination', f.Destination || ''],
+        ['Dates', [f.TravelFrom, f.TravelTo]
+          .filter(Boolean)
+          .map((d) => String(d).slice(0, 10))
+          .join(' to ')],
+        ['Estimated cost', `SGD ${Number(f.TotalEstimatedSGD || 0).toFixed(2)}`],
+      ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
+    }),
+  },
+
   /* Leave and expense reuse the whole mechanism with one stage and no drawing.
    * They also predate it: their lists already carry ApproverEmail, DecisionDate
    * and ApproverComments, filled in by hand until now, so the stage maps onto

@@ -6,6 +6,7 @@ import { TopBar } from "@/components/TopBar"
 import { AppNav, type View } from "@/components/AppNav"
 import { MyRequests } from "@/components/MyRequests"
 import { LeaveRequest } from "@/components/LeaveRequest"
+import { TravelRequest } from "@/components/TravelRequest"
 import { PurchaseRequisition } from "@/components/PurchaseRequisition"
 import { ApprovalPage } from "@/components/ApprovalPage"
 import { ClaimantInfo } from "@/components/ClaimantInfo"
@@ -554,6 +555,7 @@ export default function App() {
           ))}
 
         {view === "leave" && <LeaveRequest employeeName={userName} />}
+        {view === "travel" && <TravelRequest employeeName={userName} />}
         {view === "requisition" && (
           <PurchaseRequisition employeeName={userName} rates={rates} />
         )}

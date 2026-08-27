@@ -106,6 +106,7 @@ if (!DRY && !DELEGATED) {
 const REQ_LIST = process.env.SP_REQUISITION_LIST_NAME   || 'Purchase Requisitions';
 const CAT_LIST = process.env.SP_REQCATEGORIES_LIST_NAME || 'Requisition Categories';
 const APR_LIST = process.env.SP_REQAPPROVERS_LIST_NAME  || 'Requisition Approvers';
+const TRV_LIST = process.env.SP_TRAVEL_LIST_NAME        || 'Travel Requests';
 
 /* ── column definitions ── */
 const text      = ()      => ({ text: {} });
@@ -209,6 +210,56 @@ const SEED_APPROVERS = [
   { name: 'Raymond Oei',  email: 'raymond.oei@creoxtech.com',  stage: 'Both' },
   { name: 'Ting See Yun', email: 'seeyun.ting@creoxtech.com',  stage: 'Both' },
   { name: 'Joanne Lee',   email: 'Joanne.lee@creoxtech.com',   stage: 'Both' },
+];
+
+/* Travel requests: three signed stages rather than the requisition's two, so
+ * every Stage* column runs to 3. Budget is SGD throughout, hence plain numbers
+ * with no currency or converted-total pair. */
+const TRAVEL_COLUMNS = [
+  { name: 'RequestorName',    ...text() },
+  { name: 'RequestorEmail',   ...text() },
+  { name: 'Department',       ...text() },
+  { name: 'JobTitle',         ...text() },
+  { name: 'SubmissionDate',   ...dateOnly() },
+
+  { name: 'PurposeOfTravel',  ...text() },
+  { name: 'EventName',        ...text() },
+  { name: 'Destination',      ...text() },
+  { name: 'TravelFrom',       ...dateOnly() },
+  { name: 'TravelTo',         ...dateOnly() },
+  { name: 'Agenda',           ...multiline() },
+
+  { name: 'CostFlight',       ...number() },
+  { name: 'CostHotel',        ...number() },
+  { name: 'CostEventFees',    ...number() },
+  { name: 'CostTransport',    ...number() },
+  { name: 'CostOther',        ...number() },
+  { name: 'CostOtherNote',    ...text() },
+  { name: 'TotalEstimatedSGD', ...number() },
+
+  { name: 'Status',                 ...choice(...APPROVAL_STATES) },
+  { name: 'ApprovalStage',          ...choice('Reporting Manager', 'Finance/HR', 'Final Approval', 'Complete') },
+  { name: 'ReportingManager',       ...text() },
+  { name: 'ReportingManagerStatus', ...choice(...APPROVAL_STATES) },
+  { name: 'ReportingManagerDate',   ...dateOnly() },
+  { name: 'FinanceApprover',        ...text() },
+  { name: 'FinanceApprovalStatus',  ...choice(...APPROVAL_STATES) },
+  { name: 'FinanceApprovalDate',    ...dateOnly() },
+  { name: 'FinalApprover',          ...text() },
+  { name: 'FinalApprovalStatus',    ...choice(...APPROVAL_STATES) },
+  { name: 'FinalApprovalDate',      ...dateOnly() },
+  { name: 'ApprovalNotes',          ...multiline() },
+
+  { name: 'Stage1TokenId',      ...text() },
+  { name: 'Stage2TokenId',      ...text() },
+  { name: 'Stage3TokenId',      ...text() },
+  { name: 'Stage1SignatureUrl', ...text() },
+  { name: 'Stage2SignatureUrl', ...text() },
+  { name: 'Stage3SignatureUrl', ...text() },
+  { name: 'Stage1SignedName',   ...text() },
+  { name: 'Stage2SignedName',   ...text() },
+  { name: 'Stage3SignedName',   ...text() },
+  { name: 'ApprovedPdfUrl',     ...text() },
 ];
 
 /* Leave and expense join the approval flow with one stage and no signature.
@@ -527,6 +578,7 @@ const INDEX_TARGETS = [
   { list: readable('SP_LIST_NAME') || 'ExpenseClaims', column: 'EmployeeEmail' },
   { list: process.env.SP_LEAVE_LIST_NAME || 'Leave Requests', column: 'EmployeeEmail' },
   { list: REQ_LIST, column: 'RequestorEmail' },
+  { list: TRV_LIST, column: 'RequestorEmail' },
 ];
 
 async function indexColumns(token, siteId) {
@@ -576,6 +628,12 @@ async function main() {
     console.log(`  ${'Title'.padEnd(24)} text (built-in, the category name)`);
     for (const c of CAT_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
     console.log(`\nSeed rows: ${SEED_CATEGORIES.join(', ')}`);
+    console.log(`\n${APR_LIST}:`);
+    console.log(`  ${'Title'.padEnd(24)} text (built-in, the approver's display name)`);
+    for (const c of APR_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
+    console.log(`\nSeed rows: ${SEED_APPROVERS.map((a) => a.name).join(', ')}`);
+    console.log(`\n${TRV_LIST}:`);
+    for (const c of TRAVEL_COLUMNS) console.log(`  ${c.name.padEnd(24)} ${describe(c)}`);
     return;
   }
 
@@ -594,18 +652,21 @@ async function main() {
   const site = await graph(token, `/sites/${url.hostname}:${url.pathname}`);
   console.log(`Site: ${site.displayName || site.name}  (${SITE_URL})\n`);
 
-  console.log(`[1/5] ${REQ_LIST}`);
+  console.log(`[1/6] ${REQ_LIST}`);
   await ensureList(token, site.id, REQ_LIST, REQ_COLUMNS);
 
-  console.log(`\n[2/5] ${CAT_LIST}`);
+  console.log(`\n[2/6] ${CAT_LIST}`);
   const catId = await ensureList(token, site.id, CAT_LIST, CAT_COLUMNS);
   if (catId) await seedCategories(token, site.id, catId);
 
-  console.log(`\n[3/5] ${APR_LIST}`);
+  console.log(`\n[3/6] ${APR_LIST}`);
   const aprId = await ensureList(token, site.id, APR_LIST, APR_COLUMNS);
   if (aprId) await seedApprovers(token, site.id, aprId);
 
-  console.log('\n[4/5] Leave and expense approval columns');
+  console.log(`\n[4/6] ${TRV_LIST}`);
+  await ensureList(token, site.id, TRV_LIST, TRAVEL_COLUMNS);
+
+  console.log('\n[5/6] Leave and expense approval columns');
   for (const listName of [
     readable('SP_LIST_NAME') || 'ExpenseClaims',
     process.env.SP_LEAVE_LIST_NAME || 'Leave Requests',
@@ -614,7 +675,7 @@ async function main() {
     await ensureList(token, site.id, listName, SINGLE_STAGE_COLUMNS);
   }
 
-  console.log('\n[5/5] Indexing the email columns my-requests.js filters on');
+  console.log('\n[6/6] Indexing the email columns my-requests.js filters on');
   await indexColumns(token, site.id);
 
   console.log('\nDone.');

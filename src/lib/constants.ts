@@ -77,6 +77,16 @@ export const DEFAULT_REQUISITION_CATEGORIES: { name: string }[] = [
   { name: "Others" },
 ]
 
+/* The budget lines on the travel request form, in the order the paper form
+ * lists them. `key` matches the TravelForm field and the SharePoint column. */
+export const TRAVEL_BUDGET_LINES: { key: string; label: string }[] = [
+  { key: "costFlight", label: "Flight" },
+  { key: "costHotel", label: "Hotel / accommodation" },
+  { key: "costEventFees", label: "Event / registration fees" },
+  { key: "costTransport", label: "Transport" },
+  { key: "costOther", label: "Other expenses" },
+]
+
 /** Selecting this category reveals the "If others" free-text field. */
 export const REQUISITION_OTHER = "Others"
 

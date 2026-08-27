@@ -101,6 +101,43 @@ export interface RequisitionErrors {
   quotation?: string
 }
 
+export interface TravelForm {
+  department: string
+  jobTitle: string
+  purpose: string
+  eventName: string
+  destination: string
+  travelFrom: string // ISO yyyy-mm-dd
+  travelTo: string // ISO yyyy-mm-dd
+  agenda: string
+  /** Budget lines, all SGD. Held as strings so the inputs can be empty. */
+  costFlight: string
+  costHotel: string
+  costEventFees: string
+  costTransport: string
+  costOther: string
+  /** Names what "Other expenses" covers, mirrors the paper form's free line. */
+  costOtherNote: string
+  /** Three stages, all nominated by the requester. */
+  reportingManager: string
+  financeApprover: string
+  finalApprover: string
+}
+
+export interface TravelErrors {
+  department?: string
+  jobTitle?: string
+  purpose?: string
+  destination?: string
+  travelFrom?: string
+  travelTo?: string
+  agenda?: string
+  budget?: string
+  reportingManager?: string
+  financeApprover?: string
+  finalApprover?: string
+}
+
 /** What an approver is shown before signing, from GET /api/approval. */
 export interface ApprovalView {
   claimRef: string
@@ -146,7 +183,7 @@ export interface SubmitResponse {
   error?: string
 }
 
-export type RequestType = "expense" | "leave" | "requisition"
+export type RequestType = "expense" | "leave" | "requisition" | "travel"
 
 /** One past submission of any type, as returned by GET /api/my-requests. */
 export interface MyRequest {

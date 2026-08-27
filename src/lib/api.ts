@@ -275,6 +275,57 @@ interface RequisitionArgs {
   exchangeRates: Rates
 }
 
+export interface TravelArgs {
+  department: string
+  jobTitle: string
+  purpose: string
+  eventName: string
+  destination: string
+  travelFrom: string
+  travelTo: string
+  agenda: string
+  costFlight: number
+  costHotel: number
+  costEventFees: number
+  costTransport: number
+  costOther: number
+  costOtherNote: string
+  reportingManager: string
+  financeApprover: string
+  finalApprover: string
+}
+
+/** POST /api/travel, creates a travel request. Returns the new id + ref. */
+export async function submitTravel(args: TravelArgs): Promise<{
+  itemId: string
+  claimRef: string
+  totalSGD: number
+  /** True only if the first approver was actually emailed. */
+  notified: boolean
+}> {
+  const token = await getApiToken()
+  const res = await fetch("/api/travel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(args),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Travel request submit failed")
+  if (data.mailError) {
+    // The request saved; only the notification failed. Not worth failing over.
+    console.warn("Travel request saved but notification failed:", data.mailError)
+  }
+  return {
+    itemId: (data.itemId as string) ?? "unknown",
+    claimRef: data.claimRef ?? `TRV-${data.itemId ?? "unknown"}`,
+    totalSGD: (data.totalSGD as number) ?? 0,
+    notified: !!data.notified,
+  }
+}
+
 /** POST /api/requisition, creates a purchase requisition. Returns the new id + ref. */
 export async function submitRequisition(args: RequisitionArgs): Promise<{
   itemId: string

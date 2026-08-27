@@ -31,6 +31,22 @@ const SOURCES = [
     },
   },
   {
+    type:      'travel',
+    listName:  () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests',
+    emailCol:  'RequestorEmail',
+    refPrefix: 'TRV',
+    map: (f) => ({
+      title:     f.Destination ? `Travel to ${f.Destination}` : 'Travel request',
+      detail:    f.PurposeOfTravel || '',
+      amountSGD: f.TotalEstimatedSGD ?? 0,
+      meta:      [f.TravelFrom, f.TravelTo]
+        .filter(Boolean)
+        .map((d) => String(d).slice(0, 10))
+        .join(' → '),
+      pdfUrl:    f.ApprovedPdfUrl || '',
+    }),
+  },
+  {
     type:      'requisition',
     listName:  () => process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions',
     emailCol:  'RequestorEmail',

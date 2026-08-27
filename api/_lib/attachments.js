@@ -9,9 +9,12 @@
 
 const { getDriveId } = require('./sharepoint');
 
+/* The single source of truth for where a reference's files live. upload.js,
+ * pdf.js and this module all route through it so the three cannot drift. */
 const topFolderFor = (ref) =>
   /^LEAVE-/i.test(ref) ? 'Leave Attachments'
   : /^REQ-/i.test(ref) ? 'Requisition Attachments'
+  : /^TRV-/i.test(ref) ? 'Travel Attachments'
   : 'Claims Attachments';
 
 // upload.js sanitises the reference the same way when building the path.
@@ -83,4 +86,4 @@ async function listAttachments(token, siteId, claimRef, dates = []) {
   }
 }
 
-module.exports = { listAttachments };
+module.exports = { listAttachments, topFolderFor, safeFolder };
