@@ -9,11 +9,14 @@ import {
   Plane,
   Receipt,
   ShoppingCart,
+  Trash2,
 } from "lucide-react"
+
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { fetchMyRequests } from "@/lib/api"
+import { deleteRequest, fetchMyRequests } from "@/lib/api"
 import { fmt } from "@/lib/currency"
 import type { MyRequest, RequestType } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -72,12 +75,20 @@ function TypeBadge({ type }: { type: RequestType }) {
   )
 }
 
+/* Only a request nobody has decided yet can be deleted by its requester. The
+ * server enforces this too; here it just decides whether to offer the control. */
+const isPending = (status: string) =>
+  !status || status.toLowerCase() === "pending"
+
 export function MyRequests() {
   const [state, setState] = useState<LoadState>("loading")
   const [requests, setRequests] = useState<MyRequest[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
   const [error, setError] = useState("")
   const [filter, setFilter] = useState<Filter>("all")
+  /** Row id awaiting confirmation, and the one currently being deleted. */
+  const [confirming, setConfirming] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   const load = () => {
     setState("loading")
@@ -94,6 +105,30 @@ export function MyRequests() {
   }
 
   useEffect(load, [])
+
+  /* The id carries its type: "travel-12" tells us both which list the row is in
+   * and which item to remove. */
+  const remove = async (r: MyRequest) => {
+    const itemId = r.id.slice(r.type.length + 1)
+    setDeleting(r.id)
+    try {
+      const { notified } = await deleteRequest(r.type, itemId)
+      // Drop it locally rather than refetching: SharePoint can take a moment to
+      // stop returning a just-deleted row, and seeing it reappear reads as a
+      // failed delete.
+      setRequests((prev) => prev.filter((x) => x.id !== r.id))
+      setConfirming(null)
+      toast.success(
+        notified
+          ? `${r.ref} deleted. Your approver has been told.`
+          : `${r.ref} deleted.`,
+      )
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
@@ -271,7 +306,59 @@ export function MyRequests() {
                       <FileDown className="size-4" />
                     </Button>
                   ) : null}
+
+                  {/* Deleting is permanent from the user's side, so it asks
+                      first rather than firing on a single stray tap. Only
+                      offered while pending: once decided, the row is the
+                      record of somebody's decision. */}
+                  {isPending(r.status) &&
+                    (confirming === r.id ? null : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="-mr-2 size-8 shrink-0 text-muted-foreground hover:text-destructive"
+                        title={`Delete ${r.ref}`}
+                        aria-label={`Delete ${r.ref}`}
+                        disabled={!!deleting}
+                        onClick={() => setConfirming(r.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    ))}
                 </div>
+
+                {confirming === r.id && (
+                  <div className="order-4 col-span-2 mt-2 flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 sm:col-span-4 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-xs text-muted-foreground">
+                      Delete <span className="font-medium text-foreground">{r.ref}</span>{" "}
+                      and its attachments? Your approver will be told it was
+                      withdrawn.
+                    </p>
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!!deleting}
+                        onClick={() => setConfirming(null)}
+                      >
+                        Keep
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={!!deleting}
+                        onClick={() => remove(r)}
+                      >
+                        {deleting === r.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-3.5" />
+                        )}
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

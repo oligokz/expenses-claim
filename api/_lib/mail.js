@@ -248,6 +248,25 @@ function completionNotice({ kind, claimRef, item, requester, department, approve
   };
 }
 
+/* Tell the approver whose turn it was that the requester withdrew it, so they
+ * stop waiting on it and don't click a link that no longer resolves. */
+function withdrawnNotice({ kind, claimRef, item, requester, stageLabel }) {
+  return {
+    subject: `${kind || 'Request'} ${claimRef} was withdrawn`,
+    html: layout({
+      heading: `This ${(kind || 'request').toLowerCase()} was withdrawn`,
+      intro: `${requester} deleted it, so there is nothing left for you to approve. No action is needed.`,
+      rows: [
+        ['Reference', claimRef],
+        ['Item', item || ''],
+        ['Requested by', requester || ''],
+        ['You were', stageLabel || ''],
+      ],
+      footer: 'The approval link in the earlier email no longer works.',
+    }),
+  };
+}
+
 /** Confirm to the requester that their travel request was recorded. */
 function travelReceipt({ claimRef, destination, dates, totalSGD, approverName }) {
   return {
@@ -289,5 +308,8 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
 module.exports = {
   sendMail,
   baseUrl,
-  templates: { approvalRequest, requisitionReceipt, travelReceipt, decisionNotice, completionNotice },
+  templates: {
+    approvalRequest, requisitionReceipt, travelReceipt,
+    decisionNotice, completionNotice, withdrawnNotice,
+  },
 };

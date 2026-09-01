@@ -45,45 +45,92 @@ const describe = (item) => ({
 });
 
 /**
- * List a request's attachments. Never throws: an approver seeing no files is a
- * far better failure than an approval page that will not load.
+ * Find the folder holding a request's files, or null.
  *
  * @param {string[]} dates  candidate dates off the row, any format, first wins
+ * @returns {Promise<{path: string, items: object[]}|null>}
+ */
+async function locateFolder(token, driveId, claimRef, dates = []) {
+  const top = topFolderFor(claimRef);
+  const folder = safeFolder(claimRef);
+
+  const months = [
+    ...new Set(
+      dates
+        .filter(Boolean)
+        .map((d) => String(d).slice(0, 7))
+        .filter((m) => /^\d{4}-\d{2}$/.test(m))
+    ),
+  ];
+
+  for (const month of months) {
+    const path = `${top}/${month}/${folder}`;
+    const items = await children(token, driveId, path);
+    if (items) return { path, items };
+  }
+
+  // The row's dates didn't locate it: the upload may have been filed under a
+  // different month, or under 'Undated'. Walk the month folders instead.
+  const monthDirs = await children(token, driveId, top);
+  if (!monthDirs) return null;
+  for (const dir of monthDirs) {
+    if (!dir.folder || months.includes(dir.name)) continue;
+    const path = `${top}/${dir.name}/${folder}`;
+    const items = await children(token, driveId, path);
+    if (items) return { path, items };
+  }
+  return null;
+}
+
+/**
+ * List a request's attachments. Never throws: an approver seeing no files is a
+ * far better failure than an approval page that will not load.
  */
 async function listAttachments(token, siteId, claimRef, dates = []) {
   try {
     const driveId = await getDriveId(token, siteId);
-    const top = topFolderFor(claimRef);
-    const folder = safeFolder(claimRef);
-
-    const months = [
-      ...new Set(
-        dates
-          .filter(Boolean)
-          .map((d) => String(d).slice(0, 7))
-          .filter((m) => /^\d{4}-\d{2}$/.test(m))
-      ),
-    ];
-
-    for (const month of months) {
-      const found = await children(token, driveId, `${top}/${month}/${folder}`);
-      if (found) return found.filter((i) => i.file).map(describe);
-    }
-
-    // The row's dates didn't locate it: the upload may have been filed under a
-    // different month, or under 'Undated'. Walk the month folders instead.
-    const monthDirs = await children(token, driveId, top);
-    if (!monthDirs) return [];
-    for (const dir of monthDirs) {
-      if (!dir.folder || months.includes(dir.name)) continue;
-      const found = await children(token, driveId, `${top}/${dir.name}/${folder}`);
-      if (found) return found.filter((i) => i.file).map(describe);
-    }
-    return [];
+    const found = await locateFolder(token, driveId, claimRef, dates);
+    if (!found) return [];
+    return found.items.filter((i) => i.file).map(describe);
   } catch (e) {
     console.error('[attachments] lookup failed:', e.message);
     return [];
   }
 }
 
-module.exports = { listAttachments, topFolderFor, safeFolder };
+/**
+ * Remove a request's whole attachment folder, used when a requester deletes
+ * their own request. Graph moves it to the site recycle bin rather than
+ * destroying it, so an admin can still recover the files.
+ *
+ * Never throws. The row is the record; if the folder outlives it the worst case
+ * is an orphaned folder, which is much better than a delete that half happened.
+ *
+ * @returns {Promise<boolean>} whether a folder was actually removed
+ */
+async function deleteAttachments(token, siteId, claimRef, dates = []) {
+  try {
+    const driveId = await getDriveId(token, siteId);
+    const found = await locateFolder(token, driveId, claimRef, dates);
+    if (!found) return false;
+
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encodePath(found.path)}`,
+      { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok && res.status !== 404) {
+      throw new Error(`delete "${found.path}" failed (${res.status})`);
+    }
+    return true;
+  } catch (e) {
+    console.error('[attachments] delete failed:', e.message);
+    return false;
+  }
+}
+
+module.exports = {
+  listAttachments,
+  deleteAttachments,
+  topFolderFor,
+  safeFolder,
+};

@@ -7,6 +7,7 @@ import type {
   LeaveTypeOption,
   MyRequest,
   Rates,
+  RequestType,
   RequisitionCategoryOption,
   SubmitResponse,
 } from "./types"
@@ -273,6 +274,32 @@ interface RequisitionArgs {
   finalApprover: string
   quotationAttached: boolean
   exchangeRates: Rates
+}
+
+/**
+ * POST /api/cancel, deletes one of your own requests.
+ *
+ * A real delete: the row leaves the SharePoint list and its attachments go with
+ * it, both into the site recycle bin. The server re-checks ownership and that
+ * the request is still pending, so this cannot remove anyone else's row or one
+ * that has already been decided.
+ */
+export async function deleteRequest(
+  type: RequestType,
+  itemId: string,
+): Promise<{ claimRef: string; notified: boolean }> {
+  const token = await getApiToken()
+  const res = await fetch("/api/cancel", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ type, itemId }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Could not delete the request")
+  return { claimRef: data.claimRef ?? "", notified: !!data.notified }
 }
 
 export interface TravelArgs {
