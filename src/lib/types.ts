@@ -90,7 +90,8 @@ export interface RequisitionItem {
   categoryOther: string
   description: string
   quantity: number
-  unitPrice: number
+  /** Null on a several-item row saved before the LineItems column existed. */
+  unitPrice: number | null
   total: number
 }
 

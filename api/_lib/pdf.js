@@ -287,7 +287,7 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
       }
       text(String(i + 1), { x: colNo, c: MUTED });
       right(String(it.quantity), colQtyR);
-      right(money(it.unitPrice), colUnitR);
+      right(it.unitPrice == null ? '-' : money(it.unitPrice), colUnitR);
       right(money(it.total), colTotalR, { f: bold });
       catLines.forEach((ln, j) => {
         page.drawText(ln, { x: colItem, y: y - j * LINE, size: 10, font: bold, color: colour(INK) });

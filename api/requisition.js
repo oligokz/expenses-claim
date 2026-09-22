@@ -116,7 +116,7 @@ module.exports = async function handler(req, res) {
       JobTitle:          jobTitle || '',
       SubmissionDate:    submittedAt,
 
-      ...flatColumns(items),
+      ...flatColumns(items, currency),
       LineItems:         JSON.stringify(items),
       Currency:          currency,
       EstimatedTotal:    estimatedTotal,
@@ -148,7 +148,19 @@ module.exports = async function handler(req, res) {
 
     let created;
     try {
-      created = await createRequisitionItem(token, siteId, fields);
+      try {
+        created = await createRequisitionItem(token, siteId, fields);
+      } catch (firstErr) {
+        /* LineItems is a newer column; a list set up before it existed rejects
+         * the field. Save without it rather than lose the request: the flat
+         * columns still carry every item, prices included, in Description.
+         * Add the column (scripts/setup-requisition-lists.mjs) to get the
+         * items table back on new requests. */
+        if (!/LineItems/.test(firstErr.message)) throw firstErr;
+        console.error('[requisition] LineItems column missing, saving without it');
+        const { LineItems, ...withoutItems } = fields;
+        created = await createRequisitionItem(token, siteId, withoutItems);
+      }
     } catch (writeErr) {
       const cols = await describeColumns(token, siteId).catch(() => null);
       if (cols) {

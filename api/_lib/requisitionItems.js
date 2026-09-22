@@ -77,15 +77,19 @@ function itemsFromRow(f) {
       // Fall through to the flat columns rather than lose the request.
     }
   }
-  const quantity  = Number(f.Quantity) || 0;
-  const unitPrice = Number(f.UnitPrice) || 0;
+  const quantity = Number(f.Quantity) || 0;
+  // A several-item row saved without LineItems has no single unit price; null
+  // renders as a dash rather than a misleading 0.00. Its Description lists
+  // every item with its price.
+  const hasPrice  = f.UnitPrice !== undefined && f.UnitPrice !== null && f.UnitPrice !== '';
+  const unitPrice = hasPrice ? Number(f.UnitPrice) || 0 : null;
   return [{
     category:      f.ItemCategory || '',
     categoryOther: f.ItemCategoryOther || '',
     description:   f.Description || '',
     quantity,
     unitPrice,
-    total: Number(f.EstimatedTotal) || round2(quantity * unitPrice),
+    total: Number(f.EstimatedTotal) || round2(quantity * (unitPrice || 0)),
   }];
 }
 
@@ -106,8 +110,10 @@ function itemsHeadline(items) {
  * The flat columns written alongside LineItems. A single item fills them
  * exactly as before; several items are summarised so a list view still reads.
  */
-function flatColumns(items) {
+function flatColumns(items, currency = 'SGD') {
   const first = items[0];
+  const money = (n) =>
+    Number(n || 0).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (items.length === 1) {
     return {
       ItemCategory:      first.category,
@@ -120,8 +126,12 @@ function flatColumns(items) {
   return {
     ItemCategory:      first.category,
     ItemCategoryOther: first.categoryOther,
+    // Complete on its own (prices included), so the request is still whole if
+    // the LineItems column is missing and only these columns were saved.
     Description: items
-      .map((it, i) => `${i + 1}. ${it.quantity} × ${categoryLabel(it)}: ${it.description}`)
+      .map((it, i) =>
+        `${i + 1}. ${it.quantity} × ${categoryLabel(it)} @ ${currency} ${money(it.unitPrice)}` +
+        ` = ${currency} ${money(it.total)}: ${it.description}`)
       .join('\n'),
     // Total units across the items. UnitPrice has no single meaning here, so it
     // is left empty rather than showing the first item's price as if it applied.

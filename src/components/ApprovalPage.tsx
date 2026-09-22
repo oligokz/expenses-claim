@@ -360,7 +360,7 @@ function ItemsTable({
                 </div>
               </td>
               <td className="py-2 pr-4 text-right tabular-nums">{it.quantity}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">{fmt(it.unitPrice)}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{it.unitPrice == null ? "–" : fmt(it.unitPrice)}</td>
               <td className="py-2 text-right font-medium tabular-nums">{fmt(it.total)}</td>
             </tr>
           ))}

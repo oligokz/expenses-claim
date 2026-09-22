@@ -114,7 +114,7 @@ function itemsTable(items, currency) {
       <td style="${td};color:#888">${i + 1}</td>
       <td style="${td}"><strong>${esc(categoryLabel(it))}</strong><br /><span style="color:#555">${esc(it.description).replace(/\n/g, '<br />')}</span></td>
       <td style="${num}">${esc(it.quantity)}</td>
-      <td style="${num}">${esc(money(it.unitPrice))}</td>
+      <td style="${num}">${it.unitPrice == null ? '–' : esc(money(it.unitPrice))}</td>
       <td style="${num};font-weight:600">${esc(money(it.total))}</td>
     </tr>`).join('');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse">
