@@ -1,6 +1,11 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendMail, templates } = require('./_lib/mail');
 const { mintToken, getModule, TOKEN_TTL_DAYS } = require('./_lib/approvals');
+const { assertApproversAllowed } = require('./_lib/approvers');
+const { getRates, toSGD } = require('./_lib/rates');
+const {
+  normaliseItems, itemsTitle, itemsHeadline, flatColumns,
+} = require('./_lib/requisitionItems');
 
 /** Resolve an approver's display name from the approvers list, for the email. */
 async function approverName(token, siteId, email) {
@@ -71,68 +76,53 @@ module.exports = async function handler(req, res) {
 
     const {
       department, jobTitle,
-      itemCategory, itemCategoryOther, description,
-      quantity, unitPrice, currency = 'SGD',
+      items: rawItems, currency = 'SGD',
       vendorName, vendorContact, vendorEmail,
       projectCustomer, reportingManager, finalApprover,
-      quotationAttached, exchangeRates,
+      quotationAttached,
     } = req.body;
 
-    if (!department || !itemCategory || !description || !vendorName)
+    if (!department || !vendorName)
       return res.status(400).json({ error: 'Missing required fields' });
 
-    const qty   = Number(quantity) || 0;
-    const price = Number(unitPrice) || 0;
-    if (qty <= 0) return res.status(400).json({ error: 'Quantity must be greater than zero' });
+    const items = normaliseItems(rawItems);
 
-    /* Approving your own spend is a control weakness, but blocking it by
-     * default would make the flow untestable while one person is the only
-     * seeded approver. Off unless BLOCK_SELF_APPROVAL=true, switch it on
-     * before real users touch this. */
-    if (
-      process.env.BLOCK_SELF_APPROVAL === 'true' &&
-      reportingManager &&
-      reportingManager.trim().toLowerCase() === user.email.trim().toLowerCase()
-    ) {
-      return res.status(400).json({ error: 'You cannot nominate yourself as the approver.' });
-    }
-
-    // Recompute the money server-side so the stored figures are trusted, not
-    // whatever the client happened to post.
-    const estimatedTotal = parseFloat((qty * price).toFixed(2));
-    const rate = currency === 'SGD' ? 1 : Number((exchangeRates || {})[currency]) || 0;
-    const estimatedTotalSGD = rate
-      ? parseFloat((estimatedTotal / rate).toFixed(2))
-      : estimatedTotal;
+    /* Recompute the money server-side, from server-fetched rates, so the stored
+     * figures are trusted rather than whatever the client happened to post. */
+    const estimatedTotal = parseFloat(items.reduce((s, it) => s + it.total, 0).toFixed(2));
+    const rates = await getRates();
+    const estimatedTotalSGD = toSGD(estimatedTotal, currency, rates);
+    if (estimatedTotalSGD === null)
+      return res.status(400).json({ error: `No exchange rate available for ${currency}` });
 
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
+
+    // Approvers must come from the roster, and never be the requester.
+    await assertApproversAllowed(token, siteId, user.email, [reportingManager, finalApprover]);
 
     const submittedAt    = new Date().toISOString();
     // Date-only for the Title and folder paths; the column keeps the full
     // timestamp so the PDF can show a real time rather than a fake midnight.
     const submissionDate = submittedAt.slice(0, 10);
-    const category = itemCategory === 'Others' && itemCategoryOther
-      ? itemCategoryOther
-      : itemCategory;
+    const title    = itemsTitle(items);
+    const headline = itemsHeadline(items);
 
     const fields = {
-      Title:             `${user.name} - ${category} - ${submissionDate}`,
+      Title:             `${user.name} - ${title} - ${submissionDate}`.slice(0, 255),
       RequestorName:     user.name,
       RequestorEmail:    user.email,
       Department:        department,
       JobTitle:          jobTitle || '',
       SubmissionDate:    submittedAt,
 
-      ItemCategory:      itemCategory,
-      ItemCategoryOther: itemCategoryOther || '',
-      Description:       description,
-      Quantity:          qty,
-      UnitPrice:         price,
+      ...flatColumns(items),
+      LineItems:         JSON.stringify(items),
       Currency:          currency,
       EstimatedTotal:    estimatedTotal,
       EstimatedTotalSGD: estimatedTotalSGD,
-      ExchangeRates:     JSON.stringify(exchangeRates || {}),
+      // The rates the total was actually computed from, not the client's copy.
+      ExchangeRates:     JSON.stringify(rates),
 
       VendorName:        vendorName,
       VendorContact:     vendorContact || '',
@@ -208,12 +198,12 @@ module.exports = async function handler(req, res) {
           kind:        getModule('requisition').kind,
           claimRef,
           requester:   user.name,
-          item:        `${qty} × ${category}`,
-          description,
+          item:        headline,
           department,
           submittedOn: submissionDate,
+          items,
+          currency,
           rows: [
-            ['Unit price',      `${currency} ${Number(price).toFixed(2)}`],
             ['Estimated total', `SGD ${fmtMoney}`],
             ['Vendor',          vendorName || ''],
             ['Vendor contact',  vendorContact || ''],
@@ -229,7 +219,7 @@ module.exports = async function handler(req, res) {
 
         const toRequester = templates.requisitionReceipt({
           claimRef,
-          item:         `${qty} × ${category}`,
+          item:         headline,
           totalSGD:     fmtMoney,
           approverName: name,
         });

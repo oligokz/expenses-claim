@@ -2,11 +2,11 @@ const {
   getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors,
 } = require('./_lib/sharepoint');
 const {
-  readToken, mintToken, getRow, patchRow,
+  readToken, mintToken, getRow, getRowWithEtag, patchRow,
   assertActionable, isExpectedApprover, stageOf, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
-const { listAttachments } = require('./_lib/attachments');
+const { listAttachments, topFolderFor } = require('./_lib/attachments');
 const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 /* Which document a module renders once it is fully approved. Keyed by prefix
@@ -46,7 +46,9 @@ async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
 
   const driveId = await getDriveId(token, siteId);
   const month = todayIso().slice(0, 7);
-  const segments = ['Requisition Attachments', month, claimRef, 'signatures', `stage${stageN}.png`];
+  // Beside the request's own files: a travel signature belongs under Travel
+  // Attachments, where deleteAttachments will also find it.
+  const segments = [topFolderFor(claimRef), month, claimRef, 'signatures', `stage${stageN}.png`];
 
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${segments.map(encodeURIComponent).join('/')}:/content`,
@@ -167,14 +169,30 @@ async function handlePost(req, res) {
 
   const token  = await getAppToken();
   const siteId = await getSiteId(token);
-  const fields = await getRow(token, siteId, mod, itemId);
+  const { fields, etag } = await getRowWithEtag(token, siteId, mod, itemId);
   const claimRef = `${mod.refPrefix}-${itemId}`;
 
   if (!isExpectedApprover(fields, stage, user.email))
     return res.status(403).json({ error: 'This approval is addressed to someone else.' });
 
   // Re-checked here, not just on GET, the page could have been left open.
-  assertActionable(fields, stage, (await readToken(req.body.token)).jti);
+  const { jti } = await readToken(req.body.token);
+  assertActionable(fields, stage, jti);
+
+  /* Record the decision only if the row hasn't moved since we checked it, so
+   * two submissions racing each other can't both land. A tag mismatch alone
+   * isn't proof of a race (any column edit changes it), so on a mismatch the
+   * row is re-checked: if the stage is still waiting on this link, nothing
+   * decided it in between and the write goes ahead. */
+  const commit = async (patch) => {
+    try {
+      return await patchRow(token, siteId, mod, itemId, patch, { ifMatch: etag || undefined });
+    } catch (e) {
+      if (e.code !== 'etag-mismatch') throw e;
+      assertActionable(await getRow(token, siteId, mod, itemId), stage, jti);
+      return patchRow(token, siteId, mod, itemId, patch);
+    }
+  };
 
   const summary = mod.summarise(fields);
   const item = summary.title || '';
@@ -192,7 +210,7 @@ async function handlePost(req, res) {
 
   /* ── rejection ends it ── */
   if (decision === 'reject') {
-    await patchRow(token, siteId, mod, itemId, {
+    await commit({
       [stage.statusField]: 'Rejected',
       [stage.dateField]:   nowIso(),
       [stage.signedNameField]: user.name,
@@ -264,7 +282,7 @@ async function handlePost(req, res) {
     });
     patch[next.tokenField] = jti;
 
-    await patchRow(token, siteId, mod, itemId, patch);
+    await commit(patch);
 
     try {
       await sendMail(token, {
@@ -274,6 +292,15 @@ async function handlePost(req, res) {
           kind:       mod.kind,
           claimRef,
           requester:  summary.requester,
+          // Same content as the first-stage email, so the second approver sees
+          // what is being bought, not just the total.
+          item:        summary.title,
+          description: summary.description,
+          department:  summary.department,
+          submittedOn: summary.submittedOn,
+          items:       summary.items,
+          currency:    summary.currency,
+          hasAttachments: true,
           rows:       summary.rows,
           stageLabel: next.label,
           token:      nextToken,
@@ -286,7 +313,7 @@ async function handlePost(req, res) {
   } else {
     // Last stage, the request is fully approved.
     patch.Status = 'Approved';
-    await patchRow(token, siteId, mod, itemId, patch);
+    await commit(patch);
 
     if (mod.pdf) {
       try {
@@ -331,6 +358,8 @@ async function handlePost(req, res) {
             department: summary.department,
             approvedBy: user.name,
             rows:       summary.rows,
+            items:      summary.items,
+            currency:   summary.currency,
             pdfUrl,
           }),
         });

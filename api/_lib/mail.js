@@ -10,6 +10,8 @@
 //
 // Without that policy the grant is far broader than this app needs.
 
+const { categoryLabel } = require('./requisitionItems');
+
 const SENDER = () => process.env.MAIL_SENDER || 'noreply@creoxtech.com';
 
 /** Public base URL for links in emails. */
@@ -100,7 +102,34 @@ async function sendMail(token, { to, subject, html, replyTo }) {
  * Plain table-based HTML: Outlook's renderer ignores most modern CSS, and these
  * need to survive desktop Outlook, OWA and mobile alike.
  */
-function layout({ heading, intro, body, rows, action, footer }) {
+/** A requisition's line items as their own table, above the summary rows. */
+function itemsTable(items, currency) {
+  if (!Array.isArray(items) || items.length === 0) return '';
+  const money = (n) =>
+    Number(n || 0).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const th = 'padding:6px 8px;font-size:12px;color:#666;font-weight:600;text-align:left;border-bottom:1px solid #e5e5e5';
+  const td = 'padding:8px;font-size:13px;vertical-align:top;border-bottom:1px solid #f0f0f0';
+  const num = `${td};text-align:right;white-space:nowrap`;
+  const rows = items.map((it, i) => `<tr>
+      <td style="${td};color:#888">${i + 1}</td>
+      <td style="${td}"><strong>${esc(categoryLabel(it))}</strong><br /><span style="color:#555">${esc(it.description).replace(/\n/g, '<br />')}</span></td>
+      <td style="${num}">${esc(it.quantity)}</td>
+      <td style="${num}">${esc(money(it.unitPrice))}</td>
+      <td style="${num};font-weight:600">${esc(money(it.total))}</td>
+    </tr>`).join('');
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse">
+    <tr>
+      <th style="${th}">#</th>
+      <th style="${th}">Item</th>
+      <th style="${th};text-align:right">Qty</th>
+      <th style="${th};text-align:right">Unit (${esc(currency || 'SGD')})</th>
+      <th style="${th};text-align:right">Total (${esc(currency || 'SGD')})</th>
+    </tr>
+    ${rows}
+  </table>`;
+}
+
+function layout({ heading, intro, body, items, currency, rows, action, footer }) {
   const cells = rows
     .filter(([, v]) => v !== '' && v !== null && v !== undefined)
     .map(
@@ -134,6 +163,7 @@ function layout({ heading, intro, body, rows, action, footer }) {
           ? `<div style="margin:0 0 20px;padding:12px 14px;background:#f7f7f7;border-radius:8px;font-size:14px;line-height:1.5;color:#333">${esc(body).replace(/\n/g, '<br />')}</div>`
           : ''
       }
+      ${itemsTable(items, currency)}
       <table role="presentation" cellpadding="0" cellspacing="0">${cells}</table>
       ${
         action
@@ -159,7 +189,7 @@ function layout({ heading, intro, body, rows, action, footer }) {
  */
 function approvalRequest({
   kind, claimRef, requester, item, description, department, submittedOn,
-  rows = [], stageLabel, token, ttlDays, hasAttachments,
+  rows = [], items, currency, stageLabel, token, ttlDays, hasAttachments,
 }) {
   const what = (kind || 'Request').toLowerCase();
   const subjectItem = item ? `: ${item}` : '';
@@ -171,6 +201,8 @@ function approvalRequest({
       heading: `A ${what} needs your approval`,
       intro: `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
       body: description,
+      items,
+      currency,
       rows: [
         ['Reference', claimRef],
         ['Item', item || ''],
@@ -227,12 +259,14 @@ function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel,
 /* Tell a watcher, typically finance or HR, that a request cleared its last
  * approval. Separate from decisionNotice because that one is written to the
  * requester ("your claim is approved"), which reads wrong for a third party. */
-function completionNotice({ kind, claimRef, item, requester, department, approvedBy, rows = [], pdfUrl }) {
+function completionNotice({ kind, claimRef, item, requester, department, approvedBy, rows = [], items, currency, pdfUrl }) {
   return {
     subject: `${kind || 'Request'} ${claimRef} is fully approved`,
     html: layout({
       heading: `${kind || 'Request'} fully approved`,
       intro: 'Every approval stage is complete. The record is in SharePoint.',
+      items,
+      currency,
       rows: [
         ['Reference', claimRef],
         ['Item', item || ''],

@@ -3,6 +3,7 @@ import { FileText, ImageIcon, Paperclip, UploadCloud, X } from "lucide-react"
 import { SectionCard } from "@/components/SectionCard"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { MAX_UPLOAD_LABEL } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 
 interface ReceiptsProps {
@@ -24,7 +25,7 @@ export function Receipts({
   onAdd,
   onRemove,
   title = "Receipt Attachments",
-  hint = "PDF · JPG · PNG · HEIC · Max 15 MB per file",
+  hint = `PDF · JPG · PNG · HEIC · Max ${MAX_UPLOAD_LABEL} per file`,
 }: ReceiptsProps) {
   const [drag, setDrag] = useState(false)
 

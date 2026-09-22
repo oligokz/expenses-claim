@@ -130,6 +130,12 @@ export const CURRENCY_NAMES: Record<string, string> = {
 }
 
 // Offline fallback rates (1 SGD → currency), used when /api/rates is unreachable.
+/* Uploads go through a Vercel function, which refuses request bodies over
+ * 4.5 MB. Checked here so a file is rejected before submit, not after. */
+export const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+export const MAX_UPLOAD_LABEL = "4 MB"
+
+// Keep in step with FALLBACK in api/_lib/rates.js.
 export const FALLBACK_RATES: Record<string, number> = {
   SGD: 1,
   USD: 0.74,

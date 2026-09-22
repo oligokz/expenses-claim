@@ -80,6 +80,16 @@ module.exports = async function handler(req, res) {
      * from it. A mail failure must not block the delete: the person asked for
      * this to disappear, and leaving it behind because Exchange hiccuped would
      * be the wrong trade. */
+    /* Overall Status stays Pending until the last stage, so it alone would let
+     * a requester erase a request an approver has already signed. Any approved
+     * stage makes it a record too. */
+    const signedStage = mod.stages.find((s) => fields[s.statusField] === 'Approved');
+    if (signedStage) {
+      return res.status(409).json({
+        error: `The ${signedStage.label.toLowerCase()} has already approved this, so it can no longer be deleted.`,
+      });
+    }
+
     const waiting = pendingStage(mod, fields);
     let notified = false;
     if (waiting) {

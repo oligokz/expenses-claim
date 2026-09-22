@@ -7,6 +7,7 @@
 // stage where a purchase wants two.
 
 const crypto = require('node:crypto');
+const { itemsFromRow, itemsTitle } = require('./requisitionItems');
 
 /* ── module registry ── */
 
@@ -49,23 +50,33 @@ const MODULES = {
         signedNameField: 'Stage2SignedName',
       },
     ],
-    /** Shape the row into what the approval page renders. */
-    summarise: (f) => ({
-      title: f.ItemCategoryOther || f.ItemCategory || '',
-      description: f.Description || '',
-      requester: f.RequestorName || '',
-      requesterEmail: f.RequestorEmail || '',
-      department: f.Department || '',
-      submittedOn: f.SubmissionDate || '',
-      rows: [
-        ['Quantity', String(f.Quantity ?? '')],
-        ['Unit price', `${f.Currency || 'SGD'} ${Number(f.UnitPrice || 0).toFixed(2)}`],
-        ['Estimated total', `SGD ${Number(f.EstimatedTotalSGD || 0).toFixed(2)}`],
-        ['Vendor', f.VendorName || ''],
-        ['Vendor contact', f.VendorContact || ''],
-        ['Project / customer', f.ProjectCustomer || ''],
-      ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
-    }),
+    /** Shape the row into what the approval page renders. The items travel
+     *  separately from `rows`, as their own table. */
+    summarise: (f) => {
+      const items = itemsFromRow(f);
+      const currency = f.Currency || 'SGD';
+      return {
+        title: itemsTitle(items),
+        // Descriptions live in the items table now; repeating one above it
+        // would only duplicate the first row.
+        description: '',
+        requester: f.RequestorName || '',
+        requesterEmail: f.RequestorEmail || '',
+        department: f.Department || '',
+        submittedOn: f.SubmissionDate || '',
+        items,
+        currency,
+        rows: [
+          currency !== 'SGD'
+            ? ['Total', `${currency} ${Number(f.EstimatedTotal || 0).toFixed(2)}`]
+            : ['', ''],
+          ['Estimated total', `SGD ${Number(f.EstimatedTotalSGD || 0).toFixed(2)}`],
+          ['Vendor', f.VendorName || ''],
+          ['Vendor contact', f.VendorContact || ''],
+          ['Project / customer', f.ProjectCustomer || ''],
+        ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
+      };
+    },
   },
 
   /* Travel is the three-stage case the paper form describes: reporting manager,
@@ -294,7 +305,8 @@ async function readToken(token) {
 
 /* ── SharePoint row access ── */
 
-async function getRow(token, siteId, mod, itemId) {
+/** The row's fields and its eTag, for a write that must not race another. */
+async function getRowWithEtag(token, siteId, mod, itemId) {
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${encodeURIComponent(itemId)}?$expand=fields`,
     { headers: { Authorization: `Bearer ${token}` } }
@@ -304,18 +316,49 @@ async function getRow(token, siteId, mod, itemId) {
     e.status = res.status === 404 ? 404 : 500;
     throw e;
   }
-  return (await res.json()).fields || {};
+  const item = await res.json();
+  const fields = item.fields || {};
+  // Writes go to /fields, so match against that resource's own tag.
+  return { fields, etag: fields['@odata.etag'] || item['@odata.etag'] || '' };
 }
 
-async function patchRow(token, siteId, mod, itemId, fields) {
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${encodeURIComponent(itemId)}/fields`,
-    {
+async function getRow(token, siteId, mod, itemId) {
+  return (await getRowWithEtag(token, siteId, mod, itemId)).fields;
+}
+
+/**
+ * Write fields to a row. With `ifMatch`, the write only lands if the row is
+ * unchanged since it was read, so two decisions racing each other (two tabs, a
+ * double click) cannot both be recorded: the loser gets a 409.
+ */
+async function patchRow(token, siteId, mod, itemId, fields, { ifMatch } = {}) {
+  const url =
+    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${encodeURIComponent(itemId)}/fields`;
+  const send = (withEtag) =>
+    fetch(url, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        ...(withEtag ? { 'If-Match': ifMatch } : {}),
+      },
       body: JSON.stringify(fields),
-    }
-  );
+    });
+
+  let res = await send(!!ifMatch);
+  if (res.status === 412) {
+    const e = new Error('Someone else decided this request a moment ago. Reload to see where it stands.');
+    e.status = 409;
+    e.code = 'etag-mismatch';
+    throw e;
+  }
+  if (!res.ok && ifMatch) {
+    /* Anything other than 412 means the precondition itself wasn't accepted,
+     * not that we lost a race. Don't let the guard block a legitimate decision:
+     * retry once as a plain write, which is how this behaved before. */
+    console.error(`[approvals] conditional write failed (${res.status}), retrying without If-Match`);
+    res = await send(false);
+  }
   if (!res.ok) throw new Error(`Could not record the decision (${res.status}): ${await res.text()}`);
   return res.json();
 }
@@ -353,6 +396,7 @@ module.exports = {
   mintToken,
   readToken,
   getRow,
+  getRowWithEtag,
   patchRow,
   assertActionable,
   isExpectedApprover,

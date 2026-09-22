@@ -1,5 +1,7 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { notifyApprover } = require('./_lib/notify');
+const { assertApproversAllowed } = require('./_lib/approvers');
+const { getRates, toSGD } = require('./_lib/rates');
 
 async function createListItem(token, siteId, fields) {
   const listName = process.env.SP_LIST_NAME;
@@ -54,7 +56,7 @@ module.exports = async function handler(req, res) {
     const user = await verifyUserToken(req);
 
     const { department, submissionDate, lineItems, notes,
-            exchangeRates, receiptCount, approverEmail } = req.body;
+            receiptCount, approverEmail } = req.body;
 
     const employeeName  = user.name;
     const employeeEmail = user.email;
@@ -66,11 +68,25 @@ module.exports = async function handler(req, res) {
     if (!lineItems || !lineItems.length)
       return res.status(400).json({ error: 'At least one line item required' });
 
+    // One expense per submission, write it to flat columns.
+    const item = lineItems[0] || {};
+
+    /* Recompute the money server-side, from server-fetched rates, so the stored
+     * SGD total is trusted rather than whatever the client posted. */
+    const quantity = Number(item.quantity) > 0 ? Number(item.quantity) : 1;
+    const amount   = Number(item.amount) || 0;
+    const currency = item.currency || 'SGD';
+    if (amount <= 0) return res.status(400).json({ error: 'Amount must be greater than zero' });
+    const rates = await getRates();
+    const totalSGD = toSGD(amount * quantity, currency, rates);
+    if (totalSGD === null)
+      return res.status(400).json({ error: `No exchange rate available for ${currency}` });
+
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    // One expense per submission, write it to flat columns.
-    const item = lineItems[0] || {};
+    // The approver must come from the roster, and never be the requester.
+    await assertApproversAllowed(token, siteId, employeeEmail, [approverEmail]);
 
     const fields = {
       Title:          `${employeeName} - ${submissionDate}`,
@@ -82,15 +98,16 @@ module.exports = async function handler(req, res) {
       Category:       item.category || '',
       Description:    item.description || '',
       ReceiptDate:    item.receiptDate || null,
-      Quantity:       item.quantity || 1,
-      Currency:       item.currency || 'SGD',
-      Amount:         item.amount || 0,
-      TotalAmountSGD: parseFloat((item.amountSGD || 0).toFixed(2)),
+      Quantity:       quantity,
+      Currency:       currency,
+      Amount:         amount,
+      TotalAmountSGD: totalSGD,
       Notes:          notes || '',
       Status:         'Pending',
       ApproverEmail:  approverEmail || '',
       ReceiptCount:   receiptCount || 0,
-      ExchangeRates:  JSON.stringify(exchangeRates || {}),
+      // The rates the total was actually computed from, not the client's copy.
+      ExchangeRates:  JSON.stringify(rates),
     };
 
     let created;

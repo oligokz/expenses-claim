@@ -1,6 +1,7 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendMail, templates } = require('./_lib/mail');
 const { mintToken, getModule, TOKEN_TTL_DAYS } = require('./_lib/approvals');
+const { assertApproversAllowed } = require('./_lib/approvers');
 
 const LIST = () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests';
 
@@ -79,17 +80,6 @@ module.exports = async function handler(req, res) {
     if (String(travelTo) < String(travelFrom))
       return res.status(400).json({ error: 'The return date cannot be before the departure date' });
 
-    /* Same control as requisition: nominating yourself as your own approver is
-     * a weakness, gated behind BLOCK_SELF_APPROVAL so the flow stays testable. */
-    if (process.env.BLOCK_SELF_APPROVAL === 'true') {
-      const me = user.email.trim().toLowerCase();
-      const mine = [reportingManager, financeApprover, finalApprover]
-        .filter(Boolean)
-        .map((e) => e.trim().toLowerCase());
-      if (mine.includes(me))
-        return res.status(400).json({ error: 'You cannot nominate yourself as an approver.' });
-    }
-
     /* Recompute the budget server-side so the stored total is trusted, not
      * whatever the client posted. Budget is SGD throughout, so there is no
      * conversion to do. */
@@ -106,6 +96,10 @@ module.exports = async function handler(req, res) {
 
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
+
+    // Approvers must come from the roster, and never be the requester.
+    await assertApproversAllowed(token, siteId, user.email,
+      [reportingManager, financeApprover, finalApprover]);
 
     const submittedAt    = new Date().toISOString();
     const submissionDate = submittedAt.slice(0, 10);

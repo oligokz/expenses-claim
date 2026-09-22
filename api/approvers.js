@@ -1,30 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
-
-/* Who may approve a requisition, from the "Requisition Approvers" SharePoint
- * list, so the set is bounded and editable without a redeploy.
- * Columns: Title (display name), ApproverEmail, ApprovalStage
- * ('Reporting Manager' | 'Final Approval' | 'Both'), Department (blank = all),
- * Active (yes/no), SortOrder (number).
- */
-async function listApprovers(token, siteId) {
-  const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=200`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return null;
-  const rows = ((await res.json()).value || []).map((i) => i.fields || {});
-  return rows
-    .filter((f) => f.Active !== false) // treat missing Active as active
-    .filter((f) => f.ApproverEmail)
-    .sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0))
-    .map((f) => ({
-      name:       f.Title || f.ApproverEmail,
-      email:      f.ApproverEmail,
-      stage:      f.ApprovalStage || 'Reporting Manager',
-      department: f.Department || '',
-    }));
-}
+const { listApprovers } = require('./_lib/approvers');
 
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'GET, OPTIONS');
@@ -32,11 +7,17 @@ module.exports = async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    await verifyUserToken(req); // any signed-in user may read the approver list
+    const user = await verifyUserToken(req); // any signed-in user may read the approver list
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
-    const all    = await listApprovers(token, siteId);
-    if (!all) return res.status(200).json({ approvers: [] });
+    const roster = await listApprovers(token, siteId);
+    if (!roster) return res.status(200).json({ approvers: [] });
+
+    // Don't offer the caller themselves; the submit endpoints refuse it anyway.
+    const me = (user.email || '').trim().toLowerCase();
+    const all = process.env.ALLOW_SELF_APPROVAL === 'true'
+      ? roster
+      : roster.filter((a) => a.email.trim().toLowerCase() !== me);
 
     // ?stage=reporting returns only those who can act at stage 1. 'Both' counts
     // for either stage.

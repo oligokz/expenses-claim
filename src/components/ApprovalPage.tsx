@@ -20,7 +20,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { FieldLabel } from "@/components/FieldLabel"
 
 import { fetchApproval, submitApproval } from "@/lib/api"
-import type { ApprovalView } from "@/lib/types"
+import { REQUISITION_OTHER } from "@/lib/constants"
+import { fmt } from "@/lib/currency"
+import type { ApprovalView, RequisitionItem } from "@/lib/types"
 
 type Phase = "loading" | "ready" | "error" | "done"
 
@@ -123,7 +125,7 @@ export function ApprovalPage({ token }: { token: string }) {
               {approved
                 ? outcome.complete
                   ? "This was the final approval. The requester has been notified."
-                  : `Passed to ${outcome.nextApprover ?? "the next approver"} for final approval.`
+                  : `Passed to ${outcome.nextApprover ?? "the next approver"} for the next approval.`
                 : "The requester has been notified."}
             </p>
             <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
@@ -211,6 +213,9 @@ export function ApprovalPage({ token }: { token: string }) {
               <p className="whitespace-pre-wrap text-sm leading-relaxed">
                 {view.description}
               </p>
+            )}
+            {view.items && view.items.length > 0 && (
+              <ItemsTable items={view.items} currency={view.currency || "SGD"} />
             )}
             <table className="w-full text-sm">
               <tbody>
@@ -312,6 +317,56 @@ export function ApprovalPage({ token }: { token: string }) {
         </SectionCard>
       </div>
     </Shell>
+  )
+}
+
+/** A requisition's line items, so the approver sees what each amount buys. */
+function ItemsTable({
+  items,
+  currency,
+}: {
+  items: RequisitionItem[]
+  currency: string
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <caption className="sr-only">Items requested</caption>
+        <thead>
+          <tr className="border-b text-xs text-muted-foreground">
+            <th scope="col" className="py-2 pr-2 text-left font-medium">#</th>
+            <th scope="col" className="py-2 pr-4 text-left font-medium">Item</th>
+            <th scope="col" className="py-2 pr-4 text-right font-medium">Qty</th>
+            <th scope="col" className="py-2 pr-4 text-right font-medium whitespace-nowrap">
+              Unit ({currency})
+            </th>
+            <th scope="col" className="py-2 text-right font-medium whitespace-nowrap">
+              Total ({currency})
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((it, i) => (
+            <tr key={i} className="border-b align-top last:border-0">
+              <td className="py-2 pr-2 text-muted-foreground tabular-nums">{i + 1}</td>
+              <td className="py-2 pr-4">
+                <div className="font-medium">
+                  {it.category === REQUISITION_OTHER && it.categoryOther
+                    ? it.categoryOther
+                    : it.category}
+                </div>
+                <div className="whitespace-pre-wrap text-muted-foreground">
+                  {it.description}
+                </div>
+              </td>
+              <td className="py-2 pr-4 text-right tabular-nums">{it.quantity}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{fmt(it.unitPrice)}</td>
+              <td className="py-2 text-right font-medium tabular-nums">{fmt(it.total)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

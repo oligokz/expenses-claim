@@ -1,5 +1,39 @@
 const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { topFolderFor } = require('./_lib/attachments');
+const { getModule, getRow } = require('./_lib/approvals');
+
+/* Vercel refuses a function request body over 4.5 MB before this code runs,
+ * so the real ceiling is below that once multipart framing is counted. The
+ * forms check the same figure before submitting. */
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+const MODULE_BY_PREFIX = { EXP: 'expense', LEAVE: 'leave', REQ: 'requisition', TRV: 'travel' };
+
+function httpError(status, message) {
+  const e = new Error(message);
+  e.status = status;
+  return e;
+}
+
+/** Throw unless `claimRef` names a still-pending request owned by `email`. */
+async function assertOwnOpenRequest(token, siteId, claimRef, email) {
+  const m = /^([A-Z]+)-(\d+)$/.exec(String(claimRef || ''));
+  const mod = m && getModule(MODULE_BY_PREFIX[m[1]]);
+  if (!mod) throw httpError(400, 'Unknown request reference');
+
+  let fields;
+  try {
+    fields = await getRow(token, siteId, mod, m[2]);
+  } catch (e) {
+    if (e.status === 404) throw httpError(404, 'That request does not exist');
+    throw e;
+  }
+  const owner = (mod.summarise(fields).requesterEmail || '').trim().toLowerCase();
+  if (!owner || owner !== String(email || '').trim().toLowerCase())
+    throw httpError(403, 'You can only attach files to your own requests.');
+  if ((fields.Status || 'Pending') !== 'Pending')
+    throw httpError(409, 'This request has already been decided, so its attachments are closed.');
+}
 
 async function uploadFile(token, siteId, segments, buffer, mimeType) {
   const driveId = await getDriveId(token, siteId);
@@ -69,6 +103,18 @@ module.exports = async function handler(req, res) {
 
     const meta = JSON.parse(metaPart.data.toString('utf8'));
 
+    if (filePart.data.length > MAX_UPLOAD_BYTES)
+      return res.status(413).json({ error: 'File exceeds the 4 MB limit' });
+
+    const token  = await getAppToken();
+    const siteId = await getSiteId(token);
+
+    /* Reference numbers are sequential and easy to guess, so the file may only
+     * go against a request that belongs to the caller and is still open. This
+     * stops anyone adding to, or overwriting, the evidence on someone else's
+     * request, or swapping it on one already decided. */
+    await assertOwnOpenRequest(token, siteId, meta.claimRef, user.email);
+
     // Organise files as  <Type> / <YYYY-MM> / <REF> / NN-<file>
     //   Leave Attachments       / 2026-06 / LEAVE-5 / 01-mc.pdf
     //   Claims Attachments      / 2026-06 / EXP-12  / 01-receipt.pdf
@@ -87,11 +133,6 @@ module.exports = async function handler(req, res) {
     const fileName    = `${String(idx).padStart(2, '0')}-${safeFile}`;
     const segments    = [topFolder, month, claimFolder, fileName];
 
-    if (filePart.data.length > 15 * 1024 * 1024)
-      return res.status(413).json({ error: 'File exceeds 15 MB limit' });
-
-    const token  = await getAppToken();
-    const siteId = await getSiteId(token);
     await uploadFile(token, siteId, segments, filePart.data, filePart.contentType);
     return res.status(200).json({ success: true, fileName: segments.join('/') });
 

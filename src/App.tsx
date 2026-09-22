@@ -34,6 +34,8 @@ import {
   FALLBACK_RATES,
   IDLE_TIMEOUT_MS,
   IDLE_WARN_MS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
 } from "@/lib/constants"
 import type {
   ClaimantForm,
@@ -142,8 +144,8 @@ export default function App() {
     if (!list) return
     const accepted: File[] = []
     Array.from(list).forEach((f) => {
-      if (f.size > 15 * 1024 * 1024) {
-        toast.error(`${f.name}: exceeds 15 MB`)
+      if (f.size > MAX_UPLOAD_BYTES) {
+        toast.error(`${f.name}: exceeds ${MAX_UPLOAD_LABEL}`)
       } else {
         accepted.push(f)
       }

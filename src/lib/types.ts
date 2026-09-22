@@ -65,15 +65,39 @@ export interface ApproverOption {
   department: string
 }
 
-export interface RequisitionForm {
-  department: string
-  jobTitle: string
-  itemCategory: string
-  /** Free text, shown only when itemCategory is "Others". */
-  itemCategoryOther: string
+/** One line on a requisition. Every item shares the requisition's currency. */
+export interface RequisitionItemForm {
+  /** Stable React key; never sent to the server. */
+  key: string
+  category: string
+  /** Free text, shown only when category is "Others". */
+  categoryOther: string
   description: string
   quantity: number | string
   unitPrice: number | string
+}
+
+export type RequisitionItemErrors = Partial<
+  Record<
+    "category" | "categoryOther" | "description" | "quantity" | "unitPrice",
+    string
+  >
+>
+
+/** An item as stored and shown back, totals computed by the server. */
+export interface RequisitionItem {
+  category: string
+  categoryOther: string
+  description: string
+  quantity: number
+  unitPrice: number
+  total: number
+}
+
+export interface RequisitionForm {
+  department: string
+  jobTitle: string
+  items: RequisitionItemForm[]
   currency: string
   vendorName: string
   vendorContact: string
@@ -90,11 +114,8 @@ export interface RequisitionErrors {
   jobTitle?: string
   reportingManager?: string
   finalApprover?: string
-  itemCategory?: string
-  itemCategoryOther?: string
-  description?: string
-  quantity?: string
-  unitPrice?: string
+  /** Per item, by index. */
+  items?: RequisitionItemErrors[]
   vendorName?: string
   vendorEmail?: string
   projectCustomer?: string
@@ -159,6 +180,9 @@ export interface ApprovalView {
   submittedOn: string
   /** Label/value pairs rendered as the detail table. */
   rows: [string, string][]
+  /** Requisitions only: the line items, priced in `currency`. */
+  items?: RequisitionItem[]
+  currency?: string
   /** Receipts, MCs or quotations filed against the request. */
   attachments: ApprovalAttachment[]
 }

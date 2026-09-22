@@ -135,6 +135,9 @@ const REQ_COLUMNS = [
   { name: 'Currency',          ...text() },
   { name: 'EstimatedTotal',    ...number() },
   { name: 'EstimatedTotalSGD', ...number() },
+  // Every line item as JSON. The flat columns above summarise it (the first
+  // item's category, a combined description) so list views still read.
+  { name: 'LineItems',         ...multiline() },
   { name: 'ExchangeRates',     ...multiline() },
 
   // Vendor

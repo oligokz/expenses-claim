@@ -1,5 +1,6 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { notifyApprover } = require('./_lib/notify');
+const { assertApproversAllowed } = require('./_lib/approvers');
 
 // Mirror of src/lib/leave.ts, recomputed server-side so the stored Days value
 // is trusted, not taken from the client.
@@ -81,6 +82,9 @@ module.exports = async function handler(req, res) {
 
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
+
+    // The approver must come from the roster, and never be the requester.
+    await assertApproversAllowed(token, siteId, user.email, [approverEmail]);
 
     const fields = {
       Title:          `${user.name} - ${leaveType} - ${startDate}`,

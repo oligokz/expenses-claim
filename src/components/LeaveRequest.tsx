@@ -35,7 +35,11 @@ import {
   submitLeave,
   uploadReceipt,
 } from "@/lib/api"
-import { DEPARTMENTS } from "@/lib/constants"
+import {
+  DEPARTMENTS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
+} from "@/lib/constants"
 import { computeLeaveDays } from "@/lib/leave"
 import type {
   ApproverOption,
@@ -97,7 +101,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
     if (!list) return
     const accepted: File[] = []
     Array.from(list).forEach((f) => {
-      if (f.size > 15 * 1024 * 1024) toast.error(`${f.name}: exceeds 15 MB`)
+      if (f.size > MAX_UPLOAD_BYTES) toast.error(`${f.name}: exceeds ${MAX_UPLOAD_LABEL}`)
       else accepted.push(f)
     })
     if (accepted.length) setFiles((prev) => [...prev, ...accepted])
@@ -375,7 +379,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Document"
-          hint="Attach an MC or supporting document if relevant · Max 15 MB per file"
+          hint={`Attach an MC or supporting document if relevant · Max ${MAX_UPLOAD_LABEL} per file`}
         />
 
         <Button

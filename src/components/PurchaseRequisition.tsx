@@ -8,6 +8,7 @@ import {
   Package,
   Plus,
   Send,
+  Trash2,
   User,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -38,6 +39,8 @@ import {
 import {
   ALL_CURRENCIES,
   DEPARTMENTS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
   REQUISITION_OTHER,
 } from "@/lib/constants"
 import { fmt, num, toSGD } from "@/lib/currency"
@@ -47,16 +50,27 @@ import type {
   RequisitionCategoryOption,
   RequisitionErrors,
   RequisitionForm,
+  RequisitionItemErrors,
+  RequisitionItemForm,
 } from "@/lib/types"
+
+/** Matches MAX_ITEMS in api/_lib/requisitionItems.js. */
+const MAX_ITEMS = 20
+
+let keySeq = 0
+const blankItem = (): RequisitionItemForm => ({
+  key: `item-${++keySeq}`,
+  category: "",
+  categoryOther: "",
+  description: "",
+  quantity: 1,
+  unitPrice: "",
+})
 
 const blankForm = (): RequisitionForm => ({
   department: "",
   jobTitle: "",
-  itemCategory: "",
-  itemCategoryOther: "",
-  description: "",
-  quantity: 1,
-  unitPrice: "",
+  items: [blankItem()],
   currency: "SGD",
   vendorName: "",
   vendorContact: "",
@@ -66,34 +80,65 @@ const blankForm = (): RequisitionForm => ({
   finalApprover: "",
 })
 
-/** DOM ids for required controls, in document order, used to focus the first invalid field. */
+type ItemField = keyof RequisitionItemErrors
+
+/** DOM ids for an item's controls; the index keeps them unique per row. */
+const itemFieldId = (field: ItemField, i: number) =>
+  ({
+    category: `req-cat-${i}`,
+    categoryOther: `req-cat-other-${i}`,
+    description: `req-desc-${i}`,
+    quantity: `req-qty-${i}`,
+    unitPrice: `req-price-${i}`,
+  })[field]
+
+const ITEM_FIELD_ORDER: ItemField[] = [
+  "category",
+  "categoryOther",
+  "description",
+  "quantity",
+  "unitPrice",
+]
+
+/** Everything outside the items, in document order, split around them. */
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
   reportingManager: "req-manager",
   finalApprover: "req-final-approver",
-  itemCategory: "req-cat",
-  itemCategoryOther: "req-cat-other",
-  description: "req-desc",
-  quantity: "req-qty",
-  unitPrice: "req-price",
   vendorName: "req-vendor",
   vendorEmail: "req-vendor-email",
   projectCustomer: "req-project",
 }
-const FIELD_ORDER: (keyof RequisitionErrors)[] = [
+const BEFORE_ITEMS: (keyof RequisitionErrors)[] = [
   "department",
   "reportingManager",
   "finalApprover",
-  "itemCategory",
-  "itemCategoryOther",
-  "description",
-  "quantity",
-  "unitPrice",
+]
+const AFTER_ITEMS: (keyof RequisitionErrors)[] = [
   "vendorName",
   "vendorEmail",
-  "projectCustomer",
   "quotation",
+  "projectCustomer",
 ]
+
+/** The id of the first invalid control in document order, if it has one. */
+function firstInvalidId(found: RequisitionErrors): string | undefined {
+  for (const f of BEFORE_ITEMS) if (found[f]) return FIELD_IDS[f]
+  const items = found.items ?? []
+  for (let i = 0; i < items.length; i++) {
+    const errs = items[i]
+    if (!errs) continue
+    const field = ITEM_FIELD_ORDER.find((k) => errs[k])
+    if (field) return itemFieldId(field, i)
+  }
+  for (const f of AFTER_ITEMS) if (found[f]) return FIELD_IDS[f]
+  return undefined
+}
+
+/** Same rounding as the server: cents on the price, then on the product. */
+const round2 = (n: number) => Math.round(n * 100) / 100
+const lineTotal = (it: RequisitionItemForm) =>
+  round2(num(it.quantity) * round2(num(it.unitPrice)))
 
 export function PurchaseRequisition({
   employeeName,
@@ -116,6 +161,7 @@ export function PurchaseRequisition({
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
+    items: number
     attachments: number
     notified: boolean
   } | null>(null)
@@ -153,7 +199,7 @@ export function PurchaseRequisition({
     if (!list) return
     const accepted: File[] = []
     Array.from(list).forEach((f) => {
-      if (f.size > 15 * 1024 * 1024) toast.error(`${f.name}: exceeds 15 MB`)
+      if (f.size > MAX_UPLOAD_BYTES) toast.error(`${f.name}: exceeds ${MAX_UPLOAD_LABEL}`)
       else accepted.push(f)
     })
     if (accepted.length) {
@@ -169,17 +215,61 @@ export function PurchaseRequisition({
   const removeFile = (i: number) =>
     setFiles((prev) => prev.filter((_, idx) => idx !== i))
 
-  const showOther = form.itemCategory === REQUISITION_OTHER
+  /* ── items ── */
+  const updateItem = <K extends ItemField>(
+    index: number,
+    field: K,
+    val: RequisitionItemForm[K],
+  ) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.map((it, i) =>
+        i === index ? { ...it, [field]: val } : it,
+      ),
+    }))
+    setErrors((prev) => {
+      const itemErrs = prev.items?.[index]
+      if (!itemErrs || !(field in itemErrs)) return prev
+      const items = [...(prev.items ?? [])]
+      const next = { ...itemErrs }
+      delete next[field]
+      items[index] = next
+      return { ...prev, items }
+    })
+  }
 
-  /* Estimated total, quantity × unit price, converted for the committed figure. */
+  const addItem = () => {
+    if (form.items.length >= MAX_ITEMS) return
+    const index = form.items.length
+    setForm((prev) => ({ ...prev, items: [...prev.items, blankItem()] }))
+    // Put the cursor in the new row, so adding reads as "now describe it".
+    window.requestAnimationFrame(() => {
+      document.getElementById(itemFieldId("category", index))?.focus()
+    })
+  }
+
+  const removeItem = (index: number) => {
+    setForm((prev) => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index),
+    }))
+    // Errors are stored by position, so they shift with the rows.
+    setErrors((prev) =>
+      prev.items
+        ? { ...prev, items: prev.items.filter((_, i) => i !== index) }
+        : prev,
+    )
+  }
+
+  /* Estimated total, the sum of every line, converted for the committed figure. */
   const { estimatedTotal, estimatedTotalSGD, hasAmount } = useMemo(() => {
-    const total = num(form.quantity) * num(form.unitPrice)
+    const total = form.items.reduce((s, it) => s + lineTotal(it), 0)
     return {
       estimatedTotal: total,
       estimatedTotalSGD: toSGD(total, form.currency, rates),
       hasAmount: total > 0,
     }
-  }, [form.quantity, form.unitPrice, form.currency, rates])
+  }, [form.items, form.currency, rates])
 
   const handleSubmit = async () => {
     const found: RequisitionErrors = {}
@@ -204,13 +294,18 @@ export function PurchaseRequisition({
     if (sameBoth && hasAlternative) {
       found.finalApprover = "Pick someone other than the first approver"
     }
-    if (!form.itemCategory) found.itemCategory = "Select an item category"
-    if (showOther && !form.itemCategoryOther.trim())
-      found.itemCategoryOther = "Describe the category"
-    if (!form.description.trim())
-      found.description = "Describe the item or service"
-    if (num(form.quantity) <= 0) found.quantity = "Enter a quantity"
-    if (num(form.unitPrice) <= 0) found.unitPrice = "Enter the unit price"
+    const itemErrors = form.items.map((it) => {
+      const e: RequisitionItemErrors = {}
+      if (!it.category) e.category = "Select an item category"
+      if (it.category === REQUISITION_OTHER && !it.categoryOther.trim())
+        e.categoryOther = "Describe the category"
+      if (!it.description.trim()) e.description = "Describe the item or service"
+      if (num(it.quantity) <= 0) e.quantity = "Enter a quantity"
+      if (num(it.unitPrice) <= 0) e.unitPrice = "Enter the unit price"
+      return e
+    })
+    if (itemErrors.some((e) => Object.keys(e).length > 0))
+      found.items = itemErrors
     if (!form.vendorName.trim()) found.vendorName = "Enter the vendor name"
     if (form.vendorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vendorEmail))
       found.vendorEmail = "Enter a valid email address"
@@ -223,8 +318,7 @@ export function PurchaseRequisition({
     if (Object.keys(found).length > 0) {
       setErrors(found)
       toast.error("Please complete the highlighted fields")
-      const firstInvalid = FIELD_ORDER.find((f) => found[f])
-      const focusId = firstInvalid ? FIELD_IDS[firstInvalid] : undefined
+      const focusId = firstInvalidId(found)
       if (focusId) {
         window.requestAnimationFrame(() => {
           document.getElementById(focusId)?.focus()
@@ -240,11 +334,14 @@ export function PurchaseRequisition({
         await submitRequisition({
           department: form.department,
           jobTitle: form.jobTitle,
-          itemCategory: form.itemCategory,
-          itemCategoryOther: showOther ? form.itemCategoryOther : "",
-          description: form.description,
-          quantity: num(form.quantity),
-          unitPrice: num(form.unitPrice),
+          items: form.items.map((it) => ({
+            category: it.category,
+            categoryOther:
+              it.category === REQUISITION_OTHER ? it.categoryOther : "",
+            description: it.description,
+            quantity: num(it.quantity),
+            unitPrice: num(it.unitPrice),
+          })),
           currency: form.currency,
           vendorName: form.vendorName,
           vendorContact: form.vendorContact,
@@ -253,7 +350,6 @@ export function PurchaseRequisition({
           reportingManager: form.reportingManager,
           finalApprover: form.finalApprover,
           quotationAttached: files.length > 0,
-          exchangeRates: rates,
         })
 
       let failed = 0
@@ -284,6 +380,7 @@ export function PurchaseRequisition({
       setSubmitted({
         ref: claimRef,
         totalSGD: committedSGD,
+        items: form.items.length,
         attachments: files.length - failed,
         notified,
       })
@@ -308,7 +405,8 @@ export function PurchaseRequisition({
             Requisition submitted
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            SGD {fmt(submitted.totalSGD)} · {submitted.attachments} attachment
+            SGD {fmt(submitted.totalSGD)} · {submitted.items} item
+            {submitted.items === 1 ? "" : "s"} · {submitted.attachments} attachment
             {submitted.attachments === 1 ? "" : "s"} ·{" "}
             {/* Only claim the approver was told if the email actually sent. */}
             {submitted.notified
@@ -431,92 +529,13 @@ export function PurchaseRequisition({
           </div>
         </SectionCard>
 
-        {/* ── Item / service ── */}
+        {/* ── Item / service ──
+            One or more lines off the same vendor quotation, so they share a
+            currency. A single item looks exactly as the form always did; the
+            per-item header and remove control only appear once there are two. */}
         <SectionCard icon={<Package />} title="Item / Service Details">
           <div className="flex flex-col gap-5">
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel id="req-cat-label" text="Item category" required />
-                <Select
-                  value={form.itemCategory || undefined}
-                  onValueChange={(v) => update("itemCategory", v)}
-                >
-                  <SelectTrigger
-                    id="req-cat"
-                    className="w-full bg-card"
-                    aria-labelledby="req-cat-label"
-                    aria-required="true"
-                    aria-invalid={!!errors.itemCategory || undefined}
-                  >
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((c) => (
-                      <SelectItem key={c.name} value={c.name}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError id="req-cat-error" message={errors.itemCategory} />
-              </div>
-
-              {showOther && (
-                <div className="flex flex-col gap-1.5">
-                  <FieldLabel htmlFor="req-cat-other" text="If others" required />
-                  <Input
-                    id="req-cat-other"
-                    value={form.itemCategoryOther}
-                    onChange={(e) => update("itemCategoryOther", e.target.value)}
-                    aria-required="true"
-                    aria-invalid={!!errors.itemCategoryOther || undefined}
-                    placeholder="Specify the category"
-                    className="bg-card"
-                  />
-                  <FieldError
-                    id="req-cat-other-error"
-                    message={errors.itemCategoryOther}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <FieldLabel
-                htmlFor="req-desc"
-                text="Description of item / service"
-                required
-              />
-              <Textarea
-                id="req-desc"
-                value={form.description}
-                onChange={(e) => update("description", e.target.value)}
-                aria-required="true"
-                aria-invalid={!!errors.description || undefined}
-                placeholder="Model, specification, part number, or scope of work"
-                className="min-h-24 resize-y bg-card"
-              />
-              <FieldError id="req-desc-error" message={errors.description} />
-            </div>
-
             <div className="grid gap-5 sm:grid-cols-3">
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel htmlFor="req-qty" text="Quantity" required />
-                <Input
-                  id="req-qty"
-                  type="number"
-                  min={1}
-                  step="1"
-                  inputMode="numeric"
-                  value={form.quantity}
-                  onChange={(e) => update("quantity", e.target.value)}
-                  aria-required="true"
-                  aria-invalid={!!errors.quantity || undefined}
-                  className="bg-card tabular-nums"
-                />
-                <FieldError id="req-qty-error" message={errors.quantity} />
-              </div>
-
               <div className="flex flex-col gap-1.5">
                 <FieldLabel id="req-cur-label" text="Currency" />
                 <Select
@@ -527,6 +546,7 @@ export function PurchaseRequisition({
                     id="req-cur"
                     className="w-full bg-card"
                     aria-labelledby="req-cur-label"
+                    aria-describedby="req-cur-hint"
                   >
                     <SelectValue />
                   </SelectTrigger>
@@ -539,31 +559,51 @@ export function PurchaseRequisition({
                   </SelectContent>
                 </Select>
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <FieldLabel htmlFor="req-price" text="Unit price" required />
-                <Input
-                  id="req-price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  inputMode="decimal"
-                  value={form.unitPrice}
-                  onChange={(e) => update("unitPrice", e.target.value)}
-                  aria-required="true"
-                  aria-invalid={!!errors.unitPrice || undefined}
-                  placeholder="0.00"
-                  className="bg-card tabular-nums"
-                />
-                <FieldError id="req-price-error" message={errors.unitPrice} />
-              </div>
+              <p
+                id="req-cur-hint"
+                className="self-end pb-2.5 text-xs text-muted-foreground sm:col-span-2"
+              >
+                Every item on this requisition is priced in {form.currency}.
+              </p>
             </div>
+
+            {form.items.map((item, i) => (
+              <RequisitionItemFields
+                key={item.key}
+                index={i}
+                item={item}
+                multiple={form.items.length > 1}
+                currency={form.currency}
+                categories={categories}
+                errors={errors.items?.[i] ?? {}}
+                onChange={(field, val) => updateItem(i, field, val)}
+                onRemove={() => removeItem(i)}
+              />
+            ))}
+
+            {form.items.length < MAX_ITEMS ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 w-full border-dashed text-sm"
+                onClick={addItem}
+              >
+                <Plus className="size-4" />
+                Add another item
+              </Button>
+            ) : (
+              <p className="text-center text-xs text-muted-foreground">
+                A requisition can hold up to {MAX_ITEMS} items. Submit a second
+                requisition for the rest.
+              </p>
+            )}
 
             {/* Committed figure, the requester sees the converted total before submitting. */}
             <div className="flex items-center justify-between rounded-xl border bg-muted/50 px-4 py-3">
               <div className="min-w-0">
                 <div className="text-sm text-muted-foreground">
                   Estimated total cost
+                  {form.items.length > 1 && ` · ${form.items.length} items`}
                 </div>
                 {hasAmount && form.currency !== "SGD" && (
                   <div className="mt-0.5 font-mono text-xs tabular-nums text-muted-foreground">
@@ -628,7 +668,7 @@ export function PurchaseRequisition({
             onAdd={addFiles}
             onRemove={removeFile}
             title="Vendor Quotation (required)"
-            hint="Attach the vendor quotation · PDF · JPG · PNG · Max 15 MB per file"
+            hint={`Attach the vendor quotation · PDF · JPG · PNG · Max ${MAX_UPLOAD_LABEL} per file`}
           />
           <FieldError id="req-quotation-error" message={errors.quotation} />
         </div>
@@ -671,5 +711,174 @@ export function PurchaseRequisition({
         </Button>
       </div>
     </div>
+  )
+}
+
+/** One line of the requisition: category, description, quantity, unit price. */
+function RequisitionItemFields({
+  index,
+  item,
+  multiple,
+  currency,
+  categories,
+  errors,
+  onChange,
+  onRemove,
+}: {
+  index: number
+  item: RequisitionItemForm
+  /** Show the "Item N" header and remove control, only when there are several. */
+  multiple: boolean
+  currency: string
+  categories: RequisitionCategoryOption[]
+  errors: RequisitionItemErrors
+  onChange: <K extends ItemField>(field: K, val: RequisitionItemForm[K]) => void
+  onRemove: () => void
+}) {
+  const id = (field: ItemField) => itemFieldId(field, index)
+  const showOther = item.category === REQUISITION_OTHER
+  const total = lineTotal(item)
+  const n = index + 1
+
+  const fields = (
+    <div className="flex flex-col gap-5">
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel id={`${id("category")}-label`} text="Item category" required />
+          <Select
+            value={item.category || undefined}
+            onValueChange={(v) => onChange("category", v)}
+          >
+            <SelectTrigger
+              id={id("category")}
+              className="w-full bg-card"
+              aria-labelledby={`${id("category")}-label`}
+              aria-required="true"
+              aria-invalid={!!errors.category || undefined}
+            >
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.name} value={c.name}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <FieldError id={`${id("category")}-error`} message={errors.category} />
+        </div>
+
+        {showOther && (
+          <div className="flex flex-col gap-1.5">
+            <FieldLabel htmlFor={id("categoryOther")} text="If others" required />
+            <Input
+              id={id("categoryOther")}
+              value={item.categoryOther}
+              onChange={(e) => onChange("categoryOther", e.target.value)}
+              aria-required="true"
+              aria-invalid={!!errors.categoryOther || undefined}
+              placeholder="Specify the category"
+              className="bg-card"
+            />
+            <FieldError
+              id={`${id("categoryOther")}-error`}
+              message={errors.categoryOther}
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <FieldLabel
+          htmlFor={id("description")}
+          text="Description of item / service"
+          required
+        />
+        <Textarea
+          id={id("description")}
+          value={item.description}
+          onChange={(e) => onChange("description", e.target.value)}
+          aria-required="true"
+          aria-invalid={!!errors.description || undefined}
+          placeholder="Model, specification, part number, or scope of work"
+          maxLength={2000}
+          className="min-h-24 resize-y bg-card"
+        />
+        <FieldError id={`${id("description")}-error`} message={errors.description} />
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-3">
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor={id("quantity")} text="Quantity" required />
+          <Input
+            id={id("quantity")}
+            type="number"
+            min={1}
+            step="1"
+            inputMode="numeric"
+            value={item.quantity}
+            onChange={(e) => onChange("quantity", e.target.value)}
+            aria-required="true"
+            aria-invalid={!!errors.quantity || undefined}
+            className="bg-card tabular-nums"
+          />
+          <FieldError id={`${id("quantity")}-error`} message={errors.quantity} />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor={id("unitPrice")} text={`Unit price (${currency})`} required />
+          <Input
+            id={id("unitPrice")}
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            value={item.unitPrice}
+            onChange={(e) => onChange("unitPrice", e.target.value)}
+            aria-required="true"
+            aria-invalid={!!errors.unitPrice || undefined}
+            placeholder="0.00"
+            className="bg-card tabular-nums"
+          />
+          <FieldError id={`${id("unitPrice")}-error`} message={errors.unitPrice} />
+        </div>
+
+        {/* Computed, not typed: read-only and out of the tab order. */}
+        <div className="flex flex-col gap-1.5">
+          <FieldLabel htmlFor={`req-line-total-${index}`} text="Line total" />
+          <Input
+            id={`req-line-total-${index}`}
+            readOnly
+            tabIndex={-1}
+            value={total > 0 ? `${currency} ${fmt(total)}` : "-"}
+            className="bg-muted text-right font-mono tabular-nums"
+          />
+        </div>
+      </div>
+    </div>
+  )
+
+  if (!multiple) return fields
+
+  return (
+    <fieldset className="rounded-xl border p-4 sm:p-5">
+      <legend className="sr-only">Item {n}</legend>
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-sm font-semibold">Item {n}</span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="text-muted-foreground hover:text-destructive"
+          onClick={onRemove}
+          aria-label={`Remove item ${n}`}
+        >
+          <Trash2 className="size-4" />
+          Remove
+        </Button>
+      </div>
+      {fields}
+    </fieldset>
   )
 }

@@ -14,6 +14,7 @@ import type {
 import {
   DEFAULT_LEAVE_TYPES,
   DEFAULT_REQUISITION_CATEGORIES,
+  FALLBACK_RATES,
 } from "./constants"
 import { toSGD, num } from "./currency"
 
@@ -23,7 +24,9 @@ export async function fetchRates(): Promise<Rates> {
   if (!r.ok) throw new Error(`HTTP ${r.status}`)
   const d = await r.json()
   if (!d.rates) throw new Error("No rates in response")
-  return { SGD: 1, ...d.rates }
+  // The live source skips some offered currencies (VND, TWD); without a rate
+  // they would be counted as SGD, so the fallback table fills the gaps.
+  return { ...FALLBACK_RATES, ...d.rates, SGD: 1 }
 }
 
 /**
@@ -260,11 +263,13 @@ export async function submitApproval(args: {
 interface RequisitionArgs {
   department: string
   jobTitle: string
-  itemCategory: string
-  itemCategoryOther: string
-  description: string
-  quantity: number
-  unitPrice: number
+  items: {
+    category: string
+    categoryOther: string
+    description: string
+    quantity: number
+    unitPrice: number
+  }[]
   currency: string
   vendorName: string
   vendorContact: string
@@ -273,7 +278,6 @@ interface RequisitionArgs {
   reportingManager: string
   finalApprover: string
   quotationAttached: boolean
-  exchangeRates: Rates
 }
 
 /**

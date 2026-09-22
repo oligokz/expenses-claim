@@ -30,7 +30,12 @@ import {
 } from "@/components/ui/select"
 
 import { fetchApprovers, submitTravel, uploadReceipt } from "@/lib/api"
-import { DEPARTMENTS, TRAVEL_BUDGET_LINES } from "@/lib/constants"
+import {
+  DEPARTMENTS,
+  MAX_UPLOAD_BYTES,
+  MAX_UPLOAD_LABEL,
+  TRAVEL_BUDGET_LINES,
+} from "@/lib/constants"
 import { fmt, num } from "@/lib/currency"
 import type { ApproverOption, TravelErrors, TravelForm } from "@/lib/types"
 
@@ -139,7 +144,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
     if (!list) return
     const accepted: File[] = []
     Array.from(list).forEach((f) => {
-      if (f.size > 15 * 1024 * 1024) toast.error(`${f.name}: exceeds 15 MB`)
+      if (f.size > MAX_UPLOAD_BYTES) toast.error(`${f.name}: exceeds ${MAX_UPLOAD_LABEL}`)
       else accepted.push(f)
     })
     if (accepted.length) setFiles((prev) => [...prev, ...accepted])
@@ -524,7 +529,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Documents"
-          hint="Flight quotes, hotel rates, event registration · Max 15 MB per file"
+          hint={`Flight quotes, hotel rates, event registration · Max ${MAX_UPLOAD_LABEL} per file`}
         />
 
         {/* ── Approvals ── */}

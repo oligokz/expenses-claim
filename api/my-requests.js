@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
 
 /* The three lists a person can have rows in, and how each one names things.
  * Requisitions use Requestor*; the older two use Employee*. */
@@ -52,7 +53,7 @@ const SOURCES = [
     emailCol:  'RequestorEmail',
     refPrefix: 'REQ',
     map: (f) => ({
-      title:     f.ItemCategoryOther || f.ItemCategory || '',
+      title:     itemsTitle(itemsFromRow(f)),
       detail:    f.Description || '',
       amountSGD: f.EstimatedTotalSGD ?? 0,
       meta:      f.VendorName || '',
@@ -69,26 +70,34 @@ async function listFor(token, siteId, source, email) {
   if (!listName) return { items: [], warning: null };
 
   const safe = email.replace(/'/g, "''"); // escape single quotes for OData
-  const url =
+  let url =
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items` +
-    `?$expand=fields&$top=200&$filter=fields/${source.emailCol} eq '${safe}'`;
+    `?$expand=fields&$top=200&$filter=${encodeURIComponent(`fields/${source.emailCol} eq '${safe}'`)}`;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      // Allow filtering on a non-indexed column for modest list sizes. Index the
-      // email column once a list nears 5,000 rows or this starts failing.
-      Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
-    },
-  });
+  // Follow Graph's paging so someone with more than one page of requests still
+  // sees all of them. Bounded, so a runaway list can't hang the function.
+  const items = [];
+  for (let page = 0; url && page < 10; page++) {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Allow filtering on a non-indexed column for modest list sizes. Index the
+        // email column once a list nears 5,000 rows or this starts failing.
+        Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    });
 
-  if (!res.ok) {
-    // One missing or unreadable list must not blank out the whole page, report
-    // it alongside whatever else did load.
-    const txt = await res.text();
-    return { items: [], warning: `${source.type}: ${res.status} ${txt.slice(0, 200)}` };
+    if (!res.ok) {
+      // One missing or unreadable list must not blank out the whole page, report
+      // it alongside whatever else did load.
+      const txt = await res.text();
+      return { items, warning: `${source.type}: ${res.status} ${txt.slice(0, 200)}` };
+    }
+    const data = await res.json();
+    items.push(...(data.value || []));
+    url = data['@odata.nextLink'] || null;
   }
-  return { items: (await res.json()).value || [], warning: null };
+  return { items, warning: null };
 }
 
 module.exports = async function handler(req, res) {

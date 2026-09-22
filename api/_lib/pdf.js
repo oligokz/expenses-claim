@@ -10,6 +10,7 @@
 
 const { getDriveId } = require('./sharepoint');
 const { topFolderFor } = require('./attachments');
+const { itemsFromRow, categoryLabel } = require('./requisitionItems');
 
 /* The CREOX mark from public/logo.svg, path data only (240 x 60 viewBox).
  * Drawn as vector rather than a raster: no rasteriser is needed, it stays
@@ -73,6 +74,29 @@ function fmtDate(value) {
   return p ? p.date : String(value);
 }
 
+/* The built-in PDF fonts only cover Latin text (WinAnsi). Drawing anything
+ * else, a Chinese vendor name or an emoji, makes pdf-lib throw, and the whole
+ * signed document is lost. Characters the font can't draw become '?' in the
+ * PDF instead; the SharePoint row keeps the original text. */
+function cleanerFor(font) {
+  const ok = new Set(font.getCharacterSet());
+  return (s) => {
+    if (s === null || s === undefined) return s;
+    return Array.from(String(s).replace(/[\t\r]/g, ' '))
+      .map((ch) => (ch === '\n' || ok.has(ch.codePointAt(0)) ? ch : '?'))
+      .join('');
+  };
+}
+
+/** Every text value on the row, made drawable. */
+function cleanFields(fields, clean) {
+  const out = {};
+  for (const [k, v] of Object.entries(fields || {})) {
+    out[k] = typeof v === 'string' ? clean(v) : v;
+  }
+  return out;
+}
+
 /** Fetch a file's bytes from the document library by drive-relative path. */
 async function fetchDriveFile(token, siteId, path) {
   const driveId = await getDriveId(token, siteId);
@@ -97,6 +121,12 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   const doc  = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  // Nothing reaches drawText without passing through clean().
+  const clean = cleanerFor(font);
+  fields = cleanFields(fields, clean);
+  claimRef = clean(claimRef);
+  signatures = signatures.map((s) => ({ ...s, name: clean(s.name), label: clean(s.label) }));
 
   let page = doc.addPage(A4);
   let y = A4[1] - MARGIN;
@@ -210,13 +240,70 @@ async function buildRequisitionPdf({ fields, claimRef, signatures = [] }) {
   field('Submitted', fmtDateTime(fields.SubmissionDate));
   y -= 22;
 
-  section('Item / service');
-  field('Category', fields.ItemCategoryOther || fields.ItemCategory);
-  field('Description', fields.Description);
-  field('Quantity', String(fields.Quantity ?? ''));
-  field('Unit price', `${fields.Currency || 'SGD'} ${money(fields.UnitPrice)}`);
-  if (fields.Currency && fields.Currency !== 'SGD') {
-    field('Estimated total', `${fields.Currency} ${money(fields.EstimatedTotal)}`);
+  /* ── items ──
+   * A table rather than label/value pairs, since a requisition can carry
+   * several. Older single-item rows come through itemsFromRow as a list of one,
+   * so they print the same way. */
+  const items = itemsFromRow(fields).map((it) => ({
+    ...it,
+    category: clean(categoryLabel(it)),
+    description: clean(it.description),
+  }));
+  const cur = fields.Currency || 'SGD';
+
+  section(items.length === 1 ? 'Item / service' : `Items / services (${items.length})`);
+  {
+    // Columns: # | item + description | qty | unit | total, numbers right-aligned.
+    const colNo = MARGIN;
+    const colItem = MARGIN + 22;
+    const colTotalR = MARGIN + width;
+    const colUnitR = colTotalR - 92;
+    const colQtyR = colUnitR - 84;
+    const itemW = colQtyR - 40 - colItem;
+    const right = (s, xr, opts = {}) => {
+      const f = opts.f || font;
+      const size = opts.size || 10;
+      page.drawText(s, {
+        x: xr - f.widthOfTextAtSize(s, size), y, size, font: f, color: colour(opts.c || INK),
+      });
+    };
+    const header = () => {
+      text('#', { x: colNo, size: 8.5, f: bold, c: MUTED });
+      text('Item', { x: colItem, size: 8.5, f: bold, c: MUTED });
+      right('Qty', colQtyR, { size: 8.5, f: bold, c: MUTED });
+      right(`Unit (${cur})`, colUnitR, { size: 8.5, f: bold, c: MUTED });
+      right(`Total (${cur})`, colTotalR, { size: 8.5, f: bold, c: MUTED });
+      y -= 16;
+    };
+    header();
+
+    items.forEach((it, i) => {
+      const descLines = wrap(it.description, 9, itemW);
+      const catLines = wrap(it.category, 10, itemW);
+      const needed = (catLines.length * LINE) + (descLines.length * 12) + 10;
+      if (y - needed < MARGIN) {
+        ensure(needed + 20);
+        header();
+      }
+      text(String(i + 1), { x: colNo, c: MUTED });
+      right(String(it.quantity), colQtyR);
+      right(money(it.unitPrice), colUnitR);
+      right(money(it.total), colTotalR, { f: bold });
+      catLines.forEach((ln, j) => {
+        page.drawText(ln, { x: colItem, y: y - j * LINE, size: 10, font: bold, color: colour(INK) });
+      });
+      y -= catLines.length * LINE;
+      descLines.forEach((ln) => {
+        text(ln, { x: colItem, size: 9, c: MUTED });
+        y -= 12;
+      });
+      y -= 4;
+      rule();
+      y -= 14;
+    });
+  }
+  if (cur !== 'SGD') {
+    field('Total', `${cur} ${money(fields.EstimatedTotal)}`);
   }
   y -= 14;
 
@@ -367,6 +454,12 @@ async function buildTravelPdf({ fields, claimRef, signatures = [] }) {
   const doc  = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+
+  // Nothing reaches drawText without passing through clean().
+  const clean = cleanerFor(font);
+  fields = cleanFields(fields, clean);
+  claimRef = clean(claimRef);
+  signatures = signatures.map((s) => ({ ...s, name: clean(s.name), label: clean(s.label) }));
 
   let page = doc.addPage(A4);
   let y = A4[1] - MARGIN;
