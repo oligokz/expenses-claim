@@ -104,21 +104,18 @@ const ITEM_FIELD_ORDER: ItemField[] = [
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
   reportingManager: "req-manager",
-  finalApprover: "req-final-approver",
   vendorName: "req-vendor",
   vendorEmail: "req-vendor-email",
   projectCustomer: "req-project",
 }
-const BEFORE_ITEMS: (keyof RequisitionErrors)[] = [
-  "department",
-  "reportingManager",
-  "finalApprover",
-]
+const BEFORE_ITEMS: (keyof RequisitionErrors)[] = ["department"]
 const AFTER_ITEMS: (keyof RequisitionErrors)[] = [
   "vendorName",
   "vendorEmail",
   "quotation",
   "projectCustomer",
+  // The approver card is last on the form, so its error comes last too.
+  "reportingManager",
 ]
 
 /** The id of the first invalid control in document order, if it has one. */
@@ -155,9 +152,6 @@ export function PurchaseRequisition({
   // null until loaded, so the field can show a placeholder rather than flashing
   // its free-text fallback on every tab switch.
   const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
-  const [finalApprovers, setFinalApprovers] = useState<ApproverOption[] | null>(
-    null,
-  )
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
@@ -174,9 +168,6 @@ export function PurchaseRequisition({
     fetchApprovers("reporting")
       .then((a) => alive && setApprovers(a))
       .catch(() => alive && setApprovers([]))
-    fetchApprovers("final")
-      .then((a) => alive && setFinalApprovers(a))
-      .catch(() => alive && setFinalApprovers([]))
     return () => {
       alive = false
     }
@@ -278,22 +269,6 @@ export function PurchaseRequisition({
     // fallback stays optional, as it was before.
     if ((approvers?.length ?? 0) > 0 && !form.reportingManager)
       found.reportingManager = "Select the approver"
-    // Optional on purpose: leaving it blank makes stage 1 the final approval,
-    // which is the single-stage shape leave and expense will want.
-    /* Two stages signed by one person is one stage wearing a hat, but only
-       complain when there's actually an alternative to choose. While a single
-       approver is configured, insisting on two distinct people would make the
-       flow impossible rather than safer. */
-    const sameBoth =
-      form.reportingManager &&
-      form.finalApprover &&
-      form.reportingManager.toLowerCase() === form.finalApprover.toLowerCase()
-    const hasAlternative = (finalApprovers ?? []).some(
-      (a) => a.email.toLowerCase() !== form.reportingManager.toLowerCase(),
-    )
-    if (sameBoth && hasAlternative) {
-      found.finalApprover = "Pick someone other than the first approver"
-    }
     const itemErrors = form.items.map((it) => {
       const e: RequisitionItemErrors = {}
       if (!it.category) e.category = "Select an item category"
@@ -348,7 +323,9 @@ export function PurchaseRequisition({
           vendorEmail: form.vendorEmail,
           projectCustomer: form.projectCustomer,
           reportingManager: form.reportingManager,
-          finalApprover: form.finalApprover,
+          // One approver per requisition. The API still takes a second, for
+          // requests submitted before this changed.
+          finalApprover: "",
           quotationAttached: files.length > 0,
         })
 
@@ -671,33 +648,17 @@ export function PurchaseRequisition({
           </div>
         </SectionCard>
 
-        {/* ── Approval ──
-            Approvers sit last on every form, just above Submit. Both are
-            chosen up front so the whole route is visible before submitting. */}
+        {/* ── Approval ── approvers sit last on every form, just above Submit. */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
-          <div className="flex flex-col gap-5">
-            <p className="text-sm text-muted-foreground">
-              If you add a second approver, they're asked once the first has approved.
-            </p>
-            <ApproverField
-              id="req-manager"
-              label="First approver"
-              required
-              value={form.reportingManager}
-              onChange={(v) => update("reportingManager", v)}
-              approvers={approvers}
-              error={errors.reportingManager}
-            />
-            <ApproverField
-              id="req-final-approver"
-              label="Second approver (optional)"
-              value={form.finalApprover}
-              onChange={(v) => update("finalApprover", v)}
-              approvers={finalApprovers}
-              error={errors.finalApprover}
-              allowNone
-            />
-          </div>
+          <ApproverField
+            id="req-manager"
+            label="Approver"
+            required
+            value={form.reportingManager}
+            onChange={(v) => update("reportingManager", v)}
+            approvers={approvers}
+            error={errors.reportingManager}
+          />
         </SectionCard>
 
         <Button

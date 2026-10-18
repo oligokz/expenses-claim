@@ -531,9 +531,6 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
         {/* ── Approvals ── */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
           <div className="flex flex-col gap-5">
-            <p className="text-sm text-muted-foreground">
-              Approved in this order. Each person is emailed when it's their turn.
-            </p>
             <ApproverField
               id="trv-manager"
               label="Reporting manager"

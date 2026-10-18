@@ -159,7 +159,7 @@ module.exports = async function handler(req, res) {
             ['Vendor contact',  vendorContact || ''],
             ['Project / customer', projectCustomer || ''],
           ].filter(([, v]) => v && String(v).trim() !== ''),
-          stageLabel: 'First Approver',
+          stageLabel: getModule('requisition').stages[0].label,
           token:      approvalToken,
           ttlDays:    TOKEN_TTL_DAYS,
           hasAttachments: true,
