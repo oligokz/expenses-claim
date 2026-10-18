@@ -9,6 +9,7 @@ import {
   viewFromPath,
   type View,
 } from "@/components/AppNav"
+import { MobileNav } from "@/components/MobileNav"
 import { MyRequests } from "@/components/MyRequests"
 import { Approvals } from "@/components/Approvals"
 import { LeaveRequest } from "@/components/LeaveRequest"
@@ -490,12 +491,21 @@ export default function App() {
         onViewRates={() => setView("rates")}
       />
       <AppNav view={view} onChange={setView} />
+      <MobileNav
+        view={view}
+        onChange={setView}
+        userName={userName}
+        onLogout={handleLogout}
+      />
 
-      {/* Extra bottom room only where the expense form's sticky bar sits. */}
+      {/* On a phone, clear the bottom bar, plus the expense form's sticky
+          Total/Submit bar where it sits on top of it. */}
       <main
         className={cn(
-          "mx-auto max-w-7xl px-4 pt-6 sm:px-6 sm:pt-8",
-          view === "expense" && !result ? "pb-28 sm:pb-8" : "pb-8",
+          "mx-auto max-w-7xl px-4 pt-6 sm:px-6 sm:pb-8 sm:pt-8",
+          view === "expense" && !result
+            ? "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+6.75rem)]"
+            : "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+2rem)]",
         )}
       >
         {view === "expense" &&
@@ -554,8 +564,10 @@ export default function App() {
               </Button>
             </div>
 
-            {/* Mobile sticky action bar, keeps the total + Submit in the thumb zone. */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:hidden">
+            {/* Mobile sticky action bar, keeps the total + Submit in the thumb
+                zone. It sits on top of the bottom nav, which owns the
+                safe-area inset. */}
+            <div className="fixed inset-x-0 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-40 border-t bg-card py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:hidden">
               <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

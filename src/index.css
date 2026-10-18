@@ -5,6 +5,8 @@
 
 :root {
   --radius: 0.625rem;
+  /* Height of the phone bottom bar, before the safe-area inset. */
+  --mobile-nav-h: 4.25rem;
 
   /* shadcn neutral base palette with a blue primary (user-provided). */
   --background: oklch(1 0 0);
@@ -164,6 +166,10 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* viewport-fit=cover lets the page run under a notch in landscape; keep
+       content clear of it. Fixed bars pad themselves. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
   /* Numeric fields keep figures aligned (Manrope supports tabular nums) */
   input[type="number"] {
