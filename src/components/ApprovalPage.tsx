@@ -133,8 +133,8 @@ export function ApprovalPage({ token }: { token: string }) {
           </h1>
           <p className="max-w-sm text-sm text-muted-foreground">
             {n.isRequester
-              ? "This link is for your approver, who has their own copy. No need to forward it."
-              : "It was probably forwarded to you. Only the named approver can open it, so you don't need to do anything."}
+              ? "This link is for your approver, who has their own copy."
+              : "Only the named approver can open it. You don't need to do anything."}
           </p>
           <div className="mt-2 w-full max-w-sm rounded-xl border bg-muted/50 px-4 py-3 text-left text-sm">
             <div className="flex justify-between gap-3">
@@ -255,7 +255,7 @@ export function ApprovalPage({ token }: { token: string }) {
       <Shell>
         <Card className="flex flex-col items-center gap-3 p-8 text-center">
           <CheckCircle2 className="size-6 text-muted-foreground" />
-          <p className="text-sm font-medium">Nothing to do here</p>
+          <p className="text-sm font-medium">No action needed</p>
           <p className="max-w-sm text-sm text-muted-foreground">{view.reason}</p>
           <div className="mt-1 font-mono text-sm font-semibold tabular-nums">
             {view.claimRef} · {view.status}

@@ -397,7 +397,7 @@ function travelReceipt({ claimRef, destination, dates, totalSGD, approverName })
     subject: `Your travel request ${claimRef} was recorded`,
     html: layout({
       heading: 'Travel request received',
-      intro: "Here's your copy.",
+      intro: 'A copy for your records.',
       rows: [
         ['Reference', claimRef],
         ['Destination', destination || ''],
@@ -417,7 +417,7 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
     subject: `Your purchase requisition ${claimRef} was recorded`,
     html: layout({
       heading: 'Requisition received',
-      intro: "Here's your copy.",
+      intro: 'A copy for your records.',
       rows: [
         ['Reference', claimRef],
         ['Item', item],
