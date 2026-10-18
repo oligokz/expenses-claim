@@ -7,6 +7,7 @@
  *   node scripts/sp.mjs graph  GET /sites/{site}/lists          # any Graph call
  *   node scripts/sp.mjs graph  PATCH <path> --body file.json --yes
  *   node scripts/sp.mjs date-times --site <url> [--yes]   # show approval times in SharePoint
+ *   node scripts/sp.mjs rebuild-pdf --site <url> --ref REQ-19 [--library Receipts] [--yes]
  *
  * Sign-in is Microsoft's device-code flow with its own Graph command-line
  * client (see setup-requisition-lists.mjs): it prints a code, you approve it in
@@ -336,12 +337,42 @@ async function cmdDateTimes(token) {
   if (!apply) console.log('\nNothing changed. Re-run with --yes to apply.');
 }
 
-const COMMANDS = { sites: cmdSites, audit: cmdAudit, items: cmdItems, graph: cmdGraph, 'date-times': cmdDateTimes };
+/* Compose a fully approved request's signed PDF again, from the row and the
+ * signatures already stored, when the step after the final approval failed.
+ * Nobody has to approve again. Only approved requests: the PDF says signed. */
+async function cmdRebuildPdf(token) {
+  const ref = String(arg('--ref') || '');
+  const m = /^(REQ|TRV)-(\d+)$/.exec(ref);
+  if (!m) throw new Error('Pass --ref REQ-<n> or TRV-<n> (only those have a signed PDF)');
+  // The app reads the document library name from its Vercel settings.
+  process.env.SP_LIBRARY_NAME = arg('--library') || process.env.SP_LIBRARY_NAME || 'Receipts';
+  const { getModule, getRow } = require('../api/_lib/approvals.js');
+  const { renderSignedPdf } = require('../api/_lib/pdf.js');
+  const mod = getModule(m[1] === 'REQ' ? 'requisition' : 'travel');
+  const site = await siteId(token);
+
+  const fields = await getRow(token, site, mod, m[2]);
+  if (fields.Status !== 'Approved') throw new Error(`${ref} is ${fields.Status || 'Pending'}, not approved. Nothing to rebuild.`);
+  console.log(`${ref}: approved`);
+  for (const s of mod.stages) {
+    console.log(`  ${s.label}: ${fields[s.signedNameField] || fields[s.approverField] || '-'}, signature ${fields[s.signatureField] ? 'stored' : 'MISSING'}`);
+  }
+  console.log(`  current PDF: ${fields.ApprovedPdfUrl ? 'yes (will be replaced; the library keeps the old version)' : 'none'}`);
+  if (!flag('--yes')) { console.log('\nNothing changed. Re-run with --yes to rebuild.'); return; }
+
+  const url = await renderSignedPdf(token, site, mod, m[2], ref);
+  console.log(`\nRebuilt: ${url}`);
+}
+
+const COMMANDS = {
+  sites: cmdSites, audit: cmdAudit, items: cmdItems, graph: cmdGraph,
+  'date-times': cmdDateTimes, 'rebuild-pdf': cmdRebuildPdf,
+};
 
 (async () => {
   const run = COMMANDS[CMD];
   if (!run) {
-    console.log('Commands: sites | audit --site <url> [--columns] | items --site <url> --list <name> [--id n] | graph <METHOD> <path> [--site <url>] [--body f] [--yes] | date-times --site <url> [--yes]');
+    console.log('Commands: sites | audit --site <url> [--columns] | items --site <url> --list <name> [--id n] | graph <METHOD> <path> [--site <url>] [--body f] [--yes] | date-times --site <url> [--yes] | rebuild-pdf --site <url> --ref REQ-19 [--yes]');
     process.exit(1);
   }
   await run(await getToken());

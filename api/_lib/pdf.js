@@ -742,4 +742,55 @@ async function storePdf(token, siteId, bytes, claimRef, month) {
   return { webUrl: saved.webUrl || '', path: segments.join('/') };
 }
 
-module.exports = { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile };
+/* Which document a module renders once it is fully approved. Keyed by prefix
+ * rather than set on the module config, so approvals.js stays free of any
+ * dependency on the PDF layer. */
+const PDF_BUILDERS = {
+  REQ: buildRequisitionPdf,
+  TRV: buildTravelPdf,
+};
+
+/**
+ * Compose the signed PDF from the row and its stored signatures, save it
+ * beside the request's files (replacing any earlier copy; the library keeps
+ * versions) and record its link on the row. Used after the final approval,
+ * and by `sp.mjs rebuild-pdf` when that step failed.
+ */
+async function renderSignedPdf(token, siteId, mod, itemId, claimRef) {
+  const { getRow, patchRow } = require('./approvals');
+  const { sgMonth } = require('./dates');
+  const fields = await getRow(token, siteId, mod, itemId);
+
+  const signatures = [];
+  for (const stage of mod.stages) {
+    const path = fields[stage.signatureField];
+    let png = null;
+    if (path) {
+      try {
+        png = await fetchDriveFile(token, siteId, path);
+      } catch (e) {
+        console.error('[pdf] signature fetch failed:', e.message);
+      }
+    }
+    signatures.push({
+      stage: stage.n,
+      label: stage.label,
+      name:  fields[stage.signedNameField] || fields[stage.approverField] || '',
+      date:  fields[stage.dateField] || '',
+      png,
+    });
+  }
+
+  const build = PDF_BUILDERS[mod.refPrefix];
+  if (!build) throw new Error(`No PDF builder for ${mod.refPrefix}`);
+  const bytes = await build({ fields, claimRef, signatures });
+  const month = sgMonth(fields.SubmissionDate || new Date());
+  const { webUrl } = await storePdf(token, siteId, bytes, claimRef, month);
+
+  if (webUrl) {
+    await patchRow(token, siteId, mod, itemId, { ApprovedPdfUrl: webUrl });
+  }
+  return webUrl;
+}
+
+module.exports = { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile, renderSignedPdf };

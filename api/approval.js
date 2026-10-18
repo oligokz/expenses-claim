@@ -9,17 +9,9 @@ const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments, topFolderFor } = require('./_lib/attachments');
 const { approverName, nameLookup } = require('./_lib/approvers');
 const { httpError, sendError } = require('./_lib/http');
-const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
+const { renderSignedPdf } = require('./_lib/pdf');
 
-/* Which document a module renders once it is fully approved. Keyed by prefix
- * rather than set on the module config, so approvals.js stays free of any
- * dependency on the PDF layer. */
-const PDF_BUILDERS = {
-  REQ: buildRequisitionPdf,
-  TRV: buildTravelPdf,
-};
-
-const { sgDay, sgMonth } = require('./_lib/dates');
+const { sgDay } = require('./_lib/dates');
 const { money } = require('./_lib/format');
 
 const todayIso = () => sgDay(new Date());
@@ -52,46 +44,6 @@ async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
   // Store the drive path, not the webUrl: the PDF composer has to fetch these
   // bytes back, and a path is what Graph can resolve.
   return segments.join('/');
-}
-
-/**
- * Compose and store the signed PDF. Called once, after the final approval.
- * Failure here must not undo the approval, the row is the record and the PDF
- * can be rebuilt from it, so we report the problem and carry on.
- */
-async function renderPdf(token, siteId, mod, itemId, claimRef) {
-  const fields = await getRow(token, siteId, mod, itemId);
-
-  const signatures = [];
-  for (const stage of mod.stages) {
-    const path = fields[stage.signatureField];
-    let png = null;
-    if (path) {
-      try {
-        png = await fetchDriveFile(token, siteId, path);
-      } catch (e) {
-        console.error('[approval] signature fetch failed:', e.message);
-      }
-    }
-    signatures.push({
-      stage: stage.n,
-      label: stage.label,
-      name:  fields[stage.signedNameField] || fields[stage.approverField] || '',
-      date:  fields[stage.dateField] || '',
-      png,
-    });
-  }
-
-  const build = PDF_BUILDERS[mod.refPrefix];
-  if (!build) throw new Error(`No PDF builder for ${mod.refPrefix}`);
-  const bytes = await build({ fields, claimRef, signatures });
-  const month = sgMonth(fields.SubmissionDate || new Date());
-  const { webUrl } = await storePdf(token, siteId, bytes, claimRef, month);
-
-  if (webUrl) {
-    await patchRow(token, siteId, mod, itemId, { ApprovedPdfUrl: webUrl });
-  }
-  return webUrl;
 }
 
 /* ── GET without a token: everything waiting on the signed-in person ──
@@ -517,7 +469,9 @@ async function handlePost(req, res) {
 
     if (mod.pdf) {
       try {
-        pdfUrl = await renderPdf(token, siteId, mod, itemId, claimRef);
+        /* Failure here must not undo the approval: the row is the record, and
+         * `sp.mjs rebuild-pdf` can compose the document from it later. */
+        pdfUrl = await renderSignedPdf(token, siteId, mod, itemId, claimRef);
       } catch (e) {
         // The approval stands regardless; the PDF is a rendering of the row and
         // can be rebuilt. Better a missing document than a lost decision.
