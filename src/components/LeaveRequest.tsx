@@ -129,6 +129,17 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
     if (Object.keys(found).length > 0) {
       setErrors(found)
       toast.error("Please complete the highlighted fields")
+      // Page order, so focus lands on the first problem a reader would meet.
+      const first = (["department", "leaveType", "startDate", "endDate", "approverEmail"] as const)
+        .find((f) => found[f])
+      const focusId = first && {
+        department: "leave-dept",
+        leaveType: "leave-type",
+        startDate: "leave-start",
+        endDate: "leave-end",
+        approverEmail: "leave-approver",
+      }[first]
+      if (focusId) window.requestAnimationFrame(() => document.getElementById(focusId)?.focus())
       return
     }
     setErrors({})
@@ -305,6 +316,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
                   value={form.startDate}
                   onChange={(iso) => update("startDate", iso)}
                   aria-invalid={!!errors.startDate || undefined}
+                  aria-describedby={errors.startDate ? "leave-start-error" : undefined}
                 />
                 <FieldError id="leave-start-error" message={errors.startDate} />
               </div>
@@ -317,6 +329,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
                   value={form.endDate}
                   onChange={(iso) => update("endDate", iso)}
                   aria-invalid={!!errors.endDate || undefined}
+                  aria-describedby={errors.endDate ? "leave-end-error" : undefined}
                 />
                 <FieldError id="leave-end-error" message={errors.endDate} />
               </div>
@@ -396,7 +409,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           ) : (
             <Send className="size-4" />
           )}
-          {submitting ? "Submitting" : "Submit Leave Request"}
+          {submitting ? "Submitting" : "Submit request"}
         </Button>
       </div>
 

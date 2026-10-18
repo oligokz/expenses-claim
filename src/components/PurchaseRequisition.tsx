@@ -558,7 +558,7 @@ export function PurchaseRequisition({
                 )}
               </div>
               <span className="font-mono text-base font-bold tabular-nums">
-                {hasAmount ? `SGD ${fmt(estimatedTotalSGD)}` : "-"}
+                SGD {fmt(estimatedTotalSGD)}
               </span>
             </div>
           </div>
@@ -667,13 +667,13 @@ export function PurchaseRequisition({
           ) : (
             <Send className="size-4" />
           )}
-          {submitting ? "Submitting" : "Submit Requisition"}
+          {submitting ? "Submitting" : "Submit requisition"}
         </Button>
       </div>
 
       <StickySubmit
-        label="Estimated total (SGD)"
-        value={hasAmount ? `SGD ${fmt(estimatedTotalSGD)}` : "SGD 0.00"}
+        label="Estimated total"
+        value={`SGD ${fmt(estimatedTotalSGD)}`}
         action="Submit requisition"
         submitting={submitting}
         onSubmit={handleSubmit}

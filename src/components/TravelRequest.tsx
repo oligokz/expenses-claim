@@ -75,15 +75,15 @@ const FIELD_IDS: Partial<Record<keyof TravelErrors, string>> = {
 }
 const FIELD_ORDER: (keyof TravelErrors)[] = [
   "department",
-  "reportingManager",
-  "financeApprover",
-  "finalApprover",
   "purpose",
   "destination",
   "travelFrom",
   "travelTo",
   "agenda",
   "budget",
+  "reportingManager",
+  "financeApprover",
+  "finalApprover",
 ]
 
 /** The budget line keys, narrowed so indexing the form stays type-safe. */
@@ -574,12 +574,12 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           ) : (
             <Send className="size-4" />
           )}
-          {submitting ? "Submitting" : "Submit Travel Request"}
+          {submitting ? "Submitting" : "Submit request"}
         </Button>
       </div>
 
       <StickySubmit
-        label="Estimated cost (SGD)"
+        label="Estimated cost"
         value={`SGD ${fmt(total)}`}
         sub={tripDays ? `${tripDays}-day trip` : undefined}
         action="Submit request"

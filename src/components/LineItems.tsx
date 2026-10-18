@@ -1,6 +1,5 @@
 import { Receipt } from "lucide-react"
 import { SectionCard } from "@/components/SectionCard"
-import { Badge } from "@/components/ui/badge"
 import { DateField } from "@/components/DateField"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
@@ -33,17 +32,14 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
   const lineTotal = num(row.amt) * (num(row.qty) || 1)
   const sgd = toSGD(lineTotal, row.cur, rates)
   const rateNote =
-    row.cur !== "SGD" && row.amt ? `@ ${fmt(rates[row.cur] || 1, 4)}/SGD` : ""
+    row.cur !== "SGD" && row.amt && rates[row.cur]
+      ? `1 ${row.cur} = ${fmt(1 / rates[row.cur], 4)} SGD`
+      : ""
 
   return (
     <SectionCard
       icon={<Receipt />}
       title="Expense Details"
-      action={
-        <Badge variant="secondary" className="font-medium">
-          One expense per claim
-        </Badge>
-      }
     >
       <div className="grid gap-5 sm:grid-cols-2">
         {/* Category first, then Description */}
@@ -157,7 +153,7 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
 
       <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border bg-muted/50 px-4 py-3">
         <div className="flex flex-col items-start">
-          <span className="text-sm text-muted-foreground">Equivalent</span>
+          <span className="text-sm text-muted-foreground">Total</span>
           <button
             type="button"
             onClick={onViewRates}

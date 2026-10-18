@@ -23,7 +23,6 @@ import { LineItems } from "@/components/LineItems"
 import { Receipts } from "@/components/Receipts"
 import { Notes } from "@/components/Notes"
 import { RatesPanel } from "@/components/RatesPanel"
-import { ClaimSummary, type ClaimSummaryData } from "@/components/ClaimSummary"
 import {
   ClaimConfirmation,
   type SubmitResult,
@@ -290,19 +289,10 @@ export default function App() {
     return () => window.clearInterval(id)
   }, [authState, loadRates])
 
-  /* ── Derived summary ── */
-  const summary: ClaimSummaryData = useMemo(() => {
-    const lineTotal = num(row.amt) * (num(row.qty) || 1)
-    const total = toSGD(lineTotal, row.cur, rates)
-    const hasAmount = lineTotal > 0
-    return {
-      itemCount: 1,
-      currencies: hasAmount ? row.cur : "-",
-      fileCount: files.length,
-      total,
-      breakdown: hasAmount ? `${row.cur} ${fmt(lineTotal)}` : "-",
-    }
-  }, [row, files, rates])
+  const totalSGD = useMemo(
+    () => toSGD(num(row.amt) * (num(row.qty) || 1), row.cur, rates),
+    [row, rates],
+  )
 
   /* ── Submit ── */
   const handleSubmit = useCallback(async () => {
@@ -578,9 +568,8 @@ export default function App() {
                 errors={errors}
                 onViewRates={() => setView("rates")}
               />
-              <Receipts files={files} onAdd={addFiles} onRemove={removeFile} />
               <Notes value={notes} onChange={setNotes} />
-              <ClaimSummary data={summary} />
+              <Receipts files={files} onAdd={addFiles} onRemove={removeFile} />
               {/* On a phone the sticky bar below carries Submit instead. */}
               <Button
                 size="lg"
@@ -593,15 +582,15 @@ export default function App() {
                 ) : (
                   <Send className="size-4" />
                 )}
-                {submitting ? "Submitting" : "Submit Claim"}
+                {submitting ? "Submitting" : "Submit claim"}
               </Button>
             </div>
 
             {/* The same phone bar every form uses, total and Submit in the
                 thumb zone. */}
             <StickySubmit
-              label="Total (SGD)"
-              value={`SGD ${fmt(summary.total)}`}
+              label="Total"
+              value={`SGD ${fmt(totalSGD)}`}
               action="Submit claim"
               submitting={submitting}
               onSubmit={handleSubmit}
@@ -609,11 +598,17 @@ export default function App() {
           </div>
           ))}
 
-        {view === "leave" && <LeaveRequest employeeName={userName} />}
-        {view === "travel" && <TravelRequest employeeName={userName} />}
-        {view === "requisition" && (
+        {/* Kept mounted and only hidden, so switching tabs mid-form keeps
+            what was typed, as the expense form always has. */}
+        <div hidden={view !== "leave"}>
+          <LeaveRequest employeeName={userName} />
+        </div>
+        <div hidden={view !== "travel"}>
+          <TravelRequest employeeName={userName} />
+        </div>
+        <div hidden={view !== "requisition"}>
           <PurchaseRequisition employeeName={userName} rates={rates} />
-        )}
+        </div>
         {view === "history" && <MyRequests />}
         {view === "approvals" && <Approvals onLoaded={setApprovalsCount} />}
         {view === "rates" && (
