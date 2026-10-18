@@ -194,13 +194,6 @@ export function ApprovalPage({ token }: { token: string }) {
             <h1 className="mt-4 font-display text-xl font-semibold tracking-tight">
               {approved ? "Approved" : "Rejected"}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {approved
-                ? outcome.complete
-                  ? "This was the final approval. The requester has been notified."
-                  : `Passed to ${outcome.nextApprover ?? "the next approver"} for the next approval.`
-                : "The requester has been notified."}
-            </p>
             <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
               <div className="text-[11px] font-medium text-surface-dark-muted">
                 Reference

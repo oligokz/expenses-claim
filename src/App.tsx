@@ -455,8 +455,7 @@ export default function App() {
             Signed out
           </h1>
           <p className="text-sm text-muted-foreground">
-            You were signed out after a period of inactivity. Nothing you
-            submitted has been affected.
+            You were signed out after a period of inactivity.
           </p>
           <Button className="mt-2" onClick={() => window.location.reload()}>
             Sign in again

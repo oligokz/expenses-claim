@@ -188,7 +188,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
             Leave request submitted
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {dayLabel(submitted.days)} · sent to your approver.
+            {dayLabel(submitted.days)}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-medium text-surface-dark-muted">

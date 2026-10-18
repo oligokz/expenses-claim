@@ -56,9 +56,6 @@ export function ClaimConfirmation({
         <h1 className="mt-4 font-display text-xl font-semibold tracking-tight">
           Claim submitted
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Finance will process it. Keep this reference.
-        </p>
       </div>
 
       {/* Proof-of-record: the charcoal "counter" block, echoing the summary panel. */}
