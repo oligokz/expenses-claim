@@ -8,6 +8,7 @@
  *   node scripts/sp.mjs graph  PATCH <path> --body file.json --yes
  *   node scripts/sp.mjs date-times --site <url> [--yes]   # show approval times in SharePoint
  *   node scripts/sp.mjs rebuild-pdf --site <url> --ref REQ-19 [--library Receipts] [--yes]
+ *   node scripts/sp.mjs add-job-title --site <url> [--yes]   # JobTitle on expense and leave
  *
  * Sign-in is Microsoft's device-code flow with its own Graph command-line
  * client (see setup-requisition-lists.mjs): it prints a code, you approve it in
@@ -165,7 +166,7 @@ function expectedLists() {
   return [
     {
       key: 'expense', name: process.env.SP_LIST_NAME || 'ExpenseClaims',
-      cols: ['EmployeeName', 'EmployeeEmail', 'Department', 'SubmissionDate', 'Category',
+      cols: ['EmployeeName', 'EmployeeEmail', 'Department', 'JobTitle', 'SubmissionDate', 'Category',
         'Description', 'ReceiptDate', 'Quantity', 'Currency', 'Amount', 'TotalAmountSGD',
         'Notes', 'ReceiptCount', 'ExchangeRates', ...approvalCols(MODULES.expense)],
       multiline: ['Description', 'Notes', 'ExchangeRates', 'ApproverComments'],
@@ -173,7 +174,7 @@ function expectedLists() {
     },
     {
       key: 'leave', name: process.env.SP_LEAVE_LIST_NAME || 'Leave Requests',
-      cols: ['EmployeeName', 'EmployeeEmail', 'Department', 'LeaveType', 'StartDate', 'EndDate',
+      cols: ['EmployeeName', 'EmployeeEmail', 'Department', 'JobTitle', 'LeaveType', 'StartDate', 'EndDate',
         'StartPortion', 'EndPortion', 'Days', 'Reason', ...approvalCols(MODULES.leave)],
       multiline: ['Reason', 'ApproverComments'],
       indexed: ['EmployeeEmail', 'Status'],
@@ -364,7 +365,29 @@ async function cmdRebuildPdf(token) {
   console.log(`\nRebuilt: ${url}`);
 }
 
+/* Expense and leave rows carry the requester's job title since it is filled
+ * from Microsoft 365 on every form. Their lists predate it; requisition and
+ * travel already have the column. Adds a plain text JobTitle where missing.
+ * Run before deploying code that writes it, or those submissions fail. */
+async function cmdAddJobTitle(token) {
+  const { MODULES } = require('../api/_lib/approvals.js');
+  const site = await siteId(token);
+  const apply = flag('--yes');
+  for (const key of ['expense', 'leave']) {
+    const name = MODULES[key].listName();
+    const list = encodeURIComponent(name);
+    const cols = await all(token, `/sites/${site}/lists/${list}/columns?$select=name`);
+    if (cols.some((c) => c.name === 'JobTitle')) { console.log(`  ${name}: JobTitle already there`); continue; }
+    if (!apply) { console.log(`  ${name}: would add JobTitle`); continue; }
+    await graph(token, 'POST', `/sites/${site}/lists/${list}/columns`,
+      { name: 'JobTitle', displayName: 'Job Title', text: {} });
+    console.log(`  ${name}: JobTitle added`);
+  }
+  if (!apply) console.log('\nNothing changed. Re-run with --yes to apply.');
+}
+
 const COMMANDS = {
+  'add-job-title': cmdAddJobTitle,
   sites: cmdSites, audit: cmdAudit, items: cmdItems, graph: cmdGraph,
   'date-times': cmdDateTimes, 'rebuild-pdf': cmdRebuildPdf,
 };

@@ -16,7 +16,7 @@ module.exports = async function handler(req, res) {
     // Identity comes from the verified token, NOT the request body.
     const user = await verifyUserToken(req);
 
-    const { department, submissionDate, lineItems, notes,
+    const { department, jobTitle, submissionDate, lineItems, notes,
             receiptCount, approverEmail } = req.body || {};
 
     const employeeName  = user.name;
@@ -58,6 +58,7 @@ module.exports = async function handler(req, res) {
       EmployeeName:   employeeName,
       EmployeeEmail:  employeeEmail,
       Department:     department,
+      JobTitle:       String(jobTitle || '').trim().slice(0, 255),
       SubmissionDate: submissionDate,
       // Flat expense columns (single entry per claim)
       Category:       item.category || '',

@@ -103,3 +103,35 @@ export async function getApiToken(): Promise<string> {
     throw new Error("Re-authenticating")
   }
 }
+
+let jobTitleRequest: Promise<string> | null = null
+
+/**
+ * The signed-in person's job title from their Microsoft 365 profile, or "" if
+ * it is unset or can't be read. Silent only: a missing User.Read consent must
+ * not bounce anyone through a sign-in page just to fill one optional field.
+ */
+export function getProfileJobTitle(): Promise<string> {
+  if (jobTitleRequest) return jobTitleRequest
+  // Not signed in yet: answer "" without caching, so a later call still asks.
+  if (!msalInstance || !account) return Promise.resolve("")
+  const instance = msalInstance
+  const who = account
+  jobTitleRequest = (async () => {
+    try {
+      const { accessToken } = await instance.acquireTokenSilent({
+        scopes: ["User.Read"],
+        account: who,
+      })
+      const res = await fetch("https://graph.microsoft.com/v1.0/me?$select=jobTitle", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!res.ok) return ""
+      const me = await res.json()
+      return typeof me.jobTitle === "string" ? me.jobTitle.trim() : ""
+    } catch {
+      return ""
+    }
+  })()
+  return jobTitleRequest
+}

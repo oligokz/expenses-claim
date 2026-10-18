@@ -122,6 +122,7 @@ export async function submitClaim({
       fallback: "Could not submit the claim. Try again.",
       json: {
         department: claimant.dept,
+        jobTitle: claimant.jobTitle,
         submissionDate: claimant.subDate,
         lineItems: rows.map((r) => ({
           category: r.cat,
@@ -162,6 +163,7 @@ export async function uploadReceipt(file: File, meta: UploadMeta): Promise<void>
 
 interface LeaveArgs {
   department: string
+  jobTitle: string
   leaveType: string
   startDate: string
   endDate: string

@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react"
 import { toast } from "sonner"
+import { JobTitleField, useProfileJobTitle } from "@/components/JobTitleField"
 import { UploadRetry, type FailedUpload } from "@/components/UploadRetry"
 
 import { ApproverField } from "@/components/ApproverField"
@@ -57,6 +58,7 @@ const todayIso = () => {
 
 const blankForm = (): LeaveForm => ({
   department: "",
+  jobTitle: "",
   leaveType: "",
   startDate: todayIso(),
   endDate: todayIso(),
@@ -69,6 +71,7 @@ const dayLabel = (n: number) => `${n} ${n === 1 ? "day" : "days"}`
 
 export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const [form, setForm] = useState<LeaveForm>(blankForm)
+  const profileTitle = useProfileJobTitle()
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<LeaveErrors>({})
   const [submitting, setSubmitting] = useState(false)
@@ -154,6 +157,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
     try {
       const { claimRef } = await submitLeave({
         department: form.department,
+        jobTitle: profileTitle || form.jobTitle,
         leaveType: form.leaveType,
         startDate: form.startDate,
         endDate: form.endDate,
@@ -284,6 +288,13 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
               </Select>
               <FieldError id="leave-dept-error" message={errors.department} />
             </div>
+
+            <JobTitleField
+              id="leave-job-title"
+              profileTitle={profileTitle}
+              value={form.jobTitle}
+              onChange={(v) => update("jobTitle", v)}
+            />
 
           </div>
         </SectionCard>

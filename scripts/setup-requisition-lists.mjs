@@ -277,6 +277,7 @@ const SINGLE_STAGE_COLUMNS = [
   { name: 'ApproverComments', ...multiline() },
   { name: 'Stage1TokenId',    ...text() },
   { name: 'Stage1SignedName', ...text() },
+  { name: 'JobTitle',         ...text() },   // from the requester's Microsoft 365 profile
   { name: 'LastReminderAt',   ...dateTime() },
 ];
 

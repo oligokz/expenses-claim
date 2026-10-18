@@ -54,6 +54,7 @@ import type {
   Rates,
 } from "@/lib/types"
 import { cn } from "@/lib/utils"
+import { useProfileJobTitle } from "@/components/JobTitleField"
 
 type AuthState = "loading" | "ready" | "redirecting" | "error"
 
@@ -93,6 +94,7 @@ export default function App() {
   const [authState, setAuthState] = useState<AuthState>("loading")
   const [authError, setAuthError] = useState("")
   const [identityLocked, setIdentityLocked] = useState(false)
+  const profileTitle = useProfileJobTitle(authState === "ready")
   const [userName, setUserName] = useState("")
   const [view, setViewState] = useState<View>(() =>
     viewFromPath(window.location.pathname),
@@ -126,6 +128,7 @@ export default function App() {
     employee: "",
     email: "",
     dept: "",
+    jobTitle: "",
     subDate: todayIso(),
   })
   // Exactly one expense entry per submission.
@@ -325,7 +328,7 @@ export default function App() {
       setProgress(35)
       // The confirmation shows the total the server saved, at its own rate.
       const { claimRef, totalSGD } = await submitClaim({
-        claimant,
+        claimant: { ...claimant, jobTitle: profileTitle || claimant.jobTitle },
         rows: [row],
         notes,
         receiptCount: files.length,
@@ -376,7 +379,7 @@ export default function App() {
       setSubmitting(false)
       window.setTimeout(() => setProgress(0), 1200)
     }
-  }, [claimant, row, files, notes])
+  }, [claimant, row, files, notes, profileTitle])
 
   /* ── Retry failed receipt uploads from the confirmation screen ── */
   const handleRetryUploads = useCallback(async () => {
@@ -560,6 +563,7 @@ export default function App() {
                 onChange={updateClaimant}
                 identityLocked={identityLocked}
                 errors={errors}
+                profileTitle={profileTitle}
               />
               <LineItems
                 row={row}

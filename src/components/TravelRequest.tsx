@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { toast } from "sonner"
+import { JobTitleField, useProfileJobTitle } from "@/components/JobTitleField"
 import { UploadRetry, type FailedUpload } from "@/components/UploadRetry"
 
 import { ApproverField } from "@/components/ApproverField"
@@ -97,6 +98,7 @@ type CostKey =
 
 export function TravelRequest({ employeeName }: { employeeName: string }) {
   const [form, setForm] = useState<TravelForm>(blankForm)
+  const profileTitle = useProfileJobTitle()
   const [files, setFiles] = useState<File[]>([])
   const [errors, setErrors] = useState<TravelErrors>({})
   const [submitting, setSubmitting] = useState(false)
@@ -213,7 +215,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
     try {
       const { claimRef, totalSGD, notified } = await submitTravel({
         department: form.department,
-        jobTitle: form.jobTitle,
+        jobTitle: profileTitle || form.jobTitle,
         purpose: form.purpose,
         eventName: form.eventName,
         destination: form.destination,
@@ -365,16 +367,12 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
               <FieldError id="trv-dept-error" message={errors.department} />
             </div>
 
-            <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <FieldLabel htmlFor="trv-job-title" text="Job title" />
-              <Input
-                id="trv-job-title"
-                value={form.jobTitle}
-                onChange={(e) => update("jobTitle", e.target.value)}
-               
-                className="bg-card"
-              />
-            </div>
+            <JobTitleField
+              id="trv-job-title"
+              profileTitle={profileTitle}
+              value={form.jobTitle}
+              onChange={(v) => update("jobTitle", v)}
+            />
           </div>
         </SectionCard>
 

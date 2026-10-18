@@ -12,6 +12,8 @@ export interface ClaimantForm {
   employee: string
   email: string
   dept: string
+  /** Typed only when the Microsoft 365 profile has none. */
+  jobTitle: string
   subDate: string // ISO yyyy-mm-dd
 }
 
@@ -34,6 +36,7 @@ export interface LeaveTypeOption {
 
 export interface LeaveForm {
   department: string
+  jobTitle: string
   leaveType: string
   startDate: string // ISO yyyy-mm-dd
   endDate: string // ISO yyyy-mm-dd

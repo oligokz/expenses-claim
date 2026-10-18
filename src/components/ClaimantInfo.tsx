@@ -1,5 +1,6 @@
 import { Lock, User } from "lucide-react"
 import { SectionCard } from "@/components/SectionCard"
+import { JobTitleField } from "@/components/JobTitleField"
 import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,8 @@ interface ClaimantInfoProps {
   onChange: <K extends keyof ClaimantForm>(field: K, val: ClaimantForm[K]) => void
   identityLocked: boolean
   errors: FormErrors
+  /** From Microsoft 365; when set, the field is locked to it. */
+  profileTitle: string
 }
 
 export function ClaimantInfo({
@@ -26,6 +29,7 @@ export function ClaimantInfo({
   onChange,
   identityLocked,
   errors,
+  profileTitle,
 }: ClaimantInfoProps) {
   return (
     <SectionCard icon={<User />} title="Your Details">
@@ -83,6 +87,13 @@ export function ClaimantInfo({
           </Select>
           <FieldError id="claimant-dept-error" message={errors.dept} />
         </div>
+
+        <JobTitleField
+          id="claimant-job-title"
+          profileTitle={profileTitle}
+          value={value.jobTitle}
+          onChange={(v) => onChange("jobTitle", v)}
+        />
 
       </div>
     </SectionCard>

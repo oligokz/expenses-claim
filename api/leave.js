@@ -36,7 +36,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Token did not contain an email/username claim' });
 
     const {
-      department, leaveType, startDate, endDate,
+      department, jobTitle, leaveType, startDate, endDate,
       startPortion = 'Full', endPortion = 'Full',
       reason, approverEmail,
     } = req.body || {};
@@ -62,6 +62,7 @@ module.exports = async function handler(req, res) {
       EmployeeName:   user.name,
       EmployeeEmail:  user.email,
       Department:     department,
+      JobTitle:       String(jobTitle || '').trim().slice(0, 255),
       LeaveType:      leaveType,
       StartDate:      startDate,
       EndDate:        endDate,
