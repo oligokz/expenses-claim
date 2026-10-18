@@ -18,6 +18,13 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Timeline } from "@/components/Timeline"
 import { deleteRequest, fetchMyRequests, remindApprover } from "@/lib/api"
 import { fmt } from "@/lib/currency"
@@ -99,14 +106,32 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
+/* One tint per type, so a list can be scanned by kind before reading. */
+const TYPE_TINT: Record<RequestType, string> = {
+  expense: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  leave: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  travel: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  requisition: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+}
+
 export function TypeBadge({ type }: { type: RequestType }) {
   const { label, icon: Icon } = TYPE_META[type]
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        TYPE_TINT[type],
+      )}
+    >
       <Icon className="size-3.5 shrink-0" aria-hidden="true" />
       {label}
     </span>
   )
+}
+
+/** The reference, bold enough to read and quote at a glance. */
+export function RefLabel({ value }: { value: string }) {
+  return <span className="font-mono text-sm font-semibold tabular-nums text-foreground">{value}</span>
 }
 
 /* One reminder a day per request; the server holds the same line. */
@@ -258,18 +283,24 @@ export function MyRequests() {
 
       {state === "ready" && requests.length > 0 && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value as Period)}
-            aria-label="Period"
-            className="h-8 rounded-full border bg-card px-3 text-xs font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-          >
-            {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
-              <option key={p} value={p}>
-                {PERIOD_LABEL[p]}
-              </option>
-            ))}
-          </select>
+          {/* The app's own dropdown, not a native select: its arrow lines up
+              and its menu matches the rest of the app on every platform. */}
+          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+            <SelectTrigger
+              size="sm"
+              aria-label="Period"
+              className="rounded-full bg-card px-3 text-xs font-medium shadow-none"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {(Object.keys(PERIOD_LABEL) as Period[]).map((p) => (
+                <SelectItem key={p} value={p} className="text-sm">
+                  {PERIOD_LABEL[p]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {FILTERS.map((f) => (
             <button
               key={f}
@@ -331,10 +362,9 @@ export function MyRequests() {
             <li key={r.id} className="rounded-xl border bg-card p-4 shadow-sm">
               {/* Type and reference on the left, where it stands on the right. */}
               <div className="flex items-center justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="flex min-w-0 items-center gap-2">
                   <TypeBadge type={r.type} />
-                  <span aria-hidden="true">·</span>
-                  <span className="font-mono tabular-nums">{r.ref}</span>
+                  <RefLabel value={r.ref} />
                 </span>
                 <div className="-my-1 -mr-2 flex shrink-0 items-center gap-0.5">
                   <StatusBadge status={r.status} />

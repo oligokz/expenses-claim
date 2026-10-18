@@ -7,7 +7,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { TypeBadge } from "@/components/MyRequests"
+import { RefLabel, TypeBadge } from "@/components/MyRequests"
 import { Initials } from "@/components/Initials"
 import { cn } from "@/lib/utils"
 import { fetchMyApprovals } from "@/lib/api"
@@ -141,10 +141,9 @@ export function Approvals({
                 className="flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="flex min-w-0 items-center gap-2">
                     <TypeBadge type={a.type} />
-                    <span aria-hidden="true">·</span>
-                    <span className="font-mono tabular-nums">{a.ref}</span>
+                    <RefLabel value={a.ref} />
                   </span>
                   {w.text && (
                     <span
