@@ -18,6 +18,7 @@ import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 import { Receipts } from "@/components/Receipts"
 import { Button } from "@/components/ui/button"
+import { StickySubmit } from "@/components/StickySubmit"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -154,6 +155,13 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
 
   /* The budget is SGD throughout, so the total is a plain sum with no
    * conversion. Recomputed server-side on submit regardless. */
+  // Calendar days away, departure and return both counted.
+  const tripDays = useMemo(() => {
+    if (!form.travelFrom || !form.travelTo || form.travelTo < form.travelFrom) return 0
+    const ms = new Date(form.travelTo).getTime() - new Date(form.travelFrom).getTime()
+    return Math.round(ms / 86_400_000) + 1
+  }, [form.travelFrom, form.travelTo])
+
   const total = useMemo(
     () =>
       TRAVEL_BUDGET_LINES.reduce(
@@ -365,7 +373,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                 id="trv-job-title"
                 value={form.jobTitle}
                 onChange={(e) => update("jobTitle", e.target.value)}
-                placeholder="Your role"
+               
                 className="bg-card"
               />
             </div>
@@ -381,7 +389,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                 id="trv-purpose"
                 value={form.purpose}
                 onChange={(e) => update("purpose", e.target.value)}
-                placeholder="Why you need to go"
+               
                 aria-required="true"
                 aria-invalid={!!errors.purpose || undefined}
                 className="bg-card"
@@ -398,7 +406,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                 id="trv-event"
                 value={form.eventName}
                 onChange={(e) => update("eventName", e.target.value)}
-                placeholder="Optional, e.g. a conference or customer visit"
+               
                 className="bg-card"
               />
             </div>
@@ -452,7 +460,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                 id="trv-agenda"
                 value={form.agenda}
                 onChange={(e) => update("agenda", e.target.value)}
-                placeholder="Objective and key meetings"
+               
                 aria-required="true"
                 aria-invalid={!!errors.agenda || undefined}
                 className="min-h-28 resize-y bg-card"
@@ -500,7 +508,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                     id="trv-other-note"
                     value={form.costOtherNote}
                     onChange={(e) => update("costOtherNote", e.target.value)}
-                    placeholder="e.g. visa, travel insurance"
+                   
                     className="bg-card"
                   />
                 </div>
@@ -525,7 +533,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Documents"
-          hint={`e.g. flight quote, hotel rate. Up to ${MAX_UPLOAD_LABEL} each.`}
+          hint={`PDF or photo, up to ${MAX_UPLOAD_LABEL} each`}
         />
 
         {/* ── Approvals ── */}
@@ -561,9 +569,10 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           </div>
         </SectionCard>
 
+        {/* On a phone the sticky bar below carries Submit instead. */}
         <Button
           size="lg"
-          className="h-12 w-full text-sm font-semibold"
+          className="hidden h-12 w-full text-sm font-semibold sm:flex"
           disabled={submitting}
           onClick={handleSubmit}
         >
@@ -575,6 +584,15 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           {submitting ? "Submitting" : "Submit Travel Request"}
         </Button>
       </div>
+
+      <StickySubmit
+        label="Estimated cost (SGD)"
+        value={`SGD ${fmt(total)}`}
+        sub={tripDays ? `${tripDays}-day trip` : undefined}
+        action="Submit request"
+        submitting={submitting}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }

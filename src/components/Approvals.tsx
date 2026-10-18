@@ -151,7 +151,7 @@ export function Approvals({
                       className={cn(
                         "shrink-0 rounded-full border px-2 py-px text-[11px] font-semibold",
                         w.long
-                          ? "border-warning/40 bg-warning/10 text-warning-foreground"
+                          ? "border-warning/40 bg-warning/10 text-warning-text"
                           : "text-muted-foreground",
                       )}
                       title="Time since it reached you"

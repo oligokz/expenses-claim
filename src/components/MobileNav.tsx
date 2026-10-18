@@ -4,6 +4,7 @@ import {
   Check,
   ChevronRight,
   LogOut,
+  SunMoon,
   Menu,
   SquarePen,
   X,
@@ -235,11 +236,16 @@ export function MobileNav({
           <RowIcon icon={ArrowRightLeft} />
           <span className="flex-1 text-sm font-semibold">Exchange rates</span>
         </button>
-        <div className="px-3 pb-2 pt-3">
-          <div className="mb-2 text-xs font-medium text-muted-foreground">
-            Appearance
+        {/* Laid out like the rows around it: icon tile, label, and the
+            switch aligned under the label rather than at the sheet's edge. */}
+        <div className="px-3 py-2">
+          <div className="flex items-center gap-3">
+            <RowIcon icon={SunMoon} />
+            <span className="flex-1 text-sm font-semibold">Appearance</span>
           </div>
-          <ThemeSegmented />
+          <div className="mt-2 pl-12">
+            <ThemeSegmented />
+          </div>
         </div>
         <button
           type="button"

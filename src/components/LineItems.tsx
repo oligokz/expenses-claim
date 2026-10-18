@@ -79,7 +79,7 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
           <Input
             id="line-desc"
             value={row.desc}
-            placeholder="What was it for?"
+           
             onChange={(e) => onUpdate("desc", e.target.value)}
           />
         </div>

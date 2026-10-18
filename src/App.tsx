@@ -11,6 +11,7 @@ import {
   type View,
 } from "@/components/AppNav"
 import { MobileNav } from "@/components/MobileNav"
+import { StickySubmit } from "@/components/StickySubmit"
 import { MyRequests } from "@/components/MyRequests"
 import { Approvals } from "@/components/Approvals"
 import { LeaveRequest } from "@/components/LeaveRequest"
@@ -521,13 +522,13 @@ export default function App() {
         approvalsCount={approvalsCount}
       />
 
-      {/* On a phone, clear the bottom bar, plus the expense form's sticky
+      {/* On a phone, clear the bottom bar, plus every form's sticky
           Total/Submit bar where it sits on top of it. */}
       <main
         className={cn(
           "mx-auto max-w-7xl px-4 pt-6 sm:px-6 sm:pb-8 sm:pt-8",
-          view === "expense" && !result
-            ? "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+6.75rem)]"
+          (view === "expense" && !result) || view === "leave" || view === "travel" || view === "requisition"
+            ? "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+7.75rem)]"
             : "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+2rem)]",
         )}
       >
@@ -605,34 +606,15 @@ export default function App() {
               </Button>
             </div>
 
-            {/* Mobile sticky action bar, keeps the total + Submit in the thumb
-                zone. It sits on top of the bottom nav, which owns the
-                safe-area inset. */}
-            <div className="fixed inset-x-0 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-40 border-t bg-card py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:hidden">
-              <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-medium text-muted-foreground">
-                    Total (SGD)
-                  </div>
-                  <div className="truncate font-mono text-lg font-bold tabular-nums">
-                    SGD {fmt(summary.total)}
-                  </div>
-                </div>
-                <Button
-                  size="lg"
-                  className="h-12 min-w-[150px] max-w-[240px] flex-1 text-sm font-semibold"
-                  disabled={submitting}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? (
-                    <Loader2 className={cn("size-4 animate-spin")} />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  {submitting ? "Submitting" : "Submit Claim"}
-                </Button>
-              </div>
-            </div>
+            {/* The same phone bar every form uses, total and Submit in the
+                thumb zone. */}
+            <StickySubmit
+              label="Total (SGD)"
+              value={`SGD ${fmt(summary.total)}`}
+              action="Submit claim"
+              submitting={submitting}
+              onSubmit={handleSubmit}
+            />
           </div>
           ))}
 

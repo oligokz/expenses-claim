@@ -36,7 +36,7 @@ export function ClaimantInfo({
             <Input
               id="claimant-employee"
               value={value.employee}
-              placeholder="Full name"
+             
               readOnly={identityLocked}
               required={!identityLocked}
               aria-required="true"

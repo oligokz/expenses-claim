@@ -76,7 +76,7 @@ export function ApproverField({
           type="email"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Enter an email address"
+          placeholder="name@creoxtech.com"
           className="bg-card"
         />
         <FieldError id={`${id}-error`} message={error} />

@@ -18,6 +18,7 @@ import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 import { Receipts } from "@/components/Receipts"
 import { Button } from "@/components/ui/button"
+import { StickySubmit } from "@/components/StickySubmit"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -360,7 +361,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
             value={form.reason}
             onChange={(e) => update("reason", e.target.value)}
             aria-label="Reason for leave"
-            placeholder="Optional. Anything your approver should know."
+           
             className="min-h-24 resize-y bg-card"
           />
         </SectionCard>
@@ -370,7 +371,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Document"
-          hint={`Optional, for example an MC. Up to ${MAX_UPLOAD_LABEL} each.`}
+          hint={`PDF or photo, up to ${MAX_UPLOAD_LABEL} each`}
         />
 
         {/* Approvers sit last on every form, just above Submit. */}
@@ -386,9 +387,10 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           />
         </SectionCard>
 
+        {/* On a phone the sticky bar below carries Submit instead. */}
         <Button
           size="lg"
-          className="h-12 w-full text-sm font-semibold"
+          className="hidden h-12 w-full text-sm font-semibold sm:flex"
           disabled={submitting}
           onClick={handleSubmit}
         >
@@ -400,6 +402,14 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           {submitting ? "Submitting" : "Submit Leave Request"}
         </Button>
       </div>
+
+      <StickySubmit
+        label="Leave"
+        value={dayLabel(days)}
+        action="Submit request"
+        submitting={submitting}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }

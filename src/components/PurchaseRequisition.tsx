@@ -19,6 +19,7 @@ import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 import { Receipts } from "@/components/Receipts"
 import { Button } from "@/components/ui/button"
+import { StickySubmit } from "@/components/StickySubmit"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -475,7 +476,7 @@ export function PurchaseRequisition({
                 id="req-job-title"
                 value={form.jobTitle}
                 onChange={(e) => update("jobTitle", e.target.value)}
-                placeholder="Your role"
+               
                 className="bg-card"
               />
             </div>
@@ -546,7 +547,7 @@ export function PurchaseRequisition({
               </Button>
             ) : (
               <p className="text-center text-xs text-muted-foreground">
-                Up to {MAX_ITEMS} items per requisition. Submit another for the rest.
+                Maximum {MAX_ITEMS} items.
               </p>
             )}
 
@@ -620,7 +621,7 @@ export function PurchaseRequisition({
             onAdd={addFiles}
             onRemove={removeFile}
             title="Quotation"
-            hint={`Required. PDF or photo, up to ${MAX_UPLOAD_LABEL} each.`}
+            hint={`PDF or photo, up to ${MAX_UPLOAD_LABEL} each`}
           />
           <FieldError id="req-quotation-error" message={errors.quotation} />
         </div>
@@ -661,9 +662,10 @@ export function PurchaseRequisition({
           />
         </SectionCard>
 
+        {/* On a phone the sticky bar below carries Submit instead. */}
         <Button
           size="lg"
-          className="h-12 w-full text-sm font-semibold"
+          className="hidden h-12 w-full text-sm font-semibold sm:flex"
           disabled={submitting}
           onClick={handleSubmit}
         >
@@ -675,6 +677,14 @@ export function PurchaseRequisition({
           {submitting ? "Submitting" : "Submit Requisition"}
         </Button>
       </div>
+
+      <StickySubmit
+        label="Estimated total (SGD)"
+        value={hasAmount ? `SGD ${fmt(estimatedTotalSGD)}` : "SGD 0.00"}
+        action="Submit requisition"
+        submitting={submitting}
+        onSubmit={handleSubmit}
+      />
     </div>
   )
 }
@@ -743,7 +753,7 @@ function RequisitionItemFields({
               onChange={(e) => onChange("categoryOther", e.target.value)}
               aria-required="true"
               aria-invalid={!!errors.categoryOther || undefined}
-              placeholder="Specify the category"
+             
               className="bg-card"
             />
             <FieldError
@@ -766,7 +776,7 @@ function RequisitionItemFields({
           onChange={(e) => onChange("description", e.target.value)}
           aria-required="true"
           aria-invalid={!!errors.description || undefined}
-          placeholder="Model, specification, part number, or scope of work"
+         
           maxLength={2000}
           className="min-h-24 resize-y bg-card"
         />

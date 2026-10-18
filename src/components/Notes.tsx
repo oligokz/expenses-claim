@@ -14,7 +14,7 @@ export function Notes({ value, onChange }: NotesProps) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label="Notes"
-        placeholder="Optional. Anything Finance should know."
+       
         className="min-h-24 resize-y bg-card"
       />
     </SectionCard>

@@ -19,7 +19,7 @@ export function ThemeSegmented() {
     <div
       role="radiogroup"
       aria-label="Appearance"
-      className="grid grid-cols-3 gap-1 rounded-lg bg-secondary p-1"
+      className="grid grid-cols-3 gap-1 rounded-lg border bg-secondary p-1"
     >
       {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
         const on = theme === value
@@ -31,9 +31,11 @@ export function ThemeSegmented() {
             aria-checked={on}
             onClick={() => setTheme(value)}
             className={cn(
-              "flex min-h-11 items-center justify-center gap-1.5 rounded-md text-sm font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none",
+              "flex min-h-11 items-center justify-center gap-1.5 rounded-md text-xs font-medium outline-none transition-colors focus-visible:ring-[3px] focus-visible:ring-ring/50 motion-reduce:transition-none",
               on
-                ? "bg-card text-foreground shadow-sm dark:bg-accent dark:text-accent-foreground"
+                // The same raised white-on-grey (card-on-secondary) in both
+                // themes; the navy accent in dark mode barely stood out.
+                ? "bg-card text-foreground shadow-sm ring-1 ring-border"
                 : "text-muted-foreground hover:text-foreground",
             )}
           >
