@@ -175,14 +175,14 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
         found.financeApprover = "Select the Finance/HR approver"
       if (!form.finalApprover) found.finalApprover = "Select the final approver"
     }
-    if (!form.purpose.trim()) found.purpose = "State the purpose of travel"
+    if (!form.purpose.trim()) found.purpose = "Enter the purpose of the trip"
     if (!form.destination.trim()) found.destination = "Enter the destination"
     if (!form.travelFrom) found.travelFrom = "Choose the departure date"
     if (!form.travelTo) found.travelTo = "Choose the return date"
     if (form.travelFrom && form.travelTo && form.travelTo < form.travelFrom)
       found.travelTo = "The return date cannot be before departure"
     if (!form.agenda.trim())
-      found.agenda = "Outline the objective or key meetings"
+      found.agenda = "Add the agenda"
     if (total <= 0) found.budget = "Enter at least one expected cost"
 
     if (Object.keys(found).length > 0) {
@@ -278,7 +278,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             {/* Only claim the approver was told if the email actually sent. */}
             {submitted.notified
               ? "your reporting manager has been emailed."
-              : "recorded and awaiting review."}
+              : "awaiting approval."}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
@@ -308,13 +308,13 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           Travel Request
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Request approval for business travel.
+          Get a business trip approved.
         </p>
       </div>
 
       <div className="flex flex-col gap-5">
         {/* ── Employee ── */}
-        <SectionCard icon={<User />} title="Employee Information">
+        <SectionCard icon={<User />} title="Your Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <FieldLabel htmlFor="trv-employee" text="Name" required />
@@ -360,7 +360,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             </div>
 
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <FieldLabel htmlFor="trv-job-title" text="Job Title" />
+              <FieldLabel htmlFor="trv-job-title" text="Job title" />
               <Input
                 id="trv-job-title"
                 value={form.jobTitle}
@@ -376,12 +376,12 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
         <SectionCard icon={<Plane />} title="Travel Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <FieldLabel htmlFor="trv-purpose" text="Purpose of Travel" required />
+              <FieldLabel htmlFor="trv-purpose" text="Purpose of trip" required />
               <Input
                 id="trv-purpose"
                 value={form.purpose}
                 onChange={(e) => update("purpose", e.target.value)}
-                placeholder="Why this trip is needed"
+                placeholder="Why you need to go"
                 aria-required="true"
                 aria-invalid={!!errors.purpose || undefined}
                 className="bg-card"
@@ -392,13 +392,13 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <FieldLabel
                 htmlFor="trv-event"
-                text="Meeting / Event Name (if applicable)"
+                text="Meeting or event"
               />
               <Input
                 id="trv-event"
                 value={form.eventName}
                 onChange={(e) => update("eventName", e.target.value)}
-                placeholder="Conference, customer meeting, site visit"
+                placeholder="Optional, e.g. a conference or customer visit"
                 className="bg-card"
               />
             </div>
@@ -421,7 +421,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor="trv-from" text="Travel Date (From)" required />
+              <FieldLabel htmlFor="trv-from" text="Departure date" required />
               <DateField
                 id="trv-from"
                 value={form.travelFrom}
@@ -434,7 +434,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor="trv-to" text="Travel Date (To)" required />
+              <FieldLabel htmlFor="trv-to" text="Return date" required />
               <DateField
                 id="trv-to"
                 value={form.travelTo}
@@ -447,12 +447,12 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             </div>
 
             <div className="flex flex-col gap-1.5 sm:col-span-2">
-              <FieldLabel htmlFor="trv-agenda" text="Travel Agenda" required />
+              <FieldLabel htmlFor="trv-agenda" text="Agenda" required />
               <Textarea
                 id="trv-agenda"
                 value={form.agenda}
                 onChange={(e) => update("agenda", e.target.value)}
-                placeholder="Trip objective, key meetings, expected business outcomes"
+                placeholder="Objective and key meetings"
                 aria-required="true"
                 aria-invalid={!!errors.agenda || undefined}
                 className="min-h-28 resize-y bg-card"
@@ -463,12 +463,8 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
         </SectionCard>
 
         {/* ── Budget ── */}
-        <SectionCard icon={<Wallet />} title="Expected Travel & Expenses Budget">
+        <SectionCard icon={<Wallet />} title="Estimated Costs (SGD)">
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              Enter the expected cost per category in SGD. Attach supporting
-              documents below, such as a flight quote.
-            </p>
 
             <div className="flex flex-col gap-3">
               {TRAVEL_BUDGET_LINES.map((line) => (
@@ -498,13 +494,13 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
                 <div className="flex flex-col gap-1.5">
                   <FieldLabel
                     htmlFor="trv-other-note"
-                    text="What are the other expenses for?"
+                    text="What are the other costs?"
                   />
                   <Input
                     id="trv-other-note"
                     value={form.costOtherNote}
                     onChange={(e) => update("costOtherNote", e.target.value)}
-                    placeholder="Visa fees, travel insurance"
+                    placeholder="e.g. visa, travel insurance"
                     className="bg-card"
                   />
                 </div>
@@ -529,19 +525,18 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Documents"
-          hint={`Flight quotes, hotel rates, event registration · Max ${MAX_UPLOAD_LABEL} per file`}
+          hint={`e.g. flight quote, hotel rate. Up to ${MAX_UPLOAD_LABEL} each.`}
         />
 
         {/* ── Approvals ── */}
-        <SectionCard icon={<CheckCircle2 />} title="Approvers">
+        <SectionCard icon={<CheckCircle2 />} title="Approval">
           <div className="flex flex-col gap-5">
             <p className="text-sm text-muted-foreground">
-              Travel requests are approved in order: reporting manager, then
-              Finance/HR, then final approval. Each is emailed in turn.
+              Approved in this order. Each person is emailed when it's their turn.
             </p>
             <ApproverField
               id="trv-manager"
-              label="Reporting Manager"
+              label="Reporting manager"
               required
               value={form.reportingManager}
               onChange={(v) => update("reportingManager", v)}
@@ -550,7 +545,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             />
             <ApproverField
               id="trv-finance"
-              label="Finance / HR"
+              label="Finance/HR"
               required
               value={form.financeApprover}
               onChange={(v) => update("financeApprover", v)}
@@ -559,7 +554,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             />
             <ApproverField
               id="trv-final"
-              label="Final Approval"
+              label="Final approval"
               required
               value={form.finalApprover}
               onChange={(v) => update("finalApprover", v)}

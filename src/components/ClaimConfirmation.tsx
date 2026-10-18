@@ -57,7 +57,7 @@ export function ClaimConfirmation({
           Claim submitted
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your expense claim has been recorded. Keep the reference below.
+          Finance will process it. Keep this reference.
         </p>
       </div>
 

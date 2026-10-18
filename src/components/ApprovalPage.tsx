@@ -126,8 +126,8 @@ export function ApprovalPage({ token }: { token: string }) {
           </h1>
           <p className="max-w-sm text-sm text-muted-foreground">
             {n.isRequester
-              ? "This link is for your approver. They have their own copy, so there's no need to forward it."
-              : "It was probably forwarded to you. Only the named approver can open it, so there's nothing for you to do."}
+              ? "This link is for your approver, who has their own copy. No need to forward it."
+              : "It was probably forwarded to you. Only the named approver can open it, so you don't need to do anything."}
           </p>
           <div className="mt-2 w-full max-w-sm rounded-xl border bg-muted/50 px-4 py-3 text-left text-sm">
             <div className="flex justify-between gap-3">

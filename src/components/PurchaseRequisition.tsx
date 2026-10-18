@@ -411,7 +411,7 @@ export function PurchaseRequisition({
             {/* Only claim the approver was told if the email actually sent. */}
             {submitted.notified
               ? "your approver has been emailed."
-              : "recorded and awaiting review."}
+              : "awaiting approval."}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
@@ -441,13 +441,13 @@ export function PurchaseRequisition({
           Purchase Requisition
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Request a direct purchase for approval.
+          Ask to buy items or services.
         </p>
       </div>
 
       <div className="flex flex-col gap-5">
         {/* ── Requestor ── */}
-        <SectionCard icon={<User />} title="Requestor Information">
+        <SectionCard icon={<User />} title="Your Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <FieldLabel htmlFor="req-employee" text="Name" required />
@@ -493,39 +493,15 @@ export function PurchaseRequisition({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor="req-job-title" text="Job Title" />
+              <FieldLabel htmlFor="req-job-title" text="Job title" />
               <Input
                 id="req-job-title"
                 value={form.jobTitle}
                 onChange={(e) => update("jobTitle", e.target.value)}
-                placeholder="e.g. Systems Engineer"
+                placeholder="Your role"
                 className="bg-card"
               />
             </div>
-
-            {/* Approvers come from a bounded SharePoint list. Both stages are
-                chosen up front so the whole route is visible before submitting,
-                rather than the second appearing out of a config the requester
-                cannot see. */}
-            <ApproverField
-              id="req-manager"
-              label="First approver"
-              required
-              value={form.reportingManager}
-              onChange={(v) => update("reportingManager", v)}
-              approvers={approvers}
-              error={errors.reportingManager}
-            />
-
-            <ApproverField
-              id="req-final-approver"
-              label="Second approver (optional)"
-              value={form.finalApprover}
-              onChange={(v) => update("finalApprover", v)}
-              approvers={finalApprovers}
-              error={errors.finalApprover}
-              allowNone
-            />
           </div>
         </SectionCard>
 
@@ -533,7 +509,7 @@ export function PurchaseRequisition({
             One or more lines off the same vendor quotation, so they share a
             currency. A single item looks exactly as the form always did; the
             per-item header and remove control only appear once there are two. */}
-        <SectionCard icon={<Package />} title="Item / Service Details">
+        <SectionCard icon={<Package />} title="Items">
           <div className="flex flex-col gap-5">
             <div className="grid gap-5 sm:grid-cols-3">
               <div className="flex flex-col gap-1.5">
@@ -563,7 +539,7 @@ export function PurchaseRequisition({
                 id="req-cur-hint"
                 className="self-end pb-2.5 text-xs text-muted-foreground sm:col-span-2"
               >
-                Every item on this requisition is priced in {form.currency}.
+                Applies to all items.
               </p>
             </div>
 
@@ -593,8 +569,7 @@ export function PurchaseRequisition({
               </Button>
             ) : (
               <p className="text-center text-xs text-muted-foreground">
-                A requisition can hold up to {MAX_ITEMS} items. Submit a second
-                requisition for the rest.
+                Up to {MAX_ITEMS} items per requisition. Submit another for the rest.
               </p>
             )}
 
@@ -619,7 +594,7 @@ export function PurchaseRequisition({
         </SectionCard>
 
         {/* ── Vendor ── */}
-        <SectionCard icon={<Building2 />} title="Vendor Details and Quotation">
+        <SectionCard icon={<Building2 />} title="Vendor">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5 sm:col-span-2">
               <FieldLabel htmlFor="req-vendor" text="Vendor name" required />
@@ -667,18 +642,18 @@ export function PurchaseRequisition({
             files={files}
             onAdd={addFiles}
             onRemove={removeFile}
-            title="Vendor Quotation (required)"
-            hint={`Attach the vendor quotation · PDF · JPG · PNG · Max ${MAX_UPLOAD_LABEL} per file`}
+            title="Quotation"
+            hint={`Required. PDF or photo, up to ${MAX_UPLOAD_LABEL} each.`}
           />
           <FieldError id="req-quotation-error" message={errors.quotation} />
         </div>
 
         {/* ── Project ── */}
-        <SectionCard icon={<Briefcase />} title="Project / Product Details">
+        <SectionCard icon={<Briefcase />} title="Project">
           <div className="flex flex-col gap-1.5">
             <FieldLabel
               htmlFor="req-project"
-              text="Which project / customer is this for?"
+              text="Project or customer"
               required
             />
             <Textarea
@@ -692,6 +667,35 @@ export function PurchaseRequisition({
             <FieldError
               id="req-project-error"
               message={errors.projectCustomer}
+            />
+          </div>
+        </SectionCard>
+
+        {/* ── Approval ──
+            Approvers sit last on every form, just above Submit. Both are
+            chosen up front so the whole route is visible before submitting. */}
+        <SectionCard icon={<CheckCircle2 />} title="Approval">
+          <div className="flex flex-col gap-5">
+            <p className="text-sm text-muted-foreground">
+              If you add a second approver, they're asked once the first has approved.
+            </p>
+            <ApproverField
+              id="req-manager"
+              label="First approver"
+              required
+              value={form.reportingManager}
+              onChange={(v) => update("reportingManager", v)}
+              approvers={approvers}
+              error={errors.reportingManager}
+            />
+            <ApproverField
+              id="req-final-approver"
+              label="Second approver (optional)"
+              value={form.finalApprover}
+              onChange={(v) => update("finalApprover", v)}
+              approvers={finalApprovers}
+              error={errors.finalApprover}
+              allowNone
             />
           </div>
         </SectionCard>
@@ -771,7 +775,7 @@ function RequisitionItemFields({
 
         {showOther && (
           <div className="flex flex-col gap-1.5">
-            <FieldLabel htmlFor={id("categoryOther")} text="If others" required />
+            <FieldLabel htmlFor={id("categoryOther")} text="Other category" required />
             <Input
               id={id("categoryOther")}
               value={item.categoryOther}
@@ -792,7 +796,7 @@ function RequisitionItemFields({
       <div className="flex flex-col gap-1.5">
         <FieldLabel
           htmlFor={id("description")}
-          text="Description of item / service"
+          text="Description"
           required
         />
         <Textarea

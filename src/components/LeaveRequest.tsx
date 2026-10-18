@@ -187,7 +187,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
             Leave request submitted
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {dayLabel(submitted.days)} · recorded and awaiting review.
+            {dayLabel(submitted.days)} · sent to your approver.
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
@@ -217,15 +217,15 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           Leave Request
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Submit a leave request for manager approval.
+          Ask for time off.
         </p>
       </div>
 
       <div className="flex flex-col gap-5">
-        <SectionCard icon={<User />} title="Claimant Information">
+        <SectionCard icon={<User />} title="Your Details">
           <div className="grid gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
-              <FieldLabel htmlFor="leave-employee" text="Employee Name" required />
+              <FieldLabel htmlFor="leave-employee" text="Name" required />
               <div className="relative">
                 <Input
                   id="leave-employee"
@@ -267,15 +267,6 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
               <FieldError id="leave-dept-error" message={errors.department} />
             </div>
 
-            <ApproverField
-              id="leave-approver"
-              label="Approver"
-              required
-              value={form.approverEmail}
-              onChange={(v) => update("approverEmail", v)}
-              approvers={approvers}
-              error={errors.approverEmail}
-            />
           </div>
         </SectionCard>
 
@@ -369,7 +360,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
             value={form.reason}
             onChange={(e) => update("reason", e.target.value)}
             aria-label="Reason for leave"
-            placeholder="Optional. Add any context for your manager"
+            placeholder="Optional. Anything your approver should know."
             className="min-h-24 resize-y bg-card"
           />
         </SectionCard>
@@ -379,8 +370,21 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           onAdd={addFiles}
           onRemove={removeFile}
           title="Supporting Document"
-          hint={`Attach an MC or supporting document if relevant · Max ${MAX_UPLOAD_LABEL} per file`}
+          hint={`Optional, for example an MC. Up to ${MAX_UPLOAD_LABEL} each.`}
         />
+
+        {/* Approvers sit last on every form, just above Submit. */}
+        <SectionCard icon={<CheckCircle2 />} title="Approval">
+          <ApproverField
+            id="leave-approver"
+            label="Approver"
+            required
+            value={form.approverEmail}
+            onChange={(v) => update("approverEmail", v)}
+            approvers={approvers}
+            error={errors.approverEmail}
+          />
+        </SectionCard>
 
         <Button
           size="lg"

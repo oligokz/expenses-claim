@@ -24,8 +24,8 @@ export function Receipts({
   files,
   onAdd,
   onRemove,
-  title = "Receipt Attachments",
-  hint = `PDF · JPG · PNG · HEIC · Max ${MAX_UPLOAD_LABEL} per file`,
+  title = "Receipts",
+  hint = `PDF or photo, up to ${MAX_UPLOAD_LABEL} each`,
 }: ReceiptsProps) {
   const [drag, setDrag] = useState(false)
 
@@ -62,7 +62,7 @@ export function Receipts({
         <input
           type="file"
           multiple
-          accept=".pdf,.jpg,.jpeg,.png,.heic"
+          accept=".pdf,.jpg,.jpeg,.png,.heic,.heif"
           className="hidden"
           onChange={(e) => {
             onAdd(e.target.files)
@@ -73,8 +73,9 @@ export function Receipts({
           <UploadCloud className="size-5" />
         </span>
         <span className="text-sm text-foreground">
-          <span className="font-semibold">Click to browse</span> or drag &amp; drop
-          files here
+          {/* Phones have nothing to drag, so only offer it where there is. */}
+          <span className="font-semibold">Choose files</span>
+          <span className="hidden sm:inline"> or drag them here</span>
         </span>
         <span className="mt-1 text-xs text-muted-foreground">{hint}</span>
       </label>

@@ -41,7 +41,7 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
       title="Expense Details"
       action={
         <Badge variant="secondary" className="font-medium">
-          Single entry
+          One expense per claim
         </Badge>
       }
     >
@@ -79,13 +79,13 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
           <Input
             id="line-desc"
             value={row.desc}
-            placeholder="Describe this expense"
+            placeholder="What was it for?"
             onChange={(e) => onUpdate("desc", e.target.value)}
           />
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="line-receipt-date" text="Date of Receipt" required />
+          <FieldLabel htmlFor="line-receipt-date" text="Receipt date" required />
           <DateField
             id="line-receipt-date"
             required

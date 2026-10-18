@@ -28,10 +28,10 @@ export function ClaimantInfo({
   errors,
 }: ClaimantInfoProps) {
   return (
-    <SectionCard icon={<User />} title="Claimant Information">
+    <SectionCard icon={<User />} title="Your Details">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-1.5">
-          <FieldLabel htmlFor="claimant-employee" text="Employee Name" required />
+          <FieldLabel htmlFor="claimant-employee" text="Name" required />
           <div className="relative">
             <Input
               id="claimant-employee"

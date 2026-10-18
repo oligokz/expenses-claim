@@ -79,8 +79,9 @@ const MODULES = {
   },
 
   /* Travel is the three-stage case the paper form describes: reporting manager,
-   * then Finance/HR, then final approval, each signing its own box. Same
-   * machinery as requisition with one more stage bolted on.
+   * then Finance/HR, then final approval, each signing its own box. These role
+   * names are what the business uses, so travel keeps them rather than the
+   * first/second wording a requisition uses.
    *
    * `listValue` is only used to look up an approver's display name for the
    * next-stage email, and approversFor() also accepts anyone marked 'Both', so

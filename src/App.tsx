@@ -568,7 +568,7 @@ export default function App() {
                 New Expense Claim
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Submit a new claim below.
+                Claim back money you spent for work.
               </p>
             </div>
 

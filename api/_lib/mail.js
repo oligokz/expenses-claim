@@ -231,9 +231,8 @@ function approvalRequest({
        * page shows them behind a sign-in, so a forwarded message never carries
        * a working link to someone's receipts or medical certificate. */
       footer:
-        (hasAttachments ? 'Attachments are shown on the approval page. ' : '') +
-        `This link expires in ${ttlDays} days. ` +
-        `You can also find everything waiting for you under Approvals at ${approvalsUrl()}`,
+        (hasAttachments ? 'Attachments are on the approval page. ' : '') +
+        `This link works for ${ttlDays} days. After that, open Approvals at ${approvalsUrl()}`,
     }),
   };
 }
@@ -284,7 +283,7 @@ function completionNotice({ kind, claimRef, item, requester, department, approve
     subject: `${kind || 'Request'} ${claimRef} is fully approved`,
     html: layout({
       heading: `${kind || 'Request'} fully approved`,
-      intro: 'Every approval stage is complete. The record is in SharePoint.',
+      intro: 'All approvals are done.',
       items,
       currency,
       rows: [
@@ -309,14 +308,14 @@ function withdrawnNotice({ kind, claimRef, item, requester, stageLabel }) {
     subject: `${kind || 'Request'} ${claimRef} was withdrawn`,
     html: layout({
       heading: `This ${(kind || 'request').toLowerCase()} was withdrawn`,
-      intro: `${requester} deleted it, so there is nothing left for you to approve. No action is needed.`,
+      intro: `${requester} withdrew it. You don't need to do anything.`,
       rows: [
         ['Reference', claimRef],
         ['Item', item || ''],
         ['Requested by', requester || ''],
         ['You were', stageLabel || ''],
       ],
-      footer: 'The approval link in the earlier email no longer works.',
+      footer: 'The link in the earlier email no longer works.',
     }),
   };
 }
@@ -326,8 +325,8 @@ function travelReceipt({ claimRef, destination, dates, totalSGD, approverName })
   return {
     subject: `Your travel request ${claimRef} was recorded`,
     html: layout({
-      heading: 'Travel request recorded',
-      intro: 'This is your copy for reference.',
+      heading: 'Travel request received',
+      intro: "Here's your copy.",
       rows: [
         ['Reference', claimRef],
         ['Destination', destination || ''],
@@ -336,7 +335,7 @@ function travelReceipt({ claimRef, destination, dates, totalSGD, approverName })
         ['Sent to', approverName || ''],
       ],
       action: { href: myRequestsUrl(), label: 'View my requests' },
-      footer: 'Travel requests need three approvals: reporting manager, Finance/HR, then final approval.',
+      footer: "It goes to your reporting manager, then Finance/HR, then final approval. You'll get an email after each decision.",
     }),
   };
 }
@@ -346,8 +345,8 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
   return {
     subject: `Your purchase requisition ${claimRef} was recorded`,
     html: layout({
-      heading: 'Requisition recorded',
-      intro: 'This is your copy for reference.',
+      heading: 'Requisition received',
+      intro: "Here's your copy.",
       rows: [
         ['Reference', claimRef],
         ['Item', item],
@@ -355,7 +354,7 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
         ['Sent to', approverName],
       ],
       action: { href: myRequestsUrl(), label: 'View my requests' },
-      footer: "You'll be notified when it has been reviewed.",
+      footer: "You'll get an email after each decision.",
     }),
   };
 }

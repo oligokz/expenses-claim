@@ -9,12 +9,12 @@ interface NotesProps {
 
 export function Notes({ value, onChange }: NotesProps) {
   return (
-    <SectionCard icon={<StickyNote />} title="Additional Notes">
+    <SectionCard icon={<StickyNote />} title="Notes">
       <Textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        aria-label="Additional notes"
-        placeholder="Business purpose, trip details, or any additional context"
+        aria-label="Notes"
+        placeholder="Optional. Anything Finance should know."
         className="min-h-24 resize-y bg-card"
       />
     </SectionCard>
