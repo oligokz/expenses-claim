@@ -2,11 +2,13 @@ const {
   getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors,
 } = require('./_lib/sharepoint');
 const {
-  readToken, mintToken, getRow, getRowWithEtag, patchRow,
-  assertActionable, isExpectedApprover, stageOf, TOKEN_TTL_DAYS,
+  MODULES, readToken, mintToken, getRow, getRowWithEtag, patchRow,
+  assertActionable, currentStage, isExpectedApprover, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments, topFolderFor } = require('./_lib/attachments');
+const { approverName } = require('./_lib/approvers');
+const { sendError } = require('./_lib/http');
 const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 /* Which document a module renders once it is fully approved. Keyed by prefix
@@ -20,22 +22,6 @@ const PDF_BUILDERS = {
 const todayIso = () => new Date().toISOString().slice(0, 10);
 // Decisions record the moment, not just the day, the PDF shows a real time.
 const nowIso = () => new Date().toISOString();
-
-/** Approvers for a stage, from the admin-managed list. */
-async function approversFor(token, siteId, stageLabel) {
-  const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=200`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return [];
-  return ((await res.json()).value || [])
-    .map((i) => i.fields || {})
-    .filter((f) => f.Active !== false && f.ApproverEmail)
-    .filter((f) => f.ApprovalStage === stageLabel || f.ApprovalStage === 'Both')
-    .sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0))
-    .map((f) => ({ name: f.Title || f.ApproverEmail, email: f.ApproverEmail }));
-}
 
 /** Store a signature PNG beside the request's other attachments. */
 async function saveSignature(token, siteId, dataUrl, claimRef, stageN) {
@@ -105,9 +91,112 @@ async function renderPdf(token, siteId, mod, itemId, claimRef) {
   return webUrl;
 }
 
+/* ── GET without a token: everything waiting on the signed-in person ──
+ *
+ * The approval email is the only way in otherwise, and an approver who can't
+ * find it, or is sent the requester's copy instead (REQ-19), is stuck. This
+ * lists every request whose current stage is addressed to them, each with a
+ * token re-issued for the nonce already on the row, so opening one here and
+ * using the emailed link are interchangeable and single-use still holds.
+ *
+ * Lives here rather than in its own file because the Hobby plan caps a
+ * deployment at 12 functions and the app already has 12.
+ */
+async function pendingRows(token, siteId, mod) {
+  const filter = encodeURIComponent("fields/Status eq 'Pending'");
+  let url =
+    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items` +
+    `?$expand=fields&$top=200&$filter=${filter}`;
+  const rows = [];
+  for (let page = 0; url && page < 10; page++) {
+    const res = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',
+      },
+    });
+    if (!res.ok) throw new Error(`${mod.listName()}: ${res.status} ${(await res.text()).slice(0, 200)}`);
+    const data = await res.json();
+    rows.push(...(data.value || []));
+    url = data['@odata.nextLink'] || null;
+  }
+  return rows;
+}
+
+/** The figure worth showing in a list row: money if there is any, else days. */
+function headlineFigure(rows) {
+  const money = rows.find(([, v]) => /^SGD /.test(v));
+  if (money) return money[1];
+  const days = rows.find(([k]) => k === 'Days');
+  return days ? `${days[1]} ${Number(days[1]) === 1 ? 'day' : 'days'}` : '';
+}
+
+async function handleInbox(req, res) {
+  const user = await verifyUserToken(req);
+  if (!user.email)
+    return res.status(400).json({ error: 'Token did not contain an email/username claim' });
+
+  const token  = await getAppToken();
+  const siteId = await getSiteId(token);
+
+  const approvals = [];
+  const warnings = [];
+  await Promise.all(Object.entries(MODULES).map(async ([moduleName, mod]) => {
+    let rows;
+    try {
+      rows = await pendingRows(token, siteId, mod);
+    } catch (e) {
+      // One unreadable list must not hide what is waiting in the others.
+      console.error('[approval] inbox list failed:', e.message);
+      warnings.push(`Could not load ${mod.kind.toLowerCase()}s just now.`);
+      return;
+    }
+    for (const row of rows) {
+      const fields = row.fields || {};
+      const stage = currentStage(mod, fields);
+      if (!stage || !isExpectedApprover(fields, stage, user.email)) continue;
+
+      // Reuse the row's nonce so the emailed link keeps working. A row without
+      // one (its email never went out) gets a fresh nonce stored now.
+      let jti = fields[stage.tokenField];
+      if (!jti) {
+        ({ jti } = await mintToken({ module: moduleName, itemId: row.id, stage: stage.n, approver: user.email }));
+        try {
+          await patchRow(token, siteId, mod, row.id, { [stage.tokenField]: jti });
+        } catch (e) {
+          console.error('[approval] could not store nonce:', e.message);
+          continue;
+        }
+      }
+      const { token: approvalToken } = await mintToken({
+        module: moduleName, itemId: row.id, stage: stage.n, approver: user.email, jti,
+      });
+
+      const summary = mod.summarise(fields);
+      approvals.push({
+        ref:         `${mod.refPrefix}-${row.id}`,
+        type:        moduleName,
+        kind:        mod.kind,
+        title:       summary.title,
+        requester:   summary.requester,
+        department:  summary.department,
+        submittedOn: summary.submittedOn || row.createdDateTime || '',
+        stageLabel:  stage.label,
+        figure:      headlineFigure(summary.rows),
+        token:       approvalToken,
+      });
+    }
+  }));
+
+  // Oldest first: whatever has waited longest is the one to clear.
+  approvals.sort((a, b) => new Date(a.submittedOn).getTime() - new Date(b.submittedOn).getTime());
+  return res.status(200).json({ approvals, warnings });
+}
+
 /* ── GET: what the approver is being asked to sign ── */
 async function handleGet(req, res) {
-  const { mod, stage, itemId, approver } = await readToken(req.query.t);
+  if (!req.query.t) return handleInbox(req, res);
+  const { mod, stage, itemId, jti } = await readToken(req.query.t);
   const user = await verifyUserToken(req);
 
   const token  = await getAppToken();
@@ -115,12 +204,10 @@ async function handleGet(req, res) {
   const fields = await getRow(token, siteId, mod, itemId);
   const claimRef = `${mod.refPrefix}-${itemId}`;
 
-  // Identity, not the link, decides who may act.
-  const permitted =
-    isExpectedApprover(fields, stage, user.email) ||
-    (approver || '').toLowerCase() === (user.email || '').toLowerCase();
-
-  if (!permitted) {
+  /* Identity, not the link, decides who may see it: the row's approver for this
+   * stage, as now recorded. The address baked into the link is not enough on
+   * its own, since the row can be reassigned in SharePoint after it was sent. */
+  if (!isExpectedApprover(fields, stage, user.email)) {
     return res.status(403).json({
       error: `This approval is addressed to someone else. You are signed in as ${user.email}.`,
     });
@@ -130,7 +217,7 @@ async function handleGet(req, res) {
   let actionable = true;
   let reason = '';
   try {
-    assertActionable(fields, stage, (await readToken(req.query.t)).jti);
+    assertActionable(fields, stage, jti);
   } catch (e) {
     actionable = false;
     reason = e.message;
@@ -160,7 +247,7 @@ async function handleGet(req, res) {
 
 /* ── POST: record the decision ── */
 async function handlePost(req, res) {
-  const { mod, moduleName, stage, itemId } = await readToken(req.body?.token);
+  const { mod, moduleName, stage, itemId, jti } = await readToken(req.body?.token);
   const user = await verifyUserToken(req);
   const { decision, comment = '', signature } = req.body || {};
 
@@ -176,7 +263,6 @@ async function handlePost(req, res) {
     return res.status(403).json({ error: 'This approval is addressed to someone else.' });
 
   // Re-checked here, not just on GET, the page could have been left open.
-  const { jti } = await readToken(req.body.token);
   assertActionable(fields, stage, jti);
 
   /* Record the decision only if the row hasn't moved since we checked it, so
@@ -248,13 +334,10 @@ async function handlePost(req, res) {
   }
 
   /* How many stages a request has is decided by how many approvers the
-   * requester nominated, not by the module. A blank next-stage approver means
-   * this approval is the last one. */
-  const candidateNext = stageOf(mod, stage.n + 1);
+   * requester nominated, not by the module. The next stage is the first later
+   * one with an approver on the row; none means this approval is the last. */
   const next =
-    candidateNext && (fields[candidateNext.approverField] || '').trim()
-      ? candidateNext
-      : null;
+    mod.stages.find((s) => s.n > stage.n && (fields[s.approverField] || '').trim()) || null;
   const patch = {
     [stage.statusField]:     'Approved',
     [stage.dateField]:       nowIso(),
@@ -263,7 +346,9 @@ async function handlePost(req, res) {
   };
   // Single-stage modules have neither a signature column nor a stage column.
   if (stage.signatureField) patch[stage.signatureField] = signatureUrl;
-  if (mod.stageField) patch[mod.stageField] = stage.nextStage;
+  // Where it actually goes next. A requisition with no second approver used to
+  // be left at 'Final Approval' after its only approval.
+  if (mod.stageField) patch[mod.stageField] = next ? next.listValue : 'Complete';
   if (comment) Object.assign(patch, noteWith('Approved'));
 
   let nextApprover = null;
@@ -272,15 +357,12 @@ async function handlePost(req, res) {
     // The next approver was chosen by the requester at submit and is already on
     // the row; look up their display name only so the email reads properly.
     const nextEmail = (fields[next.approverField] || '').trim();
-    const candidates = await approversFor(token, siteId, next.listValue);
-    nextApprover = candidates.find(
-      (c) => c.email.toLowerCase() === nextEmail.toLowerCase()
-    ) || { name: nextEmail, email: nextEmail };
+    nextApprover = { name: await approverName(token, siteId, nextEmail), email: nextEmail };
 
-    const { token: nextToken, jti } = await mintToken({
+    const { token: nextToken, jti: nextJti } = await mintToken({
       module: moduleName, itemId, stage: next.n, approver: nextEmail,
     });
-    patch[next.tokenField] = jti;
+    patch[next.tokenField] = nextJti;
 
     await commit(patch);
 
@@ -334,6 +416,7 @@ async function handlePost(req, res) {
           kind: mod.kind, claimRef, item, decision: 'approved',
           decidedBy: user.name, stageLabel: stage.label,
           comment, complete: !next, pdfUrl,
+          nextApprover: nextApprover?.name || null,
         }),
       });
     } catch (e) {
@@ -388,8 +471,6 @@ module.exports = async function handler(req, res) {
     if (req.method === 'POST') return await handlePost(req, res);
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[approval] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'approval');
   }
 };

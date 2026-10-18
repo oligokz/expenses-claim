@@ -210,6 +210,23 @@ export interface SubmitResponse {
 
 export type RequestType = "expense" | "leave" | "requisition" | "travel"
 
+/** A request waiting on the signed-in person, from GET /api/approval. */
+export interface PendingApproval {
+  ref: string
+  type: RequestType
+  /** "Purchase requisition", "Leave request", ... */
+  kind: string
+  title: string
+  requester: string
+  department: string
+  submittedOn: string
+  stageLabel: string
+  /** "SGD 120.00", or "2 days" for leave. */
+  figure: string
+  /** Opens /approve?t=..., interchangeable with the emailed link. */
+  token: string
+}
+
 /** One past submission of any type, as returned by GET /api/my-requests. */
 export interface MyRequest {
   id: string

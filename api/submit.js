@@ -2,49 +2,10 @@ const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/s
 const { notifyApprover } = require('./_lib/notify');
 const { assertApproversAllowed } = require('./_lib/approvers');
 const { getRates, toSGD } = require('./_lib/rates');
+const { createListItem, withColumnReport } = require('./_lib/lists');
+const { sendError } = require('./_lib/http');
 
-async function createListItem(token, siteId, fields) {
-  const listName = process.env.SP_LIST_NAME;
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    }
-  );
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`createListItem failed (${res.status}): ${txt}`);
-  }
-  return res.json();
-}
-
-// Diagnostic: list the target list's columns with their data type, so we can
-// tell exactly which field is missing or has a mismatched type when a write fails.
-async function describeColumns(token, siteId) {
-  const listName = process.env.SP_LIST_NAME;
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/columns`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  const typeOf = (c) =>
-    c.text ? 'text'
-    : c.number ? 'number'
-    : c.dateTime ? 'dateTime'
-    : c.choice ? 'choice'
-    : c.currency ? 'currency'
-    : c.boolean ? 'boolean'
-    : c.personOrGroup ? 'person'
-    : c.lookup ? 'lookup'
-    : c.calculated ? 'calculated(read-only)'
-    : 'other';
-  const map = {};
-  for (const c of data.value || []) map[c.name] = typeOf(c) + (c.readOnly ? ' [readOnly]' : '');
-  return map;
-}
+const LIST = () => process.env.SP_LIST_NAME;
 
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'POST, OPTIONS');
@@ -56,7 +17,7 @@ module.exports = async function handler(req, res) {
     const user = await verifyUserToken(req);
 
     const { department, submissionDate, lineItems, notes,
-            receiptCount, approverEmail } = req.body;
+            receiptCount, approverEmail } = req.body || {};
 
     const employeeName  = user.name;
     const employeeEmail = user.email;
@@ -65,6 +26,8 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Token did not contain an email/username claim' });
     if (!department || !submissionDate)
       return res.status(400).json({ error: 'Missing required fields' });
+    if (!/^\d{4}-\d{2}-\d{2}/.test(String(submissionDate)))
+      return res.status(400).json({ error: 'Submission date must be a date' });
     if (!lineItems || !lineItems.length)
       return res.status(400).json({ error: 'At least one line item required' });
 
@@ -85,7 +48,9 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    // The approver must come from the roster, and never be the requester.
+    /* The form no longer asks for an approver (claims are handled in SharePoint),
+     * but if one is sent it must still come from the roster and not be the
+     * requester. */
     await assertApproversAllowed(token, siteId, employeeEmail, [approverEmail]);
 
     const fields = {
@@ -105,26 +70,13 @@ module.exports = async function handler(req, res) {
       Notes:          notes || '',
       Status:         'Pending',
       ApproverEmail:  approverEmail || '',
-      ReceiptCount:   receiptCount || 0,
+      ReceiptCount:   Math.max(0, Math.floor(Number(receiptCount) || 0)),
       // The rates the total was actually computed from, not the client's copy.
       ExchangeRates:  JSON.stringify(rates),
     };
 
-    let created;
-    try {
-      created = await createListItem(token, siteId, fields);
-    } catch (writeErr) {
-      // Turn Graph's opaque "generalException" into something actionable by
-      // reporting each field we sent alongside the actual column type it maps to.
-      const cols = await describeColumns(token, siteId).catch(() => null);
-      if (cols) {
-        const report = Object.keys(fields)
-          .map((f) => `${f}=${cols[f] || 'MISSING'}`)
-          .join(', ');
-        writeErr.message += ` | columns: ${report}`;
-      }
-      throw writeErr;
-    }
+    const created = await withColumnReport(token, siteId, LIST(), fields,
+      () => createListItem(token, siteId, LIST(), fields));
     const itemId   = created?.id || 'unknown';
     const claimRef = `EXP-${itemId}`;
     const { notified, mailError } = await notifyApprover(token, siteId, {
@@ -132,9 +84,7 @@ module.exports = async function handler(req, res) {
     });
     return res.status(200).json({ success: true, itemId, claimRef, notified, mailError });
 
-  } catch(err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[submit] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+  } catch (err) {
+    return sendError(req, res, err, 'submit');
   }
 };

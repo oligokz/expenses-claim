@@ -3,8 +3,14 @@ import { Loader2, LogOut, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
-import { AppNav, type View } from "@/components/AppNav"
+import {
+  AppNav,
+  VIEW_PATHS,
+  viewFromPath,
+  type View,
+} from "@/components/AppNav"
 import { MyRequests } from "@/components/MyRequests"
+import { Approvals } from "@/components/Approvals"
 import { LeaveRequest } from "@/components/LeaveRequest"
 import { TravelRequest } from "@/components/TravelRequest"
 import { PurchaseRequisition } from "@/components/PurchaseRequisition"
@@ -85,7 +91,25 @@ export default function App() {
   const [authError, setAuthError] = useState("")
   const [identityLocked, setIdentityLocked] = useState(false)
   const [userName, setUserName] = useState("")
-  const [view, setView] = useState<View>("expense")
+  const [view, setViewState] = useState<View>(() =>
+    viewFromPath(window.location.pathname),
+  )
+
+  /* Keep the address bar on the tab's own path, so a refresh, a bookmark or an
+   * email link lands on the same page, and Back moves between tabs. */
+  const setView = useCallback((v: View) => {
+    setViewState(v)
+    if (window.location.pathname !== VIEW_PATHS[v]) {
+      window.history.pushState(null, "", VIEW_PATHS[v])
+    }
+    window.scrollTo({ top: 0 })
+  }, [])
+
+  useEffect(() => {
+    const onPop = () => setViewState(viewFromPath(window.location.pathname))
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
 
   const [claimant, setClaimant] = useState<ClaimantForm>({
     employee: "",
@@ -460,10 +484,20 @@ export default function App() {
         />
       </div>
 
-      <TopBar userName={userName} onLogout={handleLogout} />
+      <TopBar
+        userName={userName}
+        onLogout={handleLogout}
+        onViewRates={() => setView("rates")}
+      />
       <AppNav view={view} onChange={setView} />
 
-      <main className="mx-auto max-w-7xl px-4 pt-6 pb-28 sm:px-6 sm:pt-8 lg:pb-8">
+      {/* Extra bottom room only where the expense form's sticky bar sits. */}
+      <main
+        className={cn(
+          "mx-auto max-w-7xl px-4 pt-6 sm:px-6 sm:pt-8",
+          view === "expense" && !result ? "pb-28 sm:pb-8" : "pb-8",
+        )}
+      >
         {view === "expense" &&
           (result ? (
           <ClaimConfirmation
@@ -473,7 +507,11 @@ export default function App() {
             onNewClaim={handleNewClaim}
           />
         ) : (
-          <>
+          /* One column, the same frame as the leave, travel and purchase forms.
+             The rates sidebar used to give this page a layout of its own; the
+             rate that matters is shown beside the amount, and the full table
+             is its own page. */
+          <div className="mx-auto max-w-2xl">
             <div className="mb-6">
               <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
                 New Expense Claim
@@ -483,53 +521,42 @@ export default function App() {
               </p>
             </div>
 
-            <div className="grid items-start gap-5 lg:grid-cols-[1fr_300px]">
-              <div className="flex min-w-0 flex-col gap-5">
-                <ClaimantInfo
-                  value={claimant}
-                  onChange={updateClaimant}
-                  identityLocked={identityLocked}
-                  errors={errors}
-                />
-                <LineItems
-                  row={row}
-                  rates={rates}
-                  onUpdate={updateRow}
-                  errors={errors}
-                />
-                <Receipts files={files} onAdd={addFiles} onRemove={removeFile} />
-                <Notes value={notes} onChange={setNotes} />
-              </div>
-
-              <div className="flex flex-col gap-5 lg:sticky lg:top-28">
-                <RatesPanel
-                  rates={rates}
-                  status={rateStatus}
-                  updatedAt={rateUpdatedAt}
-                  refreshing={refreshing}
-                  onRefresh={() => void loadRates(true)}
-                />
-                <ClaimSummary data={summary} />
-                {/* Desktop submit lives in the sidebar; mobile uses the sticky bar below. */}
-                <Button
-                  size="lg"
-                  className="hidden h-12 w-full text-sm font-semibold lg:flex"
-                  disabled={submitting}
-                  onClick={handleSubmit}
-                >
-                  {submitting ? (
-                    <Loader2 className={cn("size-4 animate-spin")} />
-                  ) : (
-                    <Send className="size-4" />
-                  )}
-                  {submitting ? "Submitting" : "Submit Claim"}
-                </Button>
-              </div>
+            <div className="flex flex-col gap-5">
+              <ClaimantInfo
+                value={claimant}
+                onChange={updateClaimant}
+                identityLocked={identityLocked}
+                errors={errors}
+              />
+              <LineItems
+                row={row}
+                rates={rates}
+                onUpdate={updateRow}
+                errors={errors}
+                onViewRates={() => setView("rates")}
+              />
+              <Receipts files={files} onAdd={addFiles} onRemove={removeFile} />
+              <Notes value={notes} onChange={setNotes} />
+              <ClaimSummary data={summary} />
+              {/* On a phone the sticky bar below carries Submit instead. */}
+              <Button
+                size="lg"
+                className="hidden h-12 w-full text-sm font-semibold sm:flex"
+                disabled={submitting}
+                onClick={handleSubmit}
+              >
+                {submitting ? (
+                  <Loader2 className={cn("size-4 animate-spin")} />
+                ) : (
+                  <Send className="size-4" />
+                )}
+                {submitting ? "Submitting" : "Submit Claim"}
+              </Button>
             </div>
 
             {/* Mobile sticky action bar, keeps the total + Submit in the thumb zone. */}
-            <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 py-3 shadow-[0_-2px_10px_rgba(0,0,0,0.06)] lg:hidden">
-              <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-card px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:hidden">
+              <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Total (SGD)
@@ -553,7 +580,7 @@ export default function App() {
                 </Button>
               </div>
             </div>
-          </>
+          </div>
           ))}
 
         {view === "leave" && <LeaveRequest employeeName={userName} />}
@@ -562,6 +589,27 @@ export default function App() {
           <PurchaseRequisition employeeName={userName} rates={rates} />
         )}
         {view === "history" && <MyRequests />}
+        {view === "approvals" && <Approvals />}
+        {view === "rates" && (
+          <div className="mx-auto max-w-2xl">
+            <div className="mb-6">
+              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+                Exchange Rates
+              </h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                What 1 SGD buys in each currency. Claims are converted at
+                these rates when you submit.
+              </p>
+            </div>
+            <RatesPanel
+              rates={rates}
+              status={rateStatus}
+              updatedAt={rateUpdatedAt}
+              refreshing={refreshing}
+              onRefresh={() => void loadRates(true)}
+            />
+          </div>
+        )}
       </main>
     </div>
   )

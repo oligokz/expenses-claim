@@ -1,67 +1,15 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendMail, templates } = require('./_lib/mail');
-const { mintToken, getModule, TOKEN_TTL_DAYS } = require('./_lib/approvals');
-const { assertApproversAllowed } = require('./_lib/approvers');
+const { mintToken, getModule, patchRow, TOKEN_TTL_DAYS } = require('./_lib/approvals');
+const { assertApproversAllowed, approverName } = require('./_lib/approvers');
+const { createListItem, withColumnReport } = require('./_lib/lists');
+const { sendError } = require('./_lib/http');
 const { getRates, toSGD } = require('./_lib/rates');
 const {
   normaliseItems, itemsTitle, itemsHeadline, flatColumns,
 } = require('./_lib/requisitionItems');
 
-/** Resolve an approver's display name from the approvers list, for the email. */
-async function approverName(token, siteId, email) {
-  if (!email) return '';
-  try {
-    const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
-    const res = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=200`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) return email;
-    const rows = ((await res.json()).value || []).map((i) => i.fields || {});
-    const hit = rows.find(
-      (f) => (f.ApproverEmail || '').toLowerCase() === email.toLowerCase()
-    );
-    return hit?.Title || email;
-  } catch {
-    return email;
-  }
-}
-
-async function createRequisitionItem(token, siteId, fields) {
-  const listName = process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    }
-  );
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`createRequisitionItem failed (${res.status}): ${txt}`);
-  }
-  return res.json();
-}
-
-// Same diagnostic as submit.js / leave.js: report each field against its column
-// type so a failed write names the column that's missing or mistyped.
-async function describeColumns(token, siteId) {
-  const listName = process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/columns`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  const typeOf = (c) =>
-    c.text ? 'text' : c.number ? 'number' : c.dateTime ? 'dateTime'
-    : c.choice ? 'choice' : c.currency ? 'currency' : c.boolean ? 'boolean'
-    : c.personOrGroup ? 'person' : c.calculated ? 'calculated(read-only)' : 'other';
-  const map = {};
-  for (const c of data.value || []) map[c.name] = typeOf(c) + (c.readOnly ? ' [readOnly]' : '');
-  return map;
-}
+const LIST = () => process.env.SP_REQUISITION_LIST_NAME || 'Purchase Requisitions';
 
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'POST, OPTIONS');
@@ -80,10 +28,13 @@ module.exports = async function handler(req, res) {
       vendorName, vendorContact, vendorEmail,
       projectCustomer, reportingManager, finalApprover,
       quotationAttached,
-    } = req.body;
+    } = req.body || {};
 
     if (!department || !vendorName)
       return res.status(400).json({ error: 'Missing required fields' });
+    // Without a first approver the requisition is saved but never reaches anyone.
+    if (!String(reportingManager || '').trim())
+      return res.status(400).json({ error: 'Select the approver' });
 
     const items = normaliseItems(rawItems);
 
@@ -98,8 +49,12 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    // Approvers must come from the roster, and never be the requester.
-    await assertApproversAllowed(token, siteId, user.email, [reportingManager, finalApprover]);
+    // Approvers must come from the roster, for the stage they were picked for,
+    // and never be the requester. The form offers each stage its own list.
+    await assertApproversAllowed(token, siteId, user.email, [
+      { email: reportingManager, stage: 'Reporting Manager' },
+      { email: finalApprover,    stage: 'Final Approval' },
+    ]);
 
     const submittedAt    = new Date().toISOString();
     // Date-only for the Title and folder paths; the column keeps the full
@@ -146,10 +101,9 @@ module.exports = async function handler(req, res) {
       FinalApprovalStatus:    finalApprover ? 'Pending' : '',
     };
 
-    let created;
-    try {
+    const created = await withColumnReport(token, siteId, LIST(), fields, async () => {
       try {
-        created = await createRequisitionItem(token, siteId, fields);
+        return await createListItem(token, siteId, LIST(), fields);
       } catch (firstErr) {
         /* LineItems is a newer column; a list set up before it existed rejects
          * the field. Save without it rather than lose the request: the flat
@@ -159,16 +113,9 @@ module.exports = async function handler(req, res) {
         if (!/LineItems/.test(firstErr.message)) throw firstErr;
         console.error('[requisition] LineItems column missing, saving without it');
         const { LineItems, ...withoutItems } = fields;
-        created = await createRequisitionItem(token, siteId, withoutItems);
+        return createListItem(token, siteId, LIST(), withoutItems);
       }
-    } catch (writeErr) {
-      const cols = await describeColumns(token, siteId).catch(() => null);
-      if (cols) {
-        writeErr.message +=
-          ' | columns: ' + Object.keys(fields).map((f) => `${f}=${cols[f] || 'MISSING'}`).join(', ');
-      }
-      throw writeErr;
-    }
+    });
 
     const itemId   = created?.id || 'unknown';
     const claimRef = `REQ-${itemId}`;
@@ -192,16 +139,7 @@ module.exports = async function handler(req, res) {
         const { token: approvalToken, jti } = await mintToken({
           module: 'requisition', itemId, stage: 1, approver: reportingManager,
         });
-        const mod = getModule('requisition');
-        const patchRes = await fetch(
-          `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${itemId}/fields`,
-          {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Stage1TokenId: jti }),
-          }
-        );
-        if (!patchRes.ok) throw new Error(`Could not store approval token (${patchRes.status})`);
+        await patchRow(token, siteId, getModule('requisition'), itemId, { Stage1TokenId: jti });
 
         /* approvalRequest renders a `rows` table. This used to pass totalSGD,
          * vendor and project as loose keys the template never read, so the
@@ -239,7 +177,7 @@ module.exports = async function handler(req, res) {
 
         notified = true;
       } catch (mailErr) {
-        mailError = mailErr.message;
+        mailError = 'The approver could not be emailed.';
         console.error('[requisition] notify failed:', mailErr.message);
       }
     }
@@ -254,8 +192,6 @@ module.exports = async function handler(req, res) {
       mailError,
     });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[requisition] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'requisition');
   }
 };

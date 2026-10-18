@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { sendError } = require('./_lib/http');
 const { listApprovers } = require('./_lib/approvers');
 
 module.exports = async function handler(req, res) {
@@ -32,8 +33,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ approvers });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[approvers] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'approvers');
   }
 };

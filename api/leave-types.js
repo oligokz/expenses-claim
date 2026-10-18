@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { sendError } = require('./_lib/http');
 
 // Admin-managed leave types from the "Leave Types" SharePoint list.
 // Columns expected: Title (text), Active (yes/no), and a sort column.
@@ -36,8 +37,6 @@ module.exports = async function handler(req, res) {
     const types  = await listTypes(token, siteId);
     return res.status(200).json({ types: types || [] });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[leave-types] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'leave-types');
   }
 };

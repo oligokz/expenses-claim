@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import {
   AlertCircle,
+  ArrowLeft,
   CheckCircle2,
   ExternalLink,
   FileText,
@@ -170,8 +171,8 @@ export function ApprovalPage({ token }: { token: string }) {
         <Card className="flex flex-col items-center gap-3 p-8 text-center">
           <AlertCircle className="size-6 text-destructive" />
           <p className="max-w-sm text-sm text-muted-foreground">{error}</p>
-          <Button variant="outline" size="sm" onClick={() => (window.location.href = "/")}>
-            Go to the forms app
+          <Button variant="outline" size="sm" onClick={() => (window.location.href = "/approvals")}>
+            Go to my approvals
           </Button>
         </Card>
       </Shell>
@@ -373,7 +374,18 @@ function ItemsTable({
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-dvh bg-background">
-      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">{children}</main>
+      <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
+        {/* The page has no tab bar, so give approvers a way back to the rest of
+            their queue rather than a dead end. */}
+        <a
+          href="/approvals"
+          className="mb-4 inline-flex items-center gap-1.5 rounded text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        >
+          <ArrowLeft className="size-4" />
+          My approvals
+        </a>
+        {children}
+      </main>
     </div>
   )
 }

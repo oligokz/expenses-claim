@@ -35,7 +35,7 @@ const TYPE_META: Record<
 }
 
 /** SharePoint returns dates as ISO timestamps, show them as dd/mm/yyyy. */
-function fmtDate(s: string) {
+export function fmtDate(s: string) {
   if (!s) return "-"
   const d = new Date(s)
   return isNaN(d.getTime())
@@ -65,7 +65,7 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-function TypeBadge({ type }: { type: RequestType }) {
+export function TypeBadge({ type }: { type: RequestType }) {
   const { label, icon: Icon } = TYPE_META[type]
   return (
     <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">

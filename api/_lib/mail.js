@@ -18,6 +18,11 @@ const SENDER = () => process.env.MAIL_SENDER || 'noreply@creoxtech.com';
 const baseUrl = () =>
   (process.env.APP_BASE_URL || 'https://app.creoxtech.com').replace(/\/+$/, '');
 
+/* Deep links into the app's tabs. The bare origin opens the expense form, which
+ * is the wrong page for anyone following a link about an existing request. */
+const myRequestsUrl = () => `${baseUrl()}/my-requests`;
+const approvalsUrl = () => `${baseUrl()}/approvals`;
+
 const LOGO_FILE = 'creox.png';
 const logoUrl = () => `${baseUrl()}/${LOGO_FILE}`;
 const LOGO_CID = 'creoxlogo';
@@ -220,13 +225,20 @@ function approvalRequest({
        * a working link to someone's receipts or medical certificate. */
       footer:
         (hasAttachments ? 'Attachments are shown on the approval page. ' : '') +
-        `This link expires in ${ttlDays} days.`,
+        `This link expires in ${ttlDays} days. ` +
+        `You can also find everything waiting for you under Approvals at ${approvalsUrl()}`,
     }),
   };
 }
 
-/** Tell the requester the outcome of a stage, or of the whole request. */
-function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl }) {
+/**
+ * Tell the requester the outcome of a stage, or of the whole request.
+ *
+ * When it moves on, say who to and that they were emailed directly. Without
+ * that, requesters forwarded this notice to the next approver, whose only link
+ * was the requester's own "View my requests" (REQ-19).
+ */
+function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover }) {
   const approved = decision === 'approved';
   const what = (kind || 'Request').toLowerCase();
   return {
@@ -240,18 +252,19 @@ function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel,
       intro: approved
         ? complete
           ? 'No further approval is needed.'
-          : 'It has moved to the next approver.'
+          : `It has moved to ${nextApprover || 'the next approver'}, who has been emailed a link to review it. You do not need to forward this email.`
         : `${decidedBy} rejected this request.`,
       rows: [
         ['Reference', claimRef],
         ['Item', item],
         [approved ? 'Approved by' : 'Rejected by', decidedBy],
         ['Comment', comment || ''],
+        ...(approved && !complete && nextApprover ? [['Now with', nextApprover]] : []),
       ],
       action:
         complete && approved && pdfUrl
           ? { href: pdfUrl, label: 'Open the signed PDF' }
-          : { href: `${baseUrl()}/`, label: 'View my requests' },
+          : { href: myRequestsUrl(), label: 'View my requests' },
     }),
   };
 }
@@ -315,7 +328,7 @@ function travelReceipt({ claimRef, destination, dates, totalSGD, approverName })
         ['Estimated cost', `SGD ${totalSGD}`],
         ['Sent to', approverName || ''],
       ],
-      action: { href: `${baseUrl()}/`, label: 'View my requests' },
+      action: { href: myRequestsUrl(), label: 'View my requests' },
       footer: 'Travel requests need three approvals: reporting manager, Finance/HR, then final approval.',
     }),
   };
@@ -334,6 +347,7 @@ function requisitionReceipt({ claimRef, item, totalSGD, approverName }) {
         ['Estimated cost', `SGD ${totalSGD}`],
         ['Sent to', approverName],
       ],
+      action: { href: myRequestsUrl(), label: 'View my requests' },
       footer: "You'll be notified when it has been reviewed.",
     }),
   };

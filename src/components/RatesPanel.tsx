@@ -1,5 +1,9 @@
 import { ArrowRightLeft, RefreshCw } from "lucide-react"
-import { DISPLAY_CURRENCIES, BIG_UNIT_CURRENCIES } from "@/lib/constants"
+import {
+  ALL_CURRENCIES,
+  BIG_UNIT_CURRENCIES,
+  CURRENCY_NAMES,
+} from "@/lib/constants"
 import type { Rates, RateStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -18,7 +22,8 @@ export function RatesPanel({
   refreshing,
   onRefresh,
 }: RatesPanelProps) {
-  const shown = DISPLAY_CURRENCIES.filter((c) => rates[c])
+  // A page of its own now, so every currency the form offers, not a sample.
+  const shown = ALL_CURRENCIES.filter((c) => c !== "SGD" && rates[c])
 
   const statusText =
     status === "cached"
@@ -63,7 +68,7 @@ export function RatesPanel({
             Fetching rates
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {shown.map((c) => {
               const big = BIG_UNIT_CURRENCIES.has(c)
               const v = rates[c].toLocaleString("en-SG", {
@@ -77,6 +82,9 @@ export function RatesPanel({
                 >
                   <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">
                     SGD→{c}
+                  </div>
+                  <div className="truncate text-[11px] text-muted-foreground">
+                    {CURRENCY_NAMES[c] ?? c}
                   </div>
                   <div className="font-mono text-sm font-semibold tabular-nums">
                     {v}

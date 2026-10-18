@@ -55,7 +55,8 @@ async function notifyApprover(token, siteId, { moduleName, itemId, approverEmail
     return { notified: true, mailError: null };
   } catch (err) {
     console.error(`[${moduleName}] notify failed:`, err.message);
-    return { notified: false, mailError: err.message };
+    // The detail stays in the log; the browser only needs to know it failed.
+    return { notified: false, mailError: 'The approver could not be emailed.' };
   }
 }
 

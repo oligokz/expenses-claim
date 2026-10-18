@@ -25,9 +25,11 @@ interface ExpenseDetailsProps {
   rates: Rates
   onUpdate: <K extends keyof LineRow>(field: K, val: LineRow[K]) => void
   errors: FormErrors
+  /** Opens the full exchange-rate table. */
+  onViewRates: () => void
 }
 
-export function LineItems({ row, rates, onUpdate, errors }: ExpenseDetailsProps) {
+export function LineItems({ row, rates, onUpdate, errors, onViewRates }: ExpenseDetailsProps) {
   const lineTotal = num(row.amt) * (num(row.qty) || 1)
   const sgd = toSGD(lineTotal, row.cur, rates)
   const rateNote =
@@ -153,8 +155,17 @@ export function LineItems({ row, rates, onUpdate, errors }: ExpenseDetailsProps)
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between rounded-xl border bg-muted/50 px-4 py-3">
-        <span className="text-sm text-muted-foreground">Equivalent</span>
+      <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border bg-muted/50 px-4 py-3">
+        <div className="flex flex-col items-start">
+          <span className="text-sm text-muted-foreground">Equivalent</span>
+          <button
+            type="button"
+            onClick={onViewRates}
+            className="-mx-1 rounded px-1 text-xs font-medium text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            View all rates
+          </button>
+        </div>
         <div className="text-right">
           <div className="font-mono text-base font-bold tabular-nums">
             SGD {fmt(sgd)}

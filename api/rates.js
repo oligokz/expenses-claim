@@ -8,6 +8,7 @@
  * treated as SGD.
  */
 const { applyCors } = require('./_lib/sharepoint');
+const { sendError } = require('./_lib/http');
 const { fetchLive } = require('./_lib/rates');
 
 module.exports = async function handler(req, res) {
@@ -20,8 +21,7 @@ module.exports = async function handler(req, res) {
     // Cache for 1 hour on Vercel's CDN edge
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=600');
     return res.status(200).json({ base: 'SGD', rates });
-  } catch(err) {
-    console.error('[rates]', err.message);
-    return res.status(500).json({ error: err.message });
+  } catch (err) {
+    return sendError(req, res, err, 'rates');
   }
 };

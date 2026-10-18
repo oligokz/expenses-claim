@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { sendError } = require('./_lib/http');
 
 // Admin-managed item categories from the "Requisition Categories" SharePoint list,
 // so procurement can add a category without a redeploy.
@@ -32,8 +33,6 @@ module.exports = async function handler(req, res) {
     const categories = await listCategories(token, siteId);
     return res.status(200).json({ categories: categories || [] });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[requisition-categories] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'requisition-categories');
   }
 };

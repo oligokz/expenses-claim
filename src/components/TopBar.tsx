@@ -1,9 +1,10 @@
-import { ChevronsUpDown, LogOut } from "lucide-react"
+import { ArrowRightLeft, ChevronsUpDown, LogOut } from "lucide-react"
 import { DropdownMenu } from "radix-ui"
 
 interface TopBarProps {
   userName: string
   onLogout: () => void
+  onViewRates: () => void
 }
 
 /** Deterministic DiceBear avatar, seeded per user so each person is consistent. */
@@ -13,7 +14,7 @@ function avatarUrl(seed: string) {
   )}`
 }
 
-export function TopBar({ userName, onLogout }: TopBarProps) {
+export function TopBar({ userName, onLogout, onViewRates }: TopBarProps) {
   return (
     <header className="sticky top-0 z-50 bg-surface-dark text-surface-dark-foreground">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -49,6 +50,13 @@ export function TopBar({ userName, onLogout }: TopBarProps) {
                 {userName || "Signed in"}
               </div>
               <DropdownMenu.Separator className="my-1 h-px bg-border" />
+              <DropdownMenu.Item
+                onSelect={() => onViewRates()}
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground"
+              >
+                <ArrowRightLeft className="size-4" />
+                Exchange rates
+              </DropdownMenu.Item>
               <DropdownMenu.Item
                 onSelect={() => onLogout()}
                 className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground"

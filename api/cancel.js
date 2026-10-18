@@ -13,7 +13,8 @@
 // somebody signed, and it is not the requester's to erase.
 
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
-const { getModule, getRow } = require('./_lib/approvals');
+const { sendError } = require('./_lib/http');
+const { getModule, getRow, currentStage } = require('./_lib/approvals');
 const { deleteAttachments } = require('./_lib/attachments');
 const { sendMail, templates } = require('./_lib/mail');
 
@@ -27,16 +28,6 @@ async function deleteItem(token, siteId, mod, itemId) {
   if (!res.ok && res.status !== 204) {
     throw new Error(`Could not delete the request (${res.status}): ${await res.text()}`);
   }
-}
-
-/** The stage still waiting on someone, so we can tell them to stand down. */
-function pendingStage(mod, fields) {
-  for (const stage of mod.stages) {
-    const status = fields[stage.statusField];
-    const approver = (fields[stage.approverField] || '').trim();
-    if (approver && (!status || status === 'Pending')) return { stage, approver };
-  }
-  return null;
 }
 
 module.exports = async function handler(req, res) {
@@ -90,7 +81,8 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const waiting = pendingStage(mod, fields);
+    const stage = currentStage(mod, fields);
+    const waiting = stage && { stage, approver: fields[stage.approverField].trim() };
     let notified = false;
     if (waiting) {
       try {
@@ -121,8 +113,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ success: true, claimRef, notified, filesRemoved });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[cancel] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'cancel');
   }
 };

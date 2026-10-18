@@ -1,10 +1,9 @@
 // Approval mechanics, shared across modules.
 //
-// Only 'requisition' is registered today. Leave and expense can join by adding
-// a MODULES entry plus the matching SharePoint columns, the token scheme, the
-// sign-in gate, the state machine and the signature handling are all generic.
-// Stage count is per-module config because leave almost certainly wants one
-// stage where a purchase wants two.
+// Four modules are registered: requisition and travel (multi-stage, signed,
+// with a PDF at the end) and leave and expense (one stage, approve or reject).
+// The token scheme, the sign-in gate, the state machine and the signature
+// handling are generic; what differs per module is the config below.
 
 const crypto = require('node:crypto');
 const { itemsFromRow, itemsTitle } = require('./requisitionItems');
@@ -256,10 +255,16 @@ function signingKey() {
 
 const TOKEN_TTL_DAYS = 14;
 
-/** Mint a single-use approval link token. Returns { token, jti }. */
-async function mintToken({ module: moduleName, itemId, stage, approver }) {
+/**
+ * Mint a single-use approval link token. Returns { token, jti }.
+ *
+ * Pass `jti` to re-issue a token for a nonce already stored on the row. That
+ * is how the in-app Approvals list opens a request without spending or
+ * superseding the link in the approver's email: both carry the same nonce, so
+ * whichever is used first spends the other.
+ */
+async function mintToken({ module: moduleName, itemId, stage, approver, jti = crypto.randomUUID() }) {
   const { SignJWT } = await import('jose');
-  const jti = crypto.randomUUID();
   const token = await new SignJWT({ module: moduleName, itemId: String(itemId), stage, approver })
     .setProtectedHeader({ alg: 'HS256' })
     .setJti(jti)
@@ -382,6 +387,22 @@ function assertActionable(fields, stage, jti) {
   }
 }
 
+/**
+ * The stage a request is currently waiting at, or null once it is decided.
+ * Stages with no approver named are skipped: the requester chose fewer.
+ */
+function currentStage(mod, fields) {
+  if (fields.Status && fields.Status !== 'Pending') return null;
+  for (const stage of mod.stages) {
+    if (!(fields[stage.approverField] || '').trim()) continue;
+    const status = fields[stage.statusField];
+    if (status === 'Approved') continue;
+    if (!status || status === 'Pending') return stage;
+    return null; // rejected, or something we don't recognise
+  }
+  return null;
+}
+
 /** Does the signed-in person match the approver this stage is addressed to? */
 function isExpectedApprover(fields, stage, email) {
   const expected = (fields[stage.approverField] || '').trim().toLowerCase();
@@ -399,6 +420,7 @@ module.exports = {
   getRowWithEtag,
   patchRow,
   assertActionable,
+  currentStage,
   isExpectedApprover,
   TOKEN_TTL_DAYS,
 };

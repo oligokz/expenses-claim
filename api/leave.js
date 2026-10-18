@@ -1,6 +1,8 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { notifyApprover } = require('./_lib/notify');
 const { assertApproversAllowed } = require('./_lib/approvers');
+const { createListItem, withColumnReport } = require('./_lib/lists');
+const { sendError } = require('./_lib/http');
 
 // Mirror of src/lib/leave.ts, recomputed server-side so the stored Days value
 // is trusted, not taken from the client.
@@ -21,41 +23,7 @@ function computeDays(start, end, portion) {
   return weekdays;
 }
 
-async function createLeaveItem(token, siteId, fields) {
-  const listName = process.env.SP_LEAVE_LIST_NAME || 'Leave Requests';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    }
-  );
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`createLeaveItem failed (${res.status}): ${txt}`);
-  }
-  return res.json();
-}
-
-// Same diagnostic as submit.js: report each field against its column type so a
-// failed write tells us exactly which column is missing or mistyped.
-async function describeColumns(token, siteId) {
-  const listName = process.env.SP_LEAVE_LIST_NAME || 'Leave Requests';
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/columns`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  const typeOf = (c) =>
-    c.text ? 'text' : c.number ? 'number' : c.dateTime ? 'dateTime'
-    : c.choice ? 'choice' : c.boolean ? 'boolean' : c.personOrGroup ? 'person'
-    : c.calculated ? 'calculated(read-only)' : 'other';
-  const map = {};
-  for (const c of data.value || []) map[c.name] = typeOf(c) + (c.readOnly ? ' [readOnly]' : '');
-  return map;
-}
+const LIST = () => process.env.SP_LEAVE_LIST_NAME || 'Leave Requests';
 
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'POST, OPTIONS');
@@ -71,10 +39,13 @@ module.exports = async function handler(req, res) {
       department, leaveType, startDate, endDate,
       startPortion = 'Full', endPortion = 'Full',
       reason, approverEmail,
-    } = req.body;
+    } = req.body || {};
 
     if (!department || !leaveType || !startDate || !endDate)
       return res.status(400).json({ error: 'Missing required fields' });
+    // Without an approver the request is saved but never reaches anyone.
+    if (!String(approverEmail || '').trim())
+      return res.status(400).json({ error: 'Select an approver' });
 
     const days = computeDays(startDate, endDate, startPortion);
     if (days <= 0)
@@ -102,17 +73,8 @@ module.exports = async function handler(req, res) {
       ApproverEmail:  approverEmail || '',
     };
 
-    let created;
-    try {
-      created = await createLeaveItem(token, siteId, fields);
-    } catch (writeErr) {
-      const cols = await describeColumns(token, siteId).catch(() => null);
-      if (cols) {
-        writeErr.message +=
-          ' | columns: ' + Object.keys(fields).map((f) => `${f}=${cols[f] || 'MISSING'}`).join(', ');
-      }
-      throw writeErr;
-    }
+    const created = await withColumnReport(token, siteId, LIST(), fields,
+      () => createListItem(token, siteId, LIST(), fields));
 
     const itemId = created?.id || 'unknown';
     const { notified, mailError } = await notifyApprover(token, siteId, {
@@ -123,8 +85,6 @@ module.exports = async function handler(req, res) {
       success: true, itemId, claimRef: `LEAVE-${itemId}`, days, notified, mailError,
     });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[leave] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'leave');
   }
 };

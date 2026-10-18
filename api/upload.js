@@ -1,6 +1,7 @@
 const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { topFolderFor } = require('./_lib/attachments');
 const { getModule, getRow } = require('./_lib/approvals');
+const { httpError, sendError } = require('./_lib/http');
 
 /* Vercel refuses a function request body over 4.5 MB before this code runs,
  * so the real ceiling is below that once multipart framing is counted. The
@@ -9,13 +10,15 @@ const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 const MODULE_BY_PREFIX = { EXP: 'expense', LEAVE: 'leave', REQ: 'requisition', TRV: 'travel' };
 
-function httpError(status, message) {
-  const e = new Error(message);
-  e.status = status;
-  return e;
-}
+/* Receipts, MCs and quotations. Matches the picker's accept list (plus HEIF,
+ * which iPhones also produce), so a hand-made request can't drop executables
+ * or HTML into the library. */
+const ALLOWED_EXTENSIONS = new Set(['pdf', 'jpg', 'jpeg', 'png', 'heic', 'heif']);
 
-/** Throw unless `claimRef` names a still-pending request owned by `email`. */
+/**
+ * Throw unless `claimRef` names a still-pending request owned by `email`.
+ * Returns the row's fields.
+ */
 async function assertOwnOpenRequest(token, siteId, claimRef, email) {
   const m = /^([A-Z]+)-(\d+)$/.exec(String(claimRef || ''));
   const mod = m && getModule(MODULE_BY_PREFIX[m[1]]);
@@ -33,6 +36,7 @@ async function assertOwnOpenRequest(token, siteId, claimRef, email) {
     throw httpError(403, 'You can only attach files to your own requests.');
   if ((fields.Status || 'Pending') !== 'Pending')
     throw httpError(409, 'This request has already been decided, so its attachments are closed.');
+  return fields;
 }
 
 async function uploadFile(token, siteId, segments, buffer, mimeType) {
@@ -101,10 +105,19 @@ module.exports = async function handler(req, res) {
     if (!filePart) return res.status(400).json({ error: 'No file found in request' });
     if (!metaPart) return res.status(400).json({ error: 'No metadata found in request' });
 
-    const meta = JSON.parse(metaPart.data.toString('utf8'));
+    let meta;
+    try {
+      meta = JSON.parse(metaPart.data.toString('utf8'));
+    } catch {
+      return res.status(400).json({ error: 'Metadata is not valid JSON' });
+    }
 
     if (filePart.data.length > MAX_UPLOAD_BYTES)
       return res.status(413).json({ error: 'File exceeds the 4 MB limit' });
+
+    const ext = (/\.([a-z0-9]+)$/i.exec(filePart.filename || '')?.[1] || '').toLowerCase();
+    if (!ALLOWED_EXTENSIONS.has(ext))
+      return res.status(415).json({ error: 'Attach a PDF or an image (JPG, PNG or HEIC).' });
 
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
@@ -113,7 +126,7 @@ module.exports = async function handler(req, res) {
      * go against a request that belongs to the caller and is still open. This
      * stops anyone adding to, or overwriting, the evidence on someone else's
      * request, or swapping it on one already decided. */
-    await assertOwnOpenRequest(token, siteId, meta.claimRef, user.email);
+    const fields = await assertOwnOpenRequest(token, siteId, meta.claimRef, user.email);
 
     // Organise files as  <Type> / <YYYY-MM> / <REF> / NN-<file>
     //   Leave Attachments       / 2026-06 / LEAVE-5 / 01-mc.pdf
@@ -121,12 +134,16 @@ module.exports = async function handler(req, res) {
     //   Requisition Attachments / 2026-06 / REQ-3   / 01-quotation.pdf
     //   Travel Attachments      / 2026-06 / TRV-7   / 01-flight-quote.pdf
     // so HR can copy a whole month's folder, with each item grouped inside.
-    // Type is derived from the reference prefix; month from the item date.
+    // Type is derived from the reference prefix. The month comes from the row,
+    // in the order the approval page looks for it (attachments.js), so the
+    // approver always finds the files. It used to come from the client's
+    // date, which could file them where the approval page never looked.
     const ref = meta.claimRef || '';
     const topFolder   = topFolderFor(ref);
-    const month       = /^\d{4}-\d{2}/.test(meta.date || '')
-      ? meta.date.slice(0, 7)
-      : 'Undated';
+    const rowDate     = String(fields.SubmissionDate || fields.StartDate || '');
+    const month       = /^\d{4}-\d{2}/.test(rowDate)
+      ? rowDate.slice(0, 7)
+      : new Date().toISOString().slice(0, 7);
     const claimFolder = (ref || 'Unfiled').replace(/[^a-z0-9_-]/gi, '_');
     const idx         = Number.isInteger(meta.index) ? meta.index + 1 : 1;
     const safeFile    = (filePart.filename || 'receipt').replace(/[^a-z0-9._-]/gi, '_');
@@ -136,9 +153,7 @@ module.exports = async function handler(req, res) {
     await uploadFile(token, siteId, segments, filePart.data, filePart.contentType);
     return res.status(200).json({ success: true, fileName: segments.join('/') });
 
-  } catch(err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[upload] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+  } catch (err) {
+    return sendError(req, res, err, 'upload');
   }
 };

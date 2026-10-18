@@ -1,60 +1,11 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendMail, templates } = require('./_lib/mail');
-const { mintToken, getModule, TOKEN_TTL_DAYS } = require('./_lib/approvals');
-const { assertApproversAllowed } = require('./_lib/approvers');
+const { mintToken, getModule, patchRow, TOKEN_TTL_DAYS } = require('./_lib/approvals');
+const { assertApproversAllowed, approverName } = require('./_lib/approvers');
+const { createListItem, withColumnReport } = require('./_lib/lists');
+const { sendError } = require('./_lib/http');
 
 const LIST = () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests';
-
-/** Resolve an approver's display name from the approvers list, for the email. */
-async function approverName(token, siteId, email) {
-  if (!email) return '';
-  try {
-    const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
-    const res = await fetch(
-      `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=200`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    if (!res.ok) return email;
-    const rows = ((await res.json()).value || []).map((i) => i.fields || {});
-    const hit = rows.find(
-      (f) => (f.ApproverEmail || '').toLowerCase() === email.toLowerCase()
-    );
-    return hit?.Title || email;
-  } catch {
-    return email;
-  }
-}
-
-async function createItem(token, siteId, fields) {
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(LIST())}/items`,
-    {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields }),
-    }
-  );
-  if (!res.ok) throw new Error(`createTravelItem failed (${res.status}): ${await res.text()}`);
-  return res.json();
-}
-
-// Same diagnostic as the other modules: report each field against its column
-// type so a failed write names the column that's missing or mistyped.
-async function describeColumns(token, siteId) {
-  const res = await fetch(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(LIST())}/columns`,
-    { headers: { Authorization: `Bearer ${token}` } }
-  );
-  if (!res.ok) return null;
-  const data = await res.json();
-  const typeOf = (c) =>
-    c.text ? 'text' : c.number ? 'number' : c.dateTime ? 'dateTime'
-    : c.choice ? 'choice' : c.currency ? 'currency' : c.boolean ? 'boolean'
-    : c.personOrGroup ? 'person' : c.calculated ? 'calculated(read-only)' : 'other';
-  const map = {};
-  for (const c of data.value || []) map[c.name] = typeOf(c) + (c.readOnly ? ' [readOnly]' : '');
-  return map;
-}
 
 module.exports = async function handler(req, res) {
   applyCors(req, res, 'POST, OPTIONS');
@@ -72,10 +23,14 @@ module.exports = async function handler(req, res) {
       purpose, eventName, destination, travelFrom, travelTo, agenda,
       costFlight, costHotel, costEventFees, costTransport, costOther, costOtherNote,
       reportingManager, financeApprover, finalApprover,
-    } = req.body;
+    } = req.body || {};
 
     if (!department || !purpose || !destination || !travelFrom || !travelTo)
       return res.status(400).json({ error: 'Missing required fields' });
+
+    // The first stage has to exist or the request never reaches anyone.
+    if (!String(reportingManager || '').trim())
+      return res.status(400).json({ error: 'Select the reporting manager' });
 
     if (String(travelTo) < String(travelFrom))
       return res.status(400).json({ error: 'The return date cannot be before the departure date' });
@@ -135,17 +90,8 @@ module.exports = async function handler(req, res) {
       FinalApprover:    finalApprover || '',
     };
 
-    let created;
-    try {
-      created = await createItem(token, siteId, fields);
-    } catch (writeErr) {
-      const cols = await describeColumns(token, siteId).catch(() => null);
-      if (cols) {
-        writeErr.message +=
-          ` | columns: ${Object.keys(fields).map((f) => `${f}=${cols[f] || 'MISSING'}`).join(', ')}`;
-      }
-      throw writeErr;
-    }
+    const created = await withColumnReport(token, siteId, LIST(), fields,
+      () => createListItem(token, siteId, LIST(), fields));
 
     const itemId   = created?.id || 'unknown';
     const claimRef = `TRV-${itemId}`;
@@ -163,15 +109,7 @@ module.exports = async function handler(req, res) {
         const { token: approvalToken, jti } = await mintToken({
           module: 'travel', itemId, stage: stage.n, approver: reportingManager,
         });
-        const patchRes = await fetch(
-          `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(LIST())}/items/${itemId}/fields`,
-          {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Stage1TokenId: jti }),
-          }
-        );
-        if (!patchRes.ok) throw new Error(`Could not store approval token (${patchRes.status})`);
+        await patchRow(token, siteId, mod, itemId, { [stage.tokenField]: jti });
 
         const money = total.toLocaleString('en-SG', {
           minimumFractionDigits: 2, maximumFractionDigits: 2,
@@ -218,7 +156,7 @@ module.exports = async function handler(req, res) {
 
         notified = true;
       } catch (mailErr) {
-        mailError = mailErr.message;
+        mailError = 'The approver could not be emailed.';
         console.error('[travel] notify failed:', mailErr.message);
       }
     }
@@ -232,8 +170,6 @@ module.exports = async function handler(req, res) {
       mailError,
     });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[travel] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'travel');
   }
 };

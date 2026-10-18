@@ -1,4 +1,5 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
+const { sendError } = require('./_lib/http');
 const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
 
 /* The three lists a person can have rows in, and how each one names things.
@@ -90,8 +91,8 @@ async function listFor(token, siteId, source, email) {
     if (!res.ok) {
       // One missing or unreadable list must not blank out the whole page, report
       // it alongside whatever else did load.
-      const txt = await res.text();
-      return { items, warning: `${source.type}: ${res.status} ${txt.slice(0, 200)}` };
+      console.error(`[my-requests] ${source.type} list failed (${res.status}):`, (await res.text()).slice(0, 300));
+      return { items, warning: `Your ${source.type} requests could not be loaded just now.` };
     }
     const data = await res.json();
     items.push(...(data.value || []));
@@ -141,8 +142,6 @@ module.exports = async function handler(req, res) {
 
     return res.status(200).json({ requests, warnings });
   } catch (err) {
-    const status = err.status || 500;
-    if (status >= 500) console.error('[my-requests] ERROR:', err.message);
-    return res.status(status).json({ error: err.message });
+    return sendError(req, res, err, 'my-requests');
   }
 };

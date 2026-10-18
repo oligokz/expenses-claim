@@ -6,6 +6,7 @@ import type {
   ClaimantForm,
   LeaveTypeOption,
   MyRequest,
+  PendingApproval,
   Rates,
   RequestType,
   RequisitionCategoryOption,
@@ -218,6 +219,26 @@ export async function fetchApprovers(
 
   approverCache.set(stage, request)
   return request
+}
+
+/**
+ * GET /api/approval with no token, everything waiting on the signed-in person,
+ * oldest first. `warnings` names any list that couldn't be read.
+ */
+export async function fetchMyApprovals(): Promise<{
+  approvals: PendingApproval[]
+  warnings: string[]
+}> {
+  const token = await getApiToken()
+  const res = await fetch("/api/approval", {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Could not load your approvals")
+  return {
+    approvals: (data.approvals as PendingApproval[]) || [],
+    warnings: (data.warnings as string[]) || [],
+  }
 }
 
 /** GET /api/approval, what this approver is being asked to sign. */

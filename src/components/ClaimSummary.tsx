@@ -24,8 +24,8 @@ function Row({ label, value }: { label: string; value: string | number }) {
 export function ClaimSummary({ data }: { data: ClaimSummaryData }) {
   return (
     <SectionCard icon={<Receipt />} title="Claim Summary">
-      <Row label="Line Items" value={data.itemCount} />
-      <Row label="Currencies" value={data.currencies} />
+      {/* A claim is one expense, so a "Line Items: 1" row said nothing. */}
+      <Row label="Currency" value={data.currencies} />
       <Row label="Receipts" value={data.fileCount} />
 
       <div className="mt-4 rounded-xl border bg-muted/50 px-5 py-6">
