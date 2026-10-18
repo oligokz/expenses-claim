@@ -376,7 +376,7 @@ export function ApprovalPage({ token }: { token: string }) {
           </SectionCard>
         )}
 
-        <SectionCard icon={<ThumbsUp />} title="Your decision">
+        <SectionCard icon={<ThumbsUp />} title="Decision">
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-1.5">
               <FieldLabel htmlFor="approval-comment" text="Comment" />
