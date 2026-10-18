@@ -412,38 +412,6 @@ export function MyRequests() {
                 </div>
               </div>
 
-              {/* Where it is now, so nobody has to guess and forward emails. */}
-              {r.waitingOn && confirming !== r.id && (
-                <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2">
-                  <p className="min-w-0 text-xs text-muted-foreground">
-                    With{" "}
-                    <span className="font-medium text-foreground">{r.waitingOn.name}</span>
-                    {r.waitingOn.stageLabel ? ` (${r.waitingOn.stageLabel})` : ""}
-                    {r.waitingOn.since ? ` since ${shortDate(r.waitingOn.since)}` : ""}
-                  </p>
-                  {r.waitingOn.team ? null : canRemind(r) ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 shrink-0"
-                      disabled={reminding === r.id}
-                      onClick={() => remind(r)}
-                    >
-                      {reminding === r.id ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <BellRing className="size-3.5" />
-                      )}
-                      Remind
-                    </Button>
-                  ) : (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      Reminded {shortDate(r.lastReminderAt!)}
-                    </span>
-                  )}
-                </div>
-              )}
-
               {confirming === r.id && (
                 <div className="mt-3 flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-xs text-muted-foreground">
@@ -477,19 +445,48 @@ export function MyRequests() {
                 </div>
               )}
 
-              {r.route?.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => toggleOpen(r.id)}
-                  aria-expanded={open.has(r.id)}
-                  className="-mx-1 mt-2 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-primary-text outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
-                >
-                  {open.has(r.id) ? "Hide progress" : "Show progress"}
-                  <ChevronDown
-                    className={cn("size-3.5 transition-transform motion-reduce:transition-none", open.has(r.id) && "rotate-180")}
-                    aria-hidden="true"
-                  />
-                </button>
+              {/* Who has it and since when is in the timeline, so the card only
+                  carries the actions: open the progress, nudge the approver. */}
+              {(r.route?.length > 1 || (r.waitingOn && !r.waitingOn.team)) && confirming !== r.id && (
+                <div className="mt-2 flex min-h-8 items-center justify-between gap-3">
+                  {r.route?.length > 1 ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleOpen(r.id)}
+                      aria-expanded={open.has(r.id)}
+                      className="-mx-1 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-primary-text outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      {open.has(r.id) ? "Hide progress" : "Show progress"}
+                      <ChevronDown
+                        className={cn("size-3.5 transition-transform motion-reduce:transition-none", open.has(r.id) && "rotate-180")}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {r.waitingOn && !r.waitingOn.team &&
+                    (canRemind(r) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        disabled={reminding === r.id}
+                        onClick={() => remind(r)}
+                      >
+                        {reminding === r.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <BellRing className="size-3.5" />
+                        )}
+                        Remind
+                      </Button>
+                    ) : (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        Reminded {shortDate(r.lastReminderAt!)}
+                      </span>
+                    ))}
+                </div>
               )}
               {open.has(r.id) && (
                 <div className="mt-2 rounded-lg border px-4 py-3">
