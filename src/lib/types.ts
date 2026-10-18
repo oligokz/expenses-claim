@@ -253,6 +253,8 @@ export interface MyRequest {
   waitingOn: { name: string; stageLabel: string; since: string; team?: boolean } | null
   /** When the requester last pressed Remind, if ever. */
   lastReminderAt: string | null
+  /** No one has decided or approved it yet, so the requester may delete it. */
+  canDelete: boolean
   /** Submitted, then each approver, for the progress timeline. */
   route: RouteStep[]
 }

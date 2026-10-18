@@ -11,14 +11,64 @@ import type {
   Rates,
   RequestType,
   RequisitionCategoryOption,
-  SubmitResponse,
 } from "./types"
 import {
   DEFAULT_LEAVE_TYPES,
   DEFAULT_REQUISITION_CATEGORIES,
   FALLBACK_RATES,
 } from "./constants"
-import { toSGD, num } from "./currency"
+import { num } from "./currency"
+
+/** An API failure, carrying the server's request id for support when it gave one. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+    public body: Record<string, unknown>,
+  ) {
+    super(message)
+  }
+}
+
+/**
+ * Every call to our API goes through here: signs the request, reads the body
+ * even when it isn't JSON (Vercel answers some failures with plain text), and
+ * throws one readable message. For server errors it appends the request id
+ * (`ref`) so a user can quote it; the logs that id points into are short-lived.
+ */
+async function call<T = Record<string, unknown>>(
+  path: string,
+  { method = "GET", json, form, fallback }: {
+    method?: string
+    json?: unknown
+    form?: FormData
+    /** Message when the server gives none. */
+    fallback: string
+  },
+): Promise<T> {
+  const token = await getApiToken()
+  const res = await fetch(path, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(json !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    body: form ?? (json !== undefined ? JSON.stringify(json) : undefined),
+  })
+  const text = await res.text()
+  let body: Record<string, unknown> = {}
+  try {
+    body = text ? JSON.parse(text) : {}
+  } catch {
+    // Not JSON: a platform error page. Fall through to the fallback message.
+  }
+  if (!res.ok) {
+    const message = typeof body.error === "string" ? body.error : fallback
+    const ref = typeof body.ref === "string" && body.ref ? ` (ref ${body.ref})` : ""
+    throw new ApiError(message + ref, res.status, body)
+  }
+  return body as T
+}
 
 /** GET /api/rates, returns { rates } (1 SGD → currency). Throws on failure. */
 export async function fetchRates(): Promise<Rates> {
@@ -32,24 +82,19 @@ export async function fetchRates(): Promise<Rates> {
 }
 
 /**
- * GET /api/my-requests, the signed-in user's own submissions across all three
- * modules (newest first). `warnings` carries per-list failures so a single
+ * GET /api/my-requests, the signed-in user's own submissions across every
+ * module (newest first). `warnings` carries per-list failures so a single
  * unreadable list degrades one row group rather than the whole page.
  */
 export async function fetchMyRequests(): Promise<{
   requests: MyRequest[]
   warnings: string[]
 }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/my-requests", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Failed to load your requests")
-  return {
-    requests: (data.requests as MyRequest[]) || [],
-    warnings: (data.warnings as string[]) || [],
-  }
+  const data = await call<{ requests?: MyRequest[]; warnings?: string[] }>(
+    "/api/my-requests",
+    { fallback: "Could not load your requests." },
+  )
+  return { requests: data.requests || [], warnings: data.warnings || [] }
 }
 
 interface SubmitArgs {
@@ -57,60 +102,48 @@ interface SubmitArgs {
   rows: LineRow[]
   notes: string
   receiptCount: number
-  rates: Rates
 }
 
-/** POST /api/submit, creates the claim. Returns the new item id and claim reference. */
+/**
+ * POST /api/submit, creates the claim. Identity, rates and the SGD total are
+ * the server's own, so only what the person entered is sent; the returned
+ * `totalSGD` is the figure actually saved.
+ */
 export async function submitClaim({
   claimant,
   rows,
   notes,
   receiptCount,
-  rates,
-}: SubmitArgs): Promise<{ itemId: string; claimRef: string }> {
-  const token = await getApiToken()
-  const lineItems = rows.map((r) => {
-    const lineTotal = num(r.amt) * (num(r.qty) || 1)
-    return {
-      category: r.cat,
-      description: r.desc,
-      receiptDate: r.receiptDate,
-      quantity: num(r.qty) || 1,
-      currency: r.cur,
-      amount: num(r.amt),
-      lineTotal: parseFloat(lineTotal.toFixed(2)),
-      amountSGD: parseFloat(toSGD(lineTotal, r.cur, rates).toFixed(2)),
-    }
-  })
-
-  const res = await fetch("/api/submit", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+}: SubmitArgs): Promise<{ itemId: string; claimRef: string; totalSGD: number }> {
+  const data = await call<{ itemId?: string; claimRef?: string; totalSGD?: number }>(
+    "/api/submit",
+    {
+      method: "POST",
+      fallback: "Could not submit the claim. Try again.",
+      json: {
+        department: claimant.dept,
+        submissionDate: claimant.subDate,
+        lineItems: rows.map((r) => ({
+          category: r.cat,
+          description: r.desc,
+          receiptDate: r.receiptDate,
+          quantity: num(r.qty) || 1,
+          currency: r.cur,
+          amount: num(r.amt),
+        })),
+        notes,
+        receiptCount,
+      },
     },
-    body: JSON.stringify({
-      employeeName: claimant.employee,
-      employeeEmail: claimant.email,
-      department: claimant.dept,
-      submissionDate: claimant.subDate,
-      lineItems,
-      notes,
-      receiptCount,
-      exchangeRates: rates,
-    }),
-  })
-  const data: SubmitResponse = await res.json()
-  if (!res.ok) throw new Error(data.error || "Submit failed")
+  )
   return {
-    itemId: (data.itemId as string) ?? "unknown",
+    itemId: data.itemId ?? "unknown",
     claimRef: data.claimRef ?? `EXP-${data.itemId ?? "unknown"}`,
+    totalSGD: data.totalSGD ?? 0,
   }
 }
 
 export interface UploadMeta {
-  employeeName: string
-  date: string
   claimRef: string
   index: number
 }
@@ -121,19 +154,10 @@ export interface UploadMeta {
  * The claim itself is already submitted, so a failure here is recoverable (retry).
  */
 export async function uploadReceipt(file: File, meta: UploadMeta): Promise<void> {
-  const token = await getApiToken()
-  const fd = new FormData()
-  fd.append("metadata", JSON.stringify(meta))
-  fd.append("file", file, file.name)
-  const res = await fetch("/api/upload", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: fd,
-  })
-  if (!res.ok) {
-    const ud = await res.json().catch(() => ({}))
-    throw new Error(ud.error || `Upload failed (HTTP ${res.status})`)
-  }
+  const form = new FormData()
+  form.append("metadata", JSON.stringify(meta))
+  form.append("file", file, file.name)
+  await call("/api/upload", { method: "POST", form, fallback: "Could not upload the file." })
 }
 
 interface LeaveArgs {
@@ -143,29 +167,22 @@ interface LeaveArgs {
   endDate: string
   startPortion: string
   endPortion: string
-  days: number
   reason: string
   approverEmail: string
 }
 
-/** POST /api/leave, creates a leave request. Returns the new id + ref. */
+/** POST /api/leave, creates a leave request. The server counts the days. */
 export async function submitLeave(
   args: LeaveArgs,
-): Promise<{ itemId: string; claimRef: string }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/leave", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(args),
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Leave submit failed")
+): Promise<{ itemId: string; claimRef: string; days: number }> {
+  const data = await call<{ itemId?: string; claimRef?: string; days?: number }>(
+    "/api/leave",
+    { method: "POST", json: args, fallback: "Could not submit the leave request. Try again." },
+  )
   return {
-    itemId: (data.itemId as string) ?? "unknown",
+    itemId: data.itemId ?? "unknown",
     claimRef: data.claimRef ?? `LEAVE-${data.itemId ?? "unknown"}`,
+    days: data.days ?? 0,
   }
 }
 
@@ -175,13 +192,10 @@ export async function submitLeave(
  */
 export async function fetchLeaveTypes(): Promise<LeaveTypeOption[]> {
   try {
-    const token = await getApiToken()
-    const res = await fetch("/api/leave-types", {
-      headers: { Authorization: `Bearer ${token}` },
+    const data = await call<{ types?: LeaveTypeOption[] }>("/api/leave-types", {
+      fallback: "Could not load leave types.",
     })
-    const data = await res.json()
-    const types = (data.types as LeaveTypeOption[]) || []
-    return types.length ? types : DEFAULT_LEAVE_TYPES
+    return data.types?.length ? data.types : DEFAULT_LEAVE_TYPES
   } catch {
     return DEFAULT_LEAVE_TYPES
   }
@@ -204,19 +218,15 @@ export async function fetchApprovers(
   const hit = approverCache.get(stage)
   if (hit) return hit
 
-  const request = (async () => {
-    const token = await getApiToken()
-    const query = stage === "all" ? "" : `?stage=${stage}`
-    const res = await fetch(`/api/approvers${query}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.error || "Failed to load approvers")
-    return (data.approvers as ApproverOption[]) || []
-  })().catch((e) => {
-    approverCache.delete(stage)
-    throw e
+  const query = stage === "all" ? "" : `?stage=${stage}`
+  const request = call<{ approvers?: ApproverOption[] }>(`/api/approvers${query}`, {
+    fallback: "Could not load approvers.",
   })
+    .then((d) => d.approvers || [])
+    .catch((e) => {
+      approverCache.delete(stage)
+      throw e
+    })
 
   approverCache.set(stage, request)
   return request
@@ -230,16 +240,11 @@ export async function fetchMyApprovals(): Promise<{
   approvals: PendingApproval[]
   warnings: string[]
 }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/approval", {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Could not load your approvals")
-  return {
-    approvals: (data.approvals as PendingApproval[]) || [],
-    warnings: (data.warnings as string[]) || [],
-  }
+  const data = await call<{ approvals?: PendingApproval[]; warnings?: string[] }>(
+    "/api/approval",
+    { fallback: "Could not load your approvals." },
+  )
+  return { approvals: data.approvals || [], warnings: data.warnings || [] }
 }
 
 /** Thrown when the signed-in person isn't this link's approver (a forwarded email). */
@@ -254,14 +259,16 @@ export class NotYoursError extends Error {
 
 /** GET /api/approval, what this approver is being asked to sign. */
 export async function fetchApproval(token: string): Promise<ApprovalView> {
-  const apiToken = await getApiToken()
-  const res = await fetch(`/api/approval?t=${encodeURIComponent(token)}`, {
-    headers: { Authorization: `Bearer ${apiToken}` },
-  })
-  const data = await res.json()
-  if (res.status === 403 && data.notYours) throw new NotYoursError(data.error, data.notYours)
-  if (!res.ok) throw new Error(data.error || "Could not load this approval")
-  return data as ApprovalView
+  try {
+    return await call<ApprovalView>(`/api/approval?t=${encodeURIComponent(token)}`, {
+      fallback: "Could not load this approval.",
+    })
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 403 && e.body.notYours) {
+      throw new NotYoursError(e.message, e.body.notYours as NotYoursInfo)
+    }
+    throw e
+  }
 }
 
 /**
@@ -272,15 +279,11 @@ export async function remindApprover(
   type: RequestType,
   itemId: string,
 ): Promise<{ sentTo: string; nextAllowed: string }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/approval", {
+  return call<{ sentTo: string; nextAllowed: string }>("/api/approval", {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ action: "remind", type, itemId }),
+    json: { action: "remind", type, itemId },
+    fallback: "Could not send the reminder.",
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Could not send the reminder")
-  return { sentTo: data.sentTo, nextAllowed: data.nextAllowed }
 }
 
 /** POST /api/approval, record an approve or reject decision. */
@@ -298,18 +301,11 @@ export async function submitApproval(args: {
   /** Present once the final approval composes the signed document. */
   pdfUrl?: string | null
 }> {
-  const apiToken = await getApiToken()
-  const res = await fetch("/api/approval", {
+  return call("/api/approval", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiToken}`,
-    },
-    body: JSON.stringify(args),
+    json: args,
+    fallback: "Could not record your decision.",
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Could not record your decision")
-  return data
 }
 
 interface RequisitionArgs {
@@ -337,24 +333,17 @@ interface RequisitionArgs {
  *
  * A real delete: the row leaves the SharePoint list and its attachments go with
  * it, both into the site recycle bin. The server re-checks ownership and that
- * the request is still pending, so this cannot remove anyone else's row or one
- * that has already been decided.
+ * no one has approved it, so this cannot remove anyone else's row or a record.
  */
 export async function deleteRequest(
   type: RequestType,
   itemId: string,
 ): Promise<{ claimRef: string; notified: boolean }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/cancel", {
+  const data = await call<{ claimRef?: string; notified?: boolean }>("/api/cancel", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ type, itemId }),
+    json: { type, itemId },
+    fallback: "Could not delete the request.",
   })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Could not delete the request")
   return { claimRef: data.claimRef ?? "", notified: !!data.notified }
 }
 
@@ -386,25 +375,14 @@ export async function submitTravel(args: TravelArgs): Promise<{
   /** True only if the first approver was actually emailed. */
   notified: boolean
 }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/travel", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(args),
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Travel request submit failed")
-  if (data.mailError) {
-    // The request saved; only the notification failed. Not worth failing over.
-    console.warn("Travel request saved but notification failed:", data.mailError)
-  }
+  const data = await call<{ itemId?: string; claimRef?: string; totalSGD?: number; notified?: boolean }>(
+    "/api/travel",
+    { method: "POST", json: args, fallback: "Could not submit the travel request. Try again." },
+  )
   return {
-    itemId: (data.itemId as string) ?? "unknown",
+    itemId: data.itemId ?? "unknown",
     claimRef: data.claimRef ?? `TRV-${data.itemId ?? "unknown"}`,
-    totalSGD: (data.totalSGD as number) ?? 0,
+    totalSGD: data.totalSGD ?? 0,
     notified: !!data.notified,
   }
 }
@@ -417,26 +395,14 @@ export async function submitRequisition(args: RequisitionArgs): Promise<{
   /** True only if the approver was actually emailed. */
   notified: boolean
 }> {
-  const token = await getApiToken()
-  const res = await fetch("/api/requisition", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(args),
-  })
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error || "Requisition submit failed")
-  if (data.mailError) {
-    // The requisition saved; only the notification failed. Worth seeing in the
-    // console, but not worth failing the submission over.
-    console.warn("Requisition saved but notification failed:", data.mailError)
-  }
+  const data = await call<{ itemId?: string; claimRef?: string; estimatedTotalSGD?: number; notified?: boolean }>(
+    "/api/requisition",
+    { method: "POST", json: args, fallback: "Could not submit the requisition. Try again." },
+  )
   return {
-    itemId: (data.itemId as string) ?? "unknown",
+    itemId: data.itemId ?? "unknown",
     claimRef: data.claimRef ?? `REQ-${data.itemId ?? "unknown"}`,
-    estimatedTotalSGD: (data.estimatedTotalSGD as number) ?? 0,
+    estimatedTotalSGD: data.estimatedTotalSGD ?? 0,
     notified: !!data.notified,
   }
 }
@@ -449,13 +415,11 @@ export async function fetchRequisitionCategories(): Promise<
   RequisitionCategoryOption[]
 > {
   try {
-    const token = await getApiToken()
-    const res = await fetch("/api/requisition-categories", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    const data = await res.json()
-    const categories = (data.categories as RequisitionCategoryOption[]) || []
-    return categories.length ? categories : DEFAULT_REQUISITION_CATEGORIES
+    const data = await call<{ categories?: RequisitionCategoryOption[] }>(
+      "/api/requisition-categories",
+      { fallback: "Could not load categories." },
+    )
+    return data.categories?.length ? data.categories : DEFAULT_REQUISITION_CATEGORIES
   } catch {
     return DEFAULT_REQUISITION_CATEGORIES
   }

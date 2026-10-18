@@ -142,7 +142,6 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
         endDate: form.endDate,
         startPortion: single ? form.portion : "Full",
         endPortion: "Full",
-        days,
         reason: form.reason,
         approverEmail: form.approverEmail,
       })
@@ -151,8 +150,6 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
       for (let i = 0; i < files.length; i++) {
         try {
           await uploadReceipt(files[i], {
-            employeeName,
-            date: form.startDate,
             claimRef,
             index: i,
           })

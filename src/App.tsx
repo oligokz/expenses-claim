@@ -329,19 +329,16 @@ export default function App() {
     }
     setErrors({})
 
-    // Capture the committed total now, before the form resets behind the confirmation.
-    const totalSGD = toSGD(num(row.amt) * (num(row.qty) || 1), row.cur, rates)
-
     setSubmitting(true)
     setProgress(20)
     try {
       setProgress(35)
-      const { claimRef } = await submitClaim({
+      // The confirmation shows the total the server saved, at its own rate.
+      const { claimRef, totalSGD } = await submitClaim({
         claimant,
         rows: [row],
         notes,
         receiptCount: files.length,
-        rates,
       })
       setProgress(60)
 
@@ -350,12 +347,7 @@ export default function App() {
       const failed: SubmitResult["failed"] = []
       for (let i = 0; i < files.length; i++) {
         setProgress(60 + Math.round((i / files.length) * 35))
-        const meta: UploadMeta = {
-          employeeName: claimant.employee,
-          date: claimant.subDate,
-          claimRef,
-          index: i,
-        }
+        const meta: UploadMeta = { claimRef, index: i }
         try {
           await uploadReceipt(files[i], meta)
         } catch (e) {
@@ -394,7 +386,7 @@ export default function App() {
       setSubmitting(false)
       window.setTimeout(() => setProgress(0), 1200)
     }
-  }, [claimant, row, files, rates, notes])
+  }, [claimant, row, files, notes])
 
   /* ── Retry failed receipt uploads from the confirmation screen ── */
   const handleRetryUploads = useCallback(async () => {

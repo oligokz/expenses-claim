@@ -1,232 +1,262 @@
 ---
-name: CorpExpense
-description: A composed, exact, dependable expense-claim tool — Manrope throughout, black & white worksheet, vivid blue action, near-black service counter.
+name: CREOX Forms
+description: A composed, exact, dependable request portal. Manrope throughout, black-and-white surfaces, one vivid blue for action, built for phones first.
 colors:
-  app-bg: "oklch(1 0 0)"
+  action-blue: "oklch(0.546 0.245 262.881)"
+  action-blue-text: "oklch(0.546 0.245 262.881)"
+  action-blue-text-dark: "oklch(0.72 0.14 262.881)"
+  blue-wash: "oklch(0.95 0.03 262.881)"
+  paper: "oklch(1 0 0)"
   ink: "oklch(0.145 0 0)"
-  blue-primary: "oklch(0.546 0.245 262.881)"
-  card-white: "oklch(1 0 0)"
-  gray-surface: "oklch(0.967 0.001 286.375)"
-  muted-ink: "oklch(0.556 0 0)"
-  border: "oklch(0.922 0 0)"
+  muted-ink: "oklch(0.52 0 0)"
+  quiet-surface: "oklch(0.967 0.001 286.375)"
+  hairline: "oklch(0.922 0 0)"
+  night: "oklch(0.145 0 0)"
+  night-card: "oklch(0.205 0 0)"
+  night-ink: "oklch(0.985 0 0)"
+  night-muted-ink: "oklch(0.708 0 0)"
   counter-black: "oklch(0.205 0 0)"
-  counter-muted: "oklch(0.708 0 0)"
   success-teal: "oklch(0.62 0.13 165)"
+  success-teal-text: "oklch(0.48 0.1 165)"
   warning-amber: "oklch(0.78 0.15 80)"
-  destructive-red: "oklch(0.577 0.245 27.325)"
+  warning-amber-text: "oklch(0.5 0.12 65)"
+  destructive-red: "oklch(0.53 0.2 27)"
 typography:
   display:
     fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "clamp(1.5rem, 3vw, 1.875rem)"
+    fontSize: "1.5rem"
     fontWeight: 700
-    lineHeight: 1.1
+    lineHeight: 1.2
     letterSpacing: "-0.02em"
+  headline:
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.25rem"
+    fontWeight: 600
+    lineHeight: 1.3
   title:
     fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.875rem"
+    fontSize: "15px"
     fontWeight: 600
-    lineHeight: 1.2
-    letterSpacing: "-0.01em"
+    lineHeight: 1.35
   body:
     fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
     fontSize: "0.875rem"
     fontWeight: 400
     lineHeight: 1.5
-    letterSpacing: "normal"
+  caption:
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "0.75rem"
+    fontWeight: 400
+    lineHeight: 1.4
   label:
     fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.625rem"
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: "0.03em"
-  mono:
-    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
-    fontSize: "0.8125rem"
+    fontSize: "11px"
     fontWeight: 600
     lineHeight: 1.3
-    letterSpacing: "normal"
+  figure:
+    fontFamily: "Manrope, ui-sans-serif, system-ui, sans-serif"
+    fontSize: "1.125rem"
+    fontWeight: 700
+    fontFeature: "tnum"
 rounded:
-  xs: "4px"
   sm: "7px"
   md: "8.5px"
   lg: "10px"
   xl: "14px"
+  full: "9999px"
 spacing:
-  xs: "6px"
-  sm: "10px"
-  md: "14px"
-  lg: "20px"
-  xl: "32px"
+  xs: "4px"
+  sm: "8px"
+  md: "12px"
+  lg: "16px"
+  xl: "20px"
 components:
   button-primary:
-    backgroundColor: "{colors.blue-primary}"
-    textColor: "{colors.card-white}"
-    rounded: "{rounded.md}"
-    height: "36px"
-    padding: "8px 16px"
-  button-submit:
-    backgroundColor: "{colors.blue-primary}"
-    textColor: "{colors.card-white}"
+    backgroundColor: "{colors.action-blue}"
+    textColor: "{colors.paper}"
     rounded: "{rounded.md}"
     height: "48px"
-  button-ghost:
+  button-outline:
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.md}"
     height: "32px"
-  input-field:
-    backgroundColor: "{colors.card-white}"
+  card:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.ink}"
+    rounded: "{rounded.xl}"
+    padding: "16px"
+  input:
+    backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
     rounded: "{rounded.md}"
     height: "36px"
-    padding: "4px 12px"
-  section-card:
-    backgroundColor: "{colors.card-white}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-  counter-panel:
+  chip-filter-active:
+    backgroundColor: "{colors.action-blue}"
+    textColor: "{colors.paper}"
+    rounded: "{rounded.full}"
+    height: "32px"
+  chip-filter:
+    backgroundColor: "{colors.paper}"
+    textColor: "{colors.muted-ink}"
+    rounded: "{rounded.full}"
+    height: "32px"
+  top-bar:
     backgroundColor: "{colors.counter-black}"
-    textColor: "{colors.card-white}"
-    rounded: "{rounded.xl}"
+    textColor: "{colors.night-ink}"
+    height: "56px"
 ---
 
-# Design System: CorpExpense
+# Design System: CREOX Forms
 
-## 1. Overview
+## Overview
 
 **Creative North Star: "The Concierge Desk"**
 
-CorpExpense feels like being waved over to a competent service counter and handed off to someone who already knows who you are. The crisp near-white field (`oklch(0.985 0 0)`) is the welcome surface — calm, lit, unhurried, and deliberately neutral (zero chroma, no warm tint). The near-black panels (`oklch(0.2 0 0)` — the top bar and the live-rates panel) are the polished desk between you and the work: the place where the system quietly handles things on your behalf. **Bright blue (`oklch(0.52 0.2 255)`) is the ink** — it appears only where the system wants your hand: the Submit action, focus, the current selection. Your identity arrives pre-filled, exchange rates refresh themselves, and exactly one next action is ever prominent. You don't operate this tool so much as you're attended by it.
+CREOX Forms feels like being waved over to a competent service counter by someone who already knows who you are. Your name arrives filled in and locked, the right approvers are a tap away, and exactly one next action is ever prominent. The white field is calm and unhurried; the near-black top bar is the desk between you and the paperwork, where the system quietly handles things on your behalf. Vivid blue is the ink: it appears only where the system wants your hand.
 
-The system is **composed, exact, and dependable**. Composed: nothing flickers, nothing shouts, surfaces are flat at rest. Exact: every figure is tabular and mono, every total legible before you commit to it. Dependable: states are honest and complete, input is never lost. The palette is strictly black-and-white so the one blue reads instantly as "act here"; the polish lives in restraint and precision — alignment, rhythm, contrast, considered states — not in flourish.
+The system is composed, exact and dependable. Composed: surfaces are flat at rest and nothing shouts. Exact: every amount uses tabular figures and every date is Singapore time. Dependable: a request's status, who has it and since when are always visible, and input is never lost. It is built for a phone held in one hand: the figure that matters and the Submit button sit in the thumb zone, above a four-slot bottom bar.
 
-This system explicitly rejects three things. It is **not** clunky legacy enterprise (SAP / Concur): no dense gray clutter, no cryptic field codes, no dated chrome. It is **not** flashy consumer/startup: no gradients, no hero-metric theater, no playful illustration competing with money. And it is **not** generic AI-slop dashboard: no identical card grids, no tracked-uppercase eyebrow above every block, no decorative glass.
+It rejects clunky enterprise portals (dense grey grids, cryptic codes), flashy consumer apps (gradients, hero metrics, playful illustration) and generic AI-made dashboards (identical card grids, tracked-uppercase eyebrows, decorative glass).
 
 **Key Characteristics:**
-- Black-and-white (chroma-0) surfaces + bright-blue action as the whole color story
-- Near-black service counter (top bar, rates) anchors the neutral worksheet
-- Flat at rest; depth comes from tonal layering and hairline borders, not heavy shadow
-- Tabular/mono figures everywhere a number must be trusted
-- One clearly dominant next action per screen — and it is the only blue thing
-- Generously rounded corners (14–20px) carrying the "soft, made-with-care" tone
-- First-class dark mode; both themes independently pass contrast
+- Black-and-white surfaces with one vivid blue for action, selection and focus
+- Phone first: sticky total and Submit bar, bottom tab bar, 40px minimum tap targets
+- Flat at rest; depth from hairline borders and a faint card lift
+- Tabular figures for every amount
+- One SectionCard frame for every form section; cards for every request in a list
+- Light and dark themes, both passing WCAG AA
 
-## 2. Colors
+## Colors
 
-A strict black-and-white system with one bright blue. Surfaces are true neutrals (chroma 0) — crisp white worksheet, near-black counter — and **blue is the single accent**, reserved for action and state. Two semantic colors (teal success, amber warning) and red for errors appear only as small status signals, never as decoration. Blue holds ~5–10% of any screen; its rarity is what makes it read as "act here."
+A strict black-and-white system with one vivid blue. Small semantic colours signal status only, and each request type carries one fixed, non-blue tint so a list can be scanned by kind.
 
 ### Primary
-- **Bright Blue** (`oklch(0.52 0.2 255)`): the one voice of action. Carries the primary button, the Submit CTA, focus rings, the current selection, and any link. White text on it clears AA (5.55:1); the same blue on white serves as accessible link text (5.31:1). This is the only chromatic color the user is meant to *act on*; its scarcity (~5–10% of a screen) is the entire point.
+- **Action Blue** (action-blue): the primary button, the sticky Submit, the active filter chip, focus rings and the current tab. Buttons keep this vivid fill in both themes.
+- **Action Blue as Text** (action-blue-text, action-blue-text-dark in dark mode): links, "Show progress", "View all rates" and blue icons. Dark mode uses the lighter value because the vivid blue is only 3.4:1 on the dark card.
+- **Blue Wash** (blue-wash): hover and selected states; the only place a surface leans off grey.
 
-### Neutral (the black-and-white system)
-- **App Background** (`oklch(0.985 0 0)`): crisp near-white field. True neutral — chroma 0, no warm tint.
-- **Card White** (`oklch(1 0 0)`): pure white worksheet cards floating a half-step above the field.
-- **Ink** (`oklch(0.18 0 0)`): near-black body and heading text.
-- **Gray Surface** (`oklch(0.96 0 0)`): secondary surface — icon chips in section headers, secondary-button rest.
-- **Muted Ink** (`oklch(0.44 0 0)`): neutral-gray secondary text — labels, captions, helper copy. Measured ≥6.9:1 on every surface it sits on.
-- **Border** (`oklch(0.92 0 0)`) / **Input Border** (`oklch(0.9 0 0)`): hairline dividers and field strokes; the system's primary depth cue.
-- **Blue Wash** (`oklch(0.95 0.03 255)`): a faint blue tint for hover / selected rows — the only place neutrals lean off true gray, and only toward the brand blue.
+### Neutral
+- **Paper** (paper): cards and the light page background.
+- **Ink** (ink): headings and body text.
+- **Muted Ink** (muted-ink): secondary text, labels and captions (5.5:1 on white).
+- **Quiet Surface** (quiet-surface): icon tiles in card headers, secondary buttons, the Pending status pill.
+- **Hairline** (hairline): borders and dividers, the main depth cue.
+- **Night, Night Card, Night Ink, Night Muted Ink**: the dark theme's page, card and text values.
+- **Counter Black** (counter-black): the top bar in both themes.
 
-### Counter (the near-black desk surface)
-- **Counter Black** (`oklch(0.2 0 0)`): the dark panel fill (rates panel, top bar). Neutral, not charcoal-warm.
-- **Counter Muted** (`oklch(0.7 0 0)`): secondary text on black (6.8:1).
-- **Counter Border** (`oklch(1 0 0 / 0.1)`): translucent white hairlines and chip fills (`white/5`, `white/10`) layered on black.
+### Semantic
+- **Success Teal** (success-teal, text in success-teal-text): Approved status, Done steps in the timeline, confirmation ticks.
+- **Warning Amber** (warning-amber, text in warning-amber-text): the "waiting more than three days" chip on approval cards, and cached rates.
+- **Destructive Red** (destructive-red): validation errors, Rejected status, delete actions.
 
-### Semantic (small status signals only)
-- **Success Teal** (`oklch(0.62 0.13 165)`): live / succeeded / confirmed — the pulsing rates dot, the receipt "Ready" badge, the confirmation check. Dark text on it for AA (5.5:1).
-- **Warning Amber** (`oklch(0.78 0.15 80)`): the "using cached rates" status dot only.
-- **Destructive Red** (`oklch(0.585 0.205 27)`): validation errors and destructive actions. Inline error text and field-invalid states.
+### Request-type tints
+Each request type has one fixed tinted chip (background at about 10% opacity, text in the same hue's dark shade, light shade in dark mode). These are the one permitted exception to the One Blue Rule and may never be blue, green, teal, amber or red, which already carry meaning.
+- Expense: violet. Leave: stone. Travel: fuchsia. Purchase: orange.
 
 ### Named Rules
-**The One Blue Rule.** Blue is the only chromatic accent and it means *act / selected / focused*. It carries the primary actions and nothing decorative. Do not introduce a second accent hue to compete with it; the black-and-white field is what gives the blue its power.
+**The One Blue Rule.** Blue means act, selected or focused, and nothing else. No decorative blue, and no second accent hue competing with it.
 
-**The Neutral-Surface Rule.** All surfaces are true neutrals (chroma 0). The only permitted tint is **toward the brand blue** (the blue wash on hover/selection) — never toward warm/cream. If a surface looks beige, it's wrong.
+**The Semantic-Only Rule.** Teal, amber and red appear only when something succeeded, is waiting too long or failed. If one shows up and nothing happened, it is wrong. A money total is never red.
 
-**The Semantic-Only Rule.** Teal, amber, and red are status signals, not palette colors. They appear only when something succeeded, went stale, or failed. If one shows up and nothing happened, it's wrong.
+**The Neutral-Surface Rule.** Surfaces are true neutrals. The only tint allowed is the blue wash on hover or selection.
 
-## 3. Typography
+## Typography
 
-**One Family:** Manrope (with ui-sans-serif, system-ui fallbacks) — used for everything: display, titles, body, labels, and figures.
+**Font:** Manrope (with ui-sans-serif, system-ui fallbacks) for everything, figures included.
 
-**Character:** Manrope is a clean, slightly-rounded geometric sans that reads as modern and trustworthy at every size. A single family keeps the worksheet quiet and cohesive; hierarchy is carried by weight and size, not by mixing typefaces. Figures use Manrope's `tabular-nums` so currency and rate readouts still align in ruled columns.
+**Character:** a clean, slightly rounded geometric sans that reads as modern and trustworthy. One family keeps the app quiet; hierarchy comes from weight and size.
 
 ### Hierarchy
-- **Display** (Manrope 700, `clamp(1.5rem, 3vw, 1.875rem)`, `-0.02em`): the page title ("New Expense Claim"). Bold and prominent — the anchor of the screen.
-- **Title** (Manrope 600, 0.875rem, `-0.01em`): section-card headers ("Claimant", "Expense", "Receipts").
-- **Body** (Manrope 400, 0.875rem, line-height 1.5): field values, descriptions, helper text. Cap prose at 65–75ch.
-- **Label** (Manrope 600, 0.625rem, `+0.03em`, often uppercase): field labels, the "Base Currency · SGD" eyebrow on the counter panel, micro-captions.
-- **Figures** (Manrope 600, ~0.8125rem, `tabular-nums`): exchange-rate readouts, the running total, any committed figure.
+- **Display** (700, 1.5rem on phones up to 1.875rem, -0.02em): page titles such as "Purchase Requisition".
+- **Headline** (600, 1.25rem): confirmation and outcome headings ("Approved", "Leave request submitted").
+- **Title** (600, 15px): the title line of a request card; SectionCard headers use 600 at 0.875rem.
+- **Body** (400, 0.875rem, line-height 1.5): field values, descriptions, page subtitles.
+- **Caption** (400, 0.75rem): dates, secondary card lines, timeline sub-lines, error messages.
+- **Label** (600, 11px, sentence case): badges, chips, small field labels, the sticky bar's caption. Never uppercase.
+- **Figure** (700, 1.125rem, tabular-nums): totals in the sticky bar and on cards; 1.5rem on the approval summary.
 
 ### Named Rules
-**The Tabular-Money Rule.** Every number that represents money or a rate uses `tabular-nums`. Figures must align vertically and never jitter as digits change.
+**The Tabular-Money Rule.** Every amount and rate uses tabular figures so digits never jitter.
 
-**The One-Family Rule.** Manrope only. Don't introduce a second typeface; contrast comes from weight (400 / 600 / 700) and size, not from pairing.
+**The Sentence-Case Rule.** Labels, buttons, chips and headings are sentence case. No tracked-uppercase eyebrows.
 
-## 4. Elevation
+**The Quiet-Title Rule.** Titles stay at or below 1.875rem. This is a worksheet, not a billboard.
 
-Flat by default. Depth is built from **tonal layering and hairline borders**, not from heavy drop shadows. Cards sit a half-step above the field with `shadow-sm` and a `1px` neutral border; the near-black counter panels use translucent white hairlines (`oklch(1 0 0 / 0.1)`) and faint white fills (`white/5`, `white/10`) to layer content. Buttons and inputs carry only `shadow-xs` — barely there, enough to lift them off the field.
+## Layout
 
-### Shadow Vocabulary
-- **Card lift** (`box-shadow: 0 1px 2px rgba(0,0,0,0.05)` — Tailwind `shadow-sm`): the resting elevation of worksheet cards and the counter panel.
-- **Control lift** (`shadow-xs`): inputs and outline/secondary buttons; a near-invisible edge.
+Phone first at 375px, with 16px side gutters. Forms are a single column capped at 672px (max-w-2xl); My Requests at 768px; Approvals at 1024px as a one-column list on phones and a two- or three-column grid from 640px. Sections stack with 20px gaps; cards use 16px padding.
+
+On phones a four-slot bottom bar (New, My Requests, Approvals, More) is fixed at the bottom, and every form adds a sticky bar above it with the figure that matters (total, days or estimated cost) and the Submit button. From 640px up, the top tab bar replaces the bottom bar and each form shows its own inline Submit.
+
+Every form follows one order: Your Details, the request's specifics with its total, free text, attachments, then Approval just above Submit.
+
+## Elevation & Depth
+
+Flat by default. Cards sit on the page with a 1px hairline border and a faint lift (shadow-sm); controls carry an even fainter one (shadow-xs). Sheets and menus use a stronger shadow and a dimmed overlay. Dark mode relies on the card being one step lighter than the page, plus translucent white hairlines.
 
 ### Named Rules
-**The Flat-At-Rest Rule.** Surfaces are flat until something happens. Elevation and ring are responses to state — hover, focus — not ambient decoration. If a shadow looks like it's trying to be seen, it's too dark.
+**The Flat-At-Rest Rule.** Shadow responds to state or marks a floating layer; it is never ambient decoration.
 
-**The Hairline-Depth Rule.** A `1px` neutral border does the structural work that a shadow would do in a heavier system. On the near-black counter, that hairline is translucent white. Prefer the border to the blur.
+**The Hairline-Depth Rule.** A 1px border does the structural work a heavier system would give to shadow.
 
-## 5. Components
+## Shapes
+
+Gently rounded throughout: controls at about 8.5px, cards and panels at 14px, chips, badges, pills and avatars fully round. Dashed 2px borders mark drop zones and the signature pad. No left or right accent stripes on cards.
+
+## Components
 
 ### Buttons
-- **Shape:** gently rounded (`rounded-md` ≈ 12px).
-- **Primary:** bright-blue fill (`oklch(0.52 0.2 255)`), white text, `h-9` (36px), `px-4`; icon + label with `gap-2`. Hover via `bg-primary/90`.
-- **Submit (signature):** the same blue, scaled up to `h-12` (48px), full-width, `font-semibold`, with a leading `Send` icon that swaps to a spinner while submitting. It is the single most prominent control — the only blue thing at rest, and the "one clear next action." On mobile it also appears in a sticky bottom action bar.
-- **Ghost / Secondary:** transparent or gray-surface rest, `hover:bg-accent` (the faint blue wash). Used for sign-out and low-stakes actions. On the counter panels, ghost buttons use `hover:bg-white/10`.
-- **Hover / Focus:** all buttons `transition-all`; focus-visible draws a `3px` **blue** ring at `ring/50` plus a border shift. Never remove the ring.
+- **Shape:** gently rounded (rounded.md).
+- **Primary:** Action Blue fill, white text, 48px tall for Submit and decision buttons, full width when stacked on phones.
+- **Outline:** paper fill with a hairline border, 32px for small actions such as Remind and Review.
+- **Ghost icon:** 40px on phones and 32px from 640px, for delete, PDF and remove-file.
+- **Focus:** a 3px blue ring on every interactive element.
 
-### Inputs / Fields
-- **Style:** `h-9` (36px), `rounded-md` (≈12px), `1px` neutral input-border, white (light) / `input/30` (dark) fill, `px-3`, `shadow-xs`.
-- **Focus:** border shifts to the blue ring and a `3px` blue `ring/50` glow appears (`transition-[color,box-shadow]`). Calm, no jump.
-- **Error / Invalid:** `aria-invalid` switches border to destructive red with a `destructive/20` ring, paired with an inline `aria-describedby` message. Numeric fields use `tabular-nums`.
-- **Dates:** a dd/mm/yyyy text field (masked as you type) with a calendar button opening the native picker; the value is stored as ISO `yyyy-mm-dd`.
+### Chips
+- **Filter chips:** fully round, 32px; active is Action Blue with white text, inactive is paper with muted ink. The period picker uses the same pill shape with a dropdown.
+- **Status badges:** Pending in Quiet Surface, Approved in solid Success Teal, Rejected in solid Destructive Red.
+- **Type chips:** the request-type tints above, with the type's icon.
 
 ### Cards / Containers
-- **Corner Style:** `rounded-xl` (≈20px) — the most generous radius in the system.
-- **Background:** card-white on the neutral field.
-- **Shadow Strategy:** `shadow-sm` + `1px` neutral border (see Elevation).
-- **Internal Padding:** `p-5` (20px) body; never nest a card inside a card.
+- **SectionCard:** the single framing unit for form sections; icon tile plus 0.875rem title in the header, hairline divider, 16px body. Never nest a card inside a card.
+- **Request card:** 14px corners, hairline border, 16px padding. Top row: type chip and bold reference on the left, status and actions on the right. Then title and date with the amount opposite, then a row with Show progress and Remind.
 
-### SectionCard (signature component)
-The worksheet's organizing unit. A `rounded-xl` white card with a **header strip**: a `size-7` gray-surface icon chip (`rounded-lg`, muted-ink icon) + an Inter-600 title, a `1px` bottom border, then a `p-5` body. `gap-0`, `overflow-hidden`, edge-to-edge body supported for tables. This is how every form section is framed — consistent, quiet, scannable.
+### Inputs / Fields
+- **Style:** 36px, hairline border, rounded.md, paper fill (a faint translucent fill in dark mode).
+- **Focus:** blue ring.
+- **Error:** red border with a caption-size message underneath; the first invalid field receives focus.
+- **Placeholders:** only formats (Select ..., 0.00, dd/mm/yyyy, City, country), never helper prose.
 
-### Counter Panel (signature component)
-The near-black "desk" device. A `rounded-xl` `oklch(0.2 0 0)` `section` with translucent-white hairline borders, a header row (icon chip on `white/10` + Inter-600 title + a `size-8` rounded refresh control on `white/5`), and a body of mono/tabular rate tiles in a 2-col grid. A live-status footer pairs a pulsing teal dot (amber when cached) with plain-language status ("Live · Updated 14:32"). The top bar shares this surface so the two read as one continuous counter.
+### Navigation
+- **Phone:** bottom bar with four slots, the active one in a blue-wash pill; New opens a sheet listing the four forms; More holds exchange rates, appearance and sign out, each as an icon-tile row.
+- **640px and up:** a sticky top tab bar under the Counter Black header; Approvals shows a red count badge.
 
-### Confirmation (signature component)
-After submit, a centered card replaces the form: a teal success check, the **claim reference** in the near-black counter block with a copy button, the committed SGD total, and an honest receipt status (all-uploaded, or a destructive-tinted panel listing failures with a retry). A blue "File another claim" button closes it. This is the durable proof-of-record.
+### Timeline (signature component)
+Submitted, then each approver in order: a dot, the person's name, a status pill (Done, Pending, Upcoming, Rejected) and one plain sub-line ("Approved 15 Oct 2026, 10:00 am", "Waiting since ...", "After Jane Tan"). Steps still to come are dimmed with muted ink. The same timeline appears in My Requests, on the approval page and in decision emails.
 
-### Navigation / Top Bar
-Sticky near-black header (`h-14`), logo left, truncated user name + ghost sign-out right. No nav menu — this is a single-task tool. The black ties it visually to the rates counter.
+### Sticky Submit bar (signature component)
+Fixed above the phone bottom bar: a label and figure on the left, the Submit button on the right, respecting the safe-area inset.
 
-## 6. Do's and Don'ts
+### Signature pad
+Matches the surrounding fields in both themes and draws in the theme's text colour; the saved image is always near-black ink on transparent for the signed PDF.
+
+## Do's and Don'ts
 
 ### Do:
-- **Do** keep bright blue as the only chromatic accent — primary/Submit actions, focus rings, current selection, links — and nothing decorative (The One Blue Rule).
-- **Do** keep all surfaces true neutral (chroma 0); the only permitted tint is the blue wash on hover/selection (The Neutral-Surface Rule).
-- **Do** set every money/rate figure in JetBrains Mono with `tabular-nums` so columns align and digits never jitter (The Tabular-Money Rule).
-- **Do** keep exactly one dominant action per screen — the full-width `h-12` blue Submit (sidebar on desktop, sticky bottom bar on mobile).
-- **Do** build depth from `1px` neutral borders and tonal layering; reach for shadow only as a state response (The Flat-At-Rest Rule).
-- **Do** preserve the `3px` blue focus ring on every interactive element; it is the accessibility baseline, not decoration.
-- **Do** keep muted-ink (`oklch(0.44 0 0)`) neutral; it is measured ≥6.9:1 on every surface. Placeholder text uses the same token.
-- **Do** treat dark mode as first-class — check contrast independently in both themes.
-- **Do** respect `prefers-reduced-motion` on the spinner, the pulsing status dot, and any future transition.
+- **Do** keep vivid blue for actions, selection and focus only (The One Blue Rule).
+- **Do** use tabular figures for every amount and show money in SGD with thousands separators.
+- **Do** show dates as "15 Oct 2026" in Singapore time, and leave the time off date-only values.
+- **Do** keep one dominant action per screen: the 48px blue Submit, in the sticky bar on phones.
+- **Do** keep tap targets at least 40px on phones.
+- **Do** check contrast in both themes; use the "-text" colour variants for coloured text.
+- **Do** respect prefers-reduced-motion.
 
 ### Don't:
-- **Don't** inherit clunky legacy-enterprise energy (SAP / Concur): no dense gray field grids, no cryptic codes, no dated chrome. This is the thing being replaced.
-- **Don't** drift flashy-consumer: no gradients, no `background-clip: text` gradient text, no big hero-metric template, no playful illustration competing with money.
-- **Don't** ship generic AI-slop: no identical card grids, no tiny tracked-uppercase eyebrow above every section, no decorative glassmorphism.
-- **Don't** nest a card inside a card — the SectionCard is the single framing unit.
-- **Don't** use a `border-left`/`border-right` greater than `1px` as a colored accent stripe on cards, rows, or callouts. Use full hairline borders or background tints instead.
-- **Don't** introduce a second accent hue to compete with the blue, and don't use blue for anything that isn't an action/selection (The One Blue Rule).
-- **Don't** tint surfaces warm/cream; if a surface looks beige, it's wrong (The Neutral-Surface Rule).
-- **Don't** let display type exceed ~1.5rem; this is a worksheet, not a billboard (The Quiet-Title Rule).
-- **Don't** use light-gray body text "for elegance." Legibility of the number and the label is the entire job.
+- **Don't** add helper text, placeholders or confirmation sentences that restate what the screen already shows.
+- **Don't** use tracked uppercase labels or eyebrows.
+- **Don't** colour a total or any neutral figure with a semantic colour.
+- **Don't** give a request-type chip a blue, green, teal, amber or red tint.
+- **Don't** nest a card inside a card, or add coloured side stripes to cards.
+- **Don't** use gradients, glass effects or decorative illustration.
+- **Don't** use em dashes in interface copy.

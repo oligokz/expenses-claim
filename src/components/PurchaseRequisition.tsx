@@ -331,12 +331,9 @@ export function PurchaseRequisition({
         })
 
       let failed = 0
-      const today = new Date().toISOString().slice(0, 10)
       for (let i = 0; i < files.length; i++) {
         try {
           await uploadReceipt(files[i], {
-            employeeName,
-            date: today,
             claimRef,
             index: i,
           })

@@ -1,7 +1,7 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendError } = require('./_lib/http');
 const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
-const { getModule, waitingOn, buildRoute } = require('./_lib/approvals');
+const { getModule, waitingOn, buildRoute, blockedReason } = require('./_lib/approvals');
 const { listApprovers } = require('./_lib/approvers');
 const { sgDay } = require('./_lib/dates');
 
@@ -156,6 +156,8 @@ module.exports = async function handler(req, res) {
               ? { name: 'Finance', stageLabel: '', since: '', team: true }
               : null,
           lastReminderAt: f.LastReminderAt || null,
+          // The same rule /api/cancel enforces, so the control is never offered in vain.
+          canDelete: !blockedReason(getModule(source.type), f),
           route: buildRoute(getModule(source.type), f, nameOf),
         });
       }

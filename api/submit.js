@@ -82,7 +82,7 @@ module.exports = async function handler(req, res) {
     const { notified, mailError } = await notifyApprover(token, siteId, {
       moduleName: 'expense', itemId, approverEmail,
     });
-    return res.status(200).json({ success: true, itemId, claimRef, notified, mailError });
+    return res.status(200).json({ success: true, itemId, claimRef, totalSGD, notified, mailError });
 
   } catch (err) {
     return sendError(req, res, err, 'submit');

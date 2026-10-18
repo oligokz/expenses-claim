@@ -143,11 +143,6 @@ const canRemind = (r: MyRequest) =>
 const shortDate = (s: string) =>
   s ? new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""
 
-/* Only a request nobody has decided yet can be deleted by its requester. The
- * server enforces this too; here it just decides whether to offer the control. */
-const isPending = (status: string) =>
-  !status || status.toLowerCase() === "pending"
-
 export function MyRequests() {
   const [state, setState] = useState<LoadState>("loading")
   const [requests, setRequests] = useState<MyRequest[]>([])
@@ -384,7 +379,7 @@ export function MyRequests() {
                   ) : null}
                   {/* Deleting asks first, and is only offered while nobody has
                       decided: after that the row is the record of a decision. */}
-                  {isPending(r.status) && confirming !== r.id && (
+                  {r.canDelete && confirming !== r.id && (
                     <Button
                       variant="ghost"
                       size="icon"

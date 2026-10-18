@@ -14,7 +14,7 @@
 
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendError } = require('./_lib/http');
-const { getModule, getRow, getRowWithEtag, currentStage } = require('./_lib/approvals');
+const { getModule, getRow, getRowWithEtag, currentStage, blockedReason } = require('./_lib/approvals');
 const { deleteAttachments } = require('./_lib/attachments');
 const { sendMail, templates } = require('./_lib/mail');
 
@@ -34,17 +34,6 @@ async function deleteItem(token, siteId, mod, itemId, ifMatch) {
     throw new Error(`Could not delete the request (${res.status}): ${await res.text()}`);
   }
   return true;
-}
-
-/** Why this row can't be deleted by its requester, or null if it can. */
-function blockedReason(mod, fields) {
-  const status = fields.Status || 'Pending';
-  if (status !== 'Pending') return `This request was already ${String(status).toLowerCase()} and can no longer be deleted.`;
-  /* Overall Status stays Pending until the last stage, so it alone would let a
-   * requester erase a request an approver has already signed. */
-  const signed = mod.stages.find((s) => fields[s.statusField] === 'Approved');
-  if (signed) return `The ${signed.label.toLowerCase()} has already approved this, so it can no longer be deleted.`;
-  return null;
 }
 
 module.exports = async function handler(req, res) {
