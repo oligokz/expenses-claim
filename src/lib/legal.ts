@@ -26,7 +26,7 @@ export const LEGAL: Record<"terms" | "privacy", LegalDoc> = {
       {
         heading: "Your requests",
         body: [
-          "Submit only genuine work requests: expenses you actually incurred for company work, leave you intend to take, and travel and purchases the company needs.",
+          "Submit only genuine work requests: expenses you incurred for company work, leave you intend to take, and travel and purchases the company needs.",
           "Make sure amounts, dates, receipts and other details are accurate and complete. Attach the original receipt or document, not an altered copy.",
           "Expense claims, leave, travel and purchases remain subject to the company's policies on each. Submitting a request does not mean it will be approved.",
         ],
@@ -64,10 +64,10 @@ export const LEGAL: Record<"terms" | "privacy", LegalDoc> = {
   },
   privacy: {
     title: "Privacy notice",
-    intro: `This notice explains how ${COMPANY} collects, uses and protects personal data through the CREOX Staff Portal, in line with Singapore's Personal Data Protection Act (PDPA).`,
+    intro: `This notice explains how ${COMPANY} collects, uses and discloses personal data through the CREOX Staff Portal, in line with Singapore's Personal Data Protection Act (PDPA).`,
     sections: [
       {
-        heading: "What we collect",
+        heading: "What is collected",
         body: [
           "From your Microsoft 365 account: your name, work email address and job title.",
           "What you enter: your department, and the details of each request, such as expense amounts and categories, leave dates and reasons, travel plans and costs, and purchase details.",
@@ -77,7 +77,7 @@ export const LEGAL: Record<"terms" | "privacy", LegalDoc> = {
         ],
       },
       {
-        heading: "Why we use it",
+        heading: "How it is used",
         body: [
           "To process your requests: routing them to the right approvers, reimbursing expenses, recording leave, and arranging travel and purchases.",
           "To keep accounting, tax and employment records the company is required to keep, and to check requests against company policy.",
@@ -87,13 +87,13 @@ export const LEGAL: Record<"terms" | "privacy", LegalDoc> = {
         heading: "Where it is kept",
         body: [
           "Requests, attachments and signed documents are stored in the company's own Microsoft 365 (SharePoint), and notifications are sent from the company mailbox.",
-          "The portal itself runs on Vercel, which processes your requests as they pass through but does not store them. Exchange rates come from a public rate service; no personal data is sent to it.",
+          "The portal itself runs on Vercel, which handles your requests as they pass through and keeps only short-lived technical logs. Exchange rates come from a public rate service; no personal data is sent to it.",
         ],
       },
       {
         heading: "Who can see it",
         body: [
-          "You, the approvers on your request, Finance and Human Resources, and the IT administrators who look after the company's Microsoft 365. It is not sold or shared with anyone outside the company except where the law requires.",
+          "You, the approvers on your request, Finance and Human Resources, and the IT administrators who look after the company's Microsoft 365. The company does not sell it, and shares it outside the company only with the service providers named above or where the law requires.",
         ],
       },
       {
