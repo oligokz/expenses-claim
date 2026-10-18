@@ -398,10 +398,12 @@ export function ApprovalPage({ token }: { token: string }) {
               </div>
             )}
 
+            {/* flex-1 only side by side: stacked on a phone it overrode the
+                buttons' height and squashed them to their text. */}
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button
                 size="lg"
-                className="h-12 flex-1 text-sm font-semibold"
+                className="h-12 w-full text-sm font-semibold sm:w-auto sm:flex-1"
                 disabled={!!busy}
                 onClick={() => decide("approve")}
               >
@@ -415,7 +417,7 @@ export function ApprovalPage({ token }: { token: string }) {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-12 flex-1 text-sm font-semibold text-destructive hover:text-destructive"
+                className="h-12 w-full text-sm font-semibold text-destructive hover:text-destructive sm:w-auto sm:flex-1"
                 disabled={!!busy}
                 onClick={() => decide("reject")}
               >
