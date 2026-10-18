@@ -371,7 +371,7 @@ export default function App() {
       setClaimant((prev) => ({ ...prev, dept: "", subDate: todayIso() }))
     } catch (e) {
       console.error(e)
-      toast.error(`Error: ${(e as Error).message}`)
+      toast.error((e as Error).message)
     } finally {
       setSubmitting(false)
       window.setTimeout(() => setProgress(0), 1200)

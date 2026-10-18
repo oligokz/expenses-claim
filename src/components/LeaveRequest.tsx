@@ -10,6 +10,7 @@ import {
   User,
 } from "lucide-react"
 import { toast } from "sonner"
+import { UploadRetry, type FailedUpload } from "@/components/UploadRetry"
 
 import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
@@ -73,7 +74,12 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
   const [submitting, setSubmitting] = useState(false)
   const [types, setTypes] = useState<LeaveTypeOption[]>([])
   const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
-  const [submitted, setSubmitted] = useState<{ ref: string; days: number } | null>(null)
+  const [submitted, setSubmitted] = useState<{
+    ref: string
+    days: number
+    attachments: number
+    failed: FailedUpload[]
+  } | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -157,7 +163,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
         approverEmail: form.approverEmail,
       })
 
-      let failed = 0
+      const failed: FailedUpload[] = []
       for (let i = 0; i < files.length; i++) {
         try {
           await uploadReceipt(files[i], {
@@ -166,20 +172,20 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           })
         } catch (e) {
           console.warn(`Leave doc "${files[i].name}" failed:`, (e as Error).message)
-          failed++
+          failed.push({ file: files[i], meta: { claimRef, index: i } })
         }
       }
 
-      if (failed > 0)
-        toast.warning(`Leave submitted (${claimRef}). ${failed} attachment(s) need a retry`)
+      if (failed.length > 0)
+        toast.warning(`Leave submitted (${claimRef}). ${failed.length} attachment(s) not uploaded`)
       else toast.success(`Leave submitted (${claimRef})`)
 
-      setSubmitted({ ref: claimRef, days })
+      setSubmitted({ ref: claimRef, days, attachments: files.length, failed })
       setForm(blankForm())
       setFiles([])
     } catch (e) {
       console.error(e)
-      toast.error(`Error: ${(e as Error).message}`)
+      toast.error((e as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -206,6 +212,9 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
               {submitted.ref}
             </div>
           </div>
+        </div>
+        <div className="mt-5">
+          <UploadRetry total={submitted.attachments} initialFailed={submitted.failed} />
         </div>
         <Button
           size="lg"

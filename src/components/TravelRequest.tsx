@@ -10,6 +10,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { toast } from "sonner"
+import { UploadRetry, type FailedUpload } from "@/components/UploadRetry"
 
 import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
@@ -106,6 +107,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
     ref: string
     totalSGD: number
     attachments: number
+    failed: FailedUpload[]
     notified: boolean
   } | null>(null)
 
@@ -229,7 +231,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
         finalApprover: form.finalApprover,
       })
 
-      let failed = 0
+      const failed: FailedUpload[] = []
       for (let i = 0; i < files.length; i++) {
         try {
           await uploadReceipt(files[i], {
@@ -241,27 +243,28 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             `Travel document "${files[i].name}" failed:`,
             (e as Error).message,
           )
-          failed++
+          failed.push({ file: files[i], meta: { claimRef, index: i } })
         }
       }
 
-      if (failed > 0)
+      if (failed.length > 0)
         toast.warning(
-          `Travel request submitted (${claimRef}). ${failed} attachment(s) need a retry`,
+          `Travel request submitted (${claimRef}). ${failed.length} attachment(s) not uploaded`,
         )
       else toast.success(`Travel request submitted (${claimRef})`)
 
       setSubmitted({
         ref: claimRef,
         totalSGD,
-        attachments: files.length - failed,
+        attachments: files.length,
+        failed,
         notified,
       })
       setForm(blankForm())
       setFiles([])
     } catch (e) {
       console.error(e)
-      toast.error(`Error: ${(e as Error).message}`)
+      toast.error((e as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -278,8 +281,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
             Travel request submitted
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            SGD {fmt(submitted.totalSGD)} · {submitted.attachments} attachment
-            {submitted.attachments === 1 ? "" : "s"}
+            SGD {fmt(submitted.totalSGD)}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-medium text-surface-dark-muted">
@@ -289,6 +291,9 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
               {submitted.ref}
             </div>
           </div>
+        </div>
+        <div className="mt-5">
+          <UploadRetry total={submitted.attachments} initialFailed={submitted.failed} />
         </div>
         <Button
           size="lg"

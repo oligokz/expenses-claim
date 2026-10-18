@@ -12,6 +12,7 @@ import {
   User,
 } from "lucide-react"
 import { toast } from "sonner"
+import { UploadRetry, type FailedUpload } from "@/components/UploadRetry"
 
 import { ApproverField } from "@/components/ApproverField"
 import { SectionCard } from "@/components/SectionCard"
@@ -158,6 +159,7 @@ export function PurchaseRequisition({
     totalSGD: number
     items: number
     attachments: number
+    failed: FailedUpload[]
     notified: boolean
   } | null>(null)
 
@@ -330,7 +332,7 @@ export function PurchaseRequisition({
           quotationAttached: files.length > 0,
         })
 
-      let failed = 0
+      const failed: FailedUpload[] = []
       for (let i = 0; i < files.length; i++) {
         try {
           await uploadReceipt(files[i], {
@@ -342,13 +344,13 @@ export function PurchaseRequisition({
             `Quotation "${files[i].name}" failed:`,
             (e as Error).message,
           )
-          failed++
+          failed.push({ file: files[i], meta: { claimRef, index: i } })
         }
       }
 
-      if (failed > 0)
+      if (failed.length > 0)
         toast.warning(
-          `Requisition submitted (${claimRef}). ${failed} attachment(s) need a retry`,
+          `Requisition submitted (${claimRef}). ${failed.length} attachment(s) not uploaded`,
         )
       else toast.success(`Requisition submitted (${claimRef})`)
 
@@ -356,14 +358,15 @@ export function PurchaseRequisition({
         ref: claimRef,
         totalSGD: committedSGD,
         items: form.items.length,
-        attachments: files.length - failed,
+        attachments: files.length,
+        failed,
         notified,
       })
       setForm(blankForm())
       setFiles([])
     } catch (e) {
       console.error(e)
-      toast.error(`Error: ${(e as Error).message}`)
+      toast.error((e as Error).message)
     } finally {
       setSubmitting(false)
     }
@@ -381,8 +384,7 @@ export function PurchaseRequisition({
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             SGD {fmt(submitted.totalSGD)} · {submitted.items} item
-            {submitted.items === 1 ? "" : "s"} · {submitted.attachments} attachment
-            {submitted.attachments === 1 ? "" : "s"}
+            {submitted.items === 1 ? "" : "s"}
           </p>
           <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
             <div className="text-[11px] font-medium text-surface-dark-muted">
@@ -392,6 +394,9 @@ export function PurchaseRequisition({
               {submitted.ref}
             </div>
           </div>
+        </div>
+        <div className="mt-5">
+          <UploadRetry total={submitted.attachments} initialFailed={submitted.failed} />
         </div>
         <Button
           size="lg"
