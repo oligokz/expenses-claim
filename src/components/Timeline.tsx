@@ -36,7 +36,8 @@ function fmtWhen(s: string) {
   const date = d.toLocaleDateString("en-GB", { ...opts, day: "numeric", month: "short", year: "numeric" })
   if (dateOnly) return date
   const time = d.toLocaleTimeString("en-SG", { ...opts, hour: "numeric", minute: "2-digit" }).toLowerCase()
-  return `${date}, ${time}`
+  // Date-only columns come back as midnight; a "12:00 am" there means nothing.
+  return /^12:00\sam$/.test(time) ? date : `${date}, ${time}`
 }
 
 /** What happened at this step, in words: "Approved 15 Oct 2026, 10:00 am". */

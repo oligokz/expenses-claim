@@ -151,7 +151,8 @@ function whenText(value) {
   const d = new Date(value);
   if (isNaN(d.getTime())) return String(value);
   const time = d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Singapore' }).toLowerCase();
-  return `${shortDate(value, true)}, ${time}`;
+  // Date-only columns come back as midnight; a "12:00 am" there means nothing.
+  return /^12:00\sam$/.test(time) ? shortDate(value, true) : `${shortDate(value, true)}, ${time}`;
 }
 
 /** What happened at a step, in words. Mirrors src/components/Timeline.tsx. */

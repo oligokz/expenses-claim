@@ -25,7 +25,19 @@ import type { MyRequest, RequestType } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
 type LoadState = "loading" | "ready" | "error"
-type Filter = "all" | RequestType
+/* By status rather than type: each row already says what it is, and what a
+   requester wants to find is what is still open. */
+type Filter = "all" | "pending" | "approved" | "rejected"
+const FILTER_LABEL: Record<Filter, string> = {
+  all: "All",
+  pending: "Pending",
+  approved: "Approved",
+  rejected: "Rejected",
+}
+const statusOf = (r: MyRequest): Exclude<Filter, "all"> => {
+  const s = (r.status || "Pending").toLowerCase()
+  return s === "approved" ? "approved" : s === "rejected" ? "rejected" : "pending"
+}
 
 const TYPE_META: Record<
   RequestType,
@@ -167,21 +179,20 @@ export function MyRequests() {
   const counts = useMemo(() => {
     const c: Record<Filter, number> = {
       all: requests.length,
-      expense: 0,
-      leave: 0,
-      travel: 0,
-      requisition: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
     }
-    for (const r of requests) c[r.type]++
+    for (const r of requests) c[statusOf(r)]++
     return c
   }, [requests])
 
   const visible = useMemo(
-    () => (filter === "all" ? requests : requests.filter((r) => r.type === filter)),
+    () => (filter === "all" ? requests : requests.filter((r) => statusOf(r) === filter)),
     [requests, filter],
   )
 
-  const FILTERS: Filter[] = ["all", "expense", "leave", "travel", "requisition"]
+  const FILTERS: Filter[] = ["all", "pending", "approved", "rejected"]
 
   return (
     <div>
@@ -233,7 +244,7 @@ export function MyRequests() {
                   : "bg-card text-muted-foreground hover:text-foreground",
               )}
             >
-              {f === "all" ? "All" : TYPE_META[f].short} ({counts[f]})
+              {FILTER_LABEL[f]} ({counts[f]})
             </button>
           ))}
         </div>
@@ -270,8 +281,7 @@ export function MyRequests() {
 
       {state === "ready" && requests.length > 0 && visible.length === 0 && (
         <div className="rounded-xl border bg-card py-12 text-center text-sm text-muted-foreground">
-          No {filter === "all" ? "" : TYPE_META[filter as RequestType].short.toLowerCase()}{" "}
-          requests.
+          No {filter === "all" ? "" : FILTER_LABEL[filter].toLowerCase()} requests.
         </div>
       )}
 
