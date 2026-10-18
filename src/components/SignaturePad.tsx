@@ -38,8 +38,23 @@ export function SignaturePad({
     ctx.lineWidth = 2
     ctx.lineCap = "round"
     ctx.lineJoin = "round"
-    ctx.strokeStyle = "#111111"
   }, [])
+
+  /* What gets saved. The pad draws in the theme's text colour so it reads in
+     dark mode too, but the PNG is stamped onto a white PDF, so every stroke is
+     recoloured to near-black ink on a transparent background first. */
+  const exportInk = (canvas: HTMLCanvasElement) => {
+    const out = document.createElement("canvas")
+    out.width = canvas.width
+    out.height = canvas.height
+    const ctx = out.getContext("2d")
+    if (!ctx) return canvas.toDataURL("image/png")
+    ctx.drawImage(canvas, 0, 0)
+    ctx.globalCompositeOperation = "source-in"
+    ctx.fillStyle = "#111111"
+    ctx.fillRect(0, 0, out.width, out.height)
+    return out.toDataURL("image/png")
+  }
 
   useEffect(() => {
     fitCanvas()
@@ -59,6 +74,8 @@ export function SignaturePad({
     e.currentTarget.setPointerCapture(e.pointerId)
     drawing.current = true
     dirty.current = true
+    // Ink in the current theme's text colour; exportInk makes it dark again.
+    ctx.strokeStyle = getComputedStyle(e.currentTarget).color
     const { x, y } = pos(e)
     ctx.beginPath()
     ctx.moveTo(x, y)
@@ -78,7 +95,7 @@ export function SignaturePad({
     if (!drawing.current) return
     drawing.current = false
     const canvas = canvasRef.current
-    if (canvas) onChange(canvas.toDataURL("image/png"))
+    if (canvas) onChange(exportInk(canvas))
   }
 
   const clear = () => {
@@ -94,9 +111,9 @@ export function SignaturePad({
 
   return (
     <div className="flex flex-col gap-2">
-      {/* Always white paper with dark ink, in dark mode too: the PNG is stamped
-          onto the white PDF, and dark ink on a dark card can't be seen. */}
-      <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-neutral-300 bg-white">
+      {/* Follows the theme like the fields around it: white in light mode, a
+          raised grey panel in dark. The saved ink is dark either way. */}
+      <div className="relative overflow-hidden rounded-xl border-2 border-dashed bg-card dark:bg-secondary/50">
         <canvas
           ref={canvasRef}
           onPointerDown={start}
@@ -106,11 +123,11 @@ export function SignaturePad({
           onPointerCancel={end}
           aria-label="Signature area. Draw your signature"
           role="img"
-          className="block h-40 w-full touch-none"
+          className="block h-40 w-full touch-none text-foreground"
           style={{ cursor: disabled ? "not-allowed" : "crosshair" }}
         />
         {!hasInk && (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-neutral-500">
+          <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
             Sign here
           </span>
         )}
