@@ -106,7 +106,7 @@ export function Receipts({
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-7 text-muted-foreground hover:text-destructive"
+                className="size-10 text-muted-foreground hover:text-destructive sm:size-8"
                 onClick={() => onRemove(i)}
                 aria-label="Remove file"
               >

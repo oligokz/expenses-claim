@@ -71,7 +71,8 @@ export function Approvals({
   }
 
   return (
-    <div>
+    // Capped like the other pages, so cards don't spread across a wide screen.
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">

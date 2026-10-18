@@ -29,8 +29,8 @@ export function ClaimSummary({ data }: { data: ClaimSummaryData }) {
       <Row label="Receipts" value={data.fileCount} />
 
       <div className="mt-4 rounded-xl border bg-muted/50 px-5 py-6">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Total Claim
+        <div className="text-xs font-medium text-muted-foreground">
+          Total claim
         </div>
         <div className="mt-2 font-mono text-2xl font-bold leading-tight tabular-nums text-destructive">
           SGD {fmt(data.total)}

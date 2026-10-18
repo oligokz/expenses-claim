@@ -106,12 +106,13 @@ function StatusBadge({ status }: { status: string }) {
   )
 }
 
-/* One tint per type, so a list can be scanned by kind before reading. */
+/* One tint per type, so a list can be scanned by kind before reading. None
+   is green, amber or red: those already mean approved, overdue and rejected. */
 const TYPE_TINT: Record<RequestType, string> = {
-  expense: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  expense: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
   leave: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   travel: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  requisition: "bg-amber-500/15 text-amber-800 dark:text-amber-300",
+  requisition: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
 }
 
 export function TypeBadge({ type }: { type: RequestType }) {
@@ -373,7 +374,7 @@ export function MyRequests() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 text-muted-foreground hover:text-foreground"
+                      className="size-10 text-muted-foreground hover:text-foreground sm:size-8"
                       title={`Open the signed PDF for ${r.ref}`}
                       aria-label={`Open the signed PDF for ${r.ref}`}
                       onClick={() => window.open(r.pdfUrl, "_blank", "noopener")}
@@ -387,7 +388,7 @@ export function MyRequests() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 text-muted-foreground hover:text-destructive"
+                      className="size-10 text-muted-foreground hover:text-destructive sm:size-8"
                       title={`Delete ${r.ref}`}
                       aria-label={`Delete ${r.ref}`}
                       disabled={!!deleting}

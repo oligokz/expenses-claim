@@ -58,9 +58,9 @@ export function RatesPanel({
       </div>
 
       <div className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <div className="mb-3 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
           <span className="h-px w-6 bg-border" />
-          Base Currency · SGD
+          Base currency: SGD
         </div>
 
         {shown.length === 0 ? (

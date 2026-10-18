@@ -202,7 +202,7 @@ export function ApprovalPage({ token }: { token: string }) {
                 : "The requester has been notified."}
             </p>
             <div className="mt-5 w-full rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
-              <div className="text-[11px] font-semibold uppercase tracking-wide text-surface-dark-muted">
+              <div className="text-[11px] font-medium text-surface-dark-muted">
                 Reference
               </div>
               <div className="mt-1 font-mono text-xl font-bold tabular-nums">

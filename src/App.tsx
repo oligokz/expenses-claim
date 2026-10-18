@@ -611,7 +611,7 @@ export default function App() {
             <div className="fixed inset-x-0 bottom-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom))] z-40 border-t bg-card py-3 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] shadow-[0_-2px_10px_rgba(0,0,0,0.06)] sm:hidden">
               <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <div className="text-[11px] font-medium text-muted-foreground">
                     Total (SGD)
                   </div>
                   <div className="truncate font-mono text-lg font-bold tabular-nums">

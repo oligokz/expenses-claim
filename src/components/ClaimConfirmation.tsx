@@ -63,7 +63,7 @@ export function ClaimConfirmation({
 
       {/* Proof-of-record: the charcoal "counter" block, echoing the summary panel. */}
       <div className="mt-6 rounded-xl bg-surface-dark px-5 py-4 text-surface-dark-foreground">
-        <div className="text-[10px] font-semibold uppercase tracking-wide text-surface-dark-muted">
+        <div className="text-[11px] font-medium text-surface-dark-muted">
           Claim reference
         </div>
         <div className="mt-1 flex items-center justify-between gap-3">
