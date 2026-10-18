@@ -40,6 +40,16 @@ There is no database of its own: SharePoint is the system of record.
   "Requisition Approvers" list.
 - `scripts/setup-requisition-lists.mjs` creates the requisition lists and
   columns in SharePoint.
+- `scripts/sp.mjs` signs in as you (device code, no secret) and checks the
+  Forms site against what the code writes: missing columns, single-line
+  columns that need multiple lines, unindexed columns, missing choice values.
+
+  ```bash
+  node scripts/sp.mjs audit --site https://creoxtech.sharepoint.com/sites/Forms
+  ```
+
+  Run it after adding a field to any form. It can also read rows (`items`) and
+  make any Graph call (`graph`); anything but a GET needs `--yes`.
 
 The Vercel Hobby plan allows 12 functions per deployment and `api/` has
 exactly 12, so new endpoints should extend an existing file (the approvals
