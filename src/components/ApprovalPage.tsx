@@ -18,6 +18,7 @@ import { toast } from "sonner"
 import { SectionCard } from "@/components/SectionCard"
 import { SignaturePad } from "@/components/SignaturePad"
 import { Timeline } from "@/components/Timeline"
+import { Initials } from "@/components/Initials"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -267,19 +268,60 @@ export function ApprovalPage({ token }: { token: string }) {
     )
   }
 
+  /* The figure that matters most goes up top: the SGD total, or the days for
+     leave. It is then left out of the details table so it isn't said twice. */
+  const headline =
+    view.rows.find(([, v]) => /^SGD /.test(v)) ||
+    view.rows.find(([k]) => k === "Days")
+  const headlineText = headline
+    ? headline[0] === "Days"
+      ? `${headline[1]} ${Number(headline[1]) === 1 ? "day" : "days"}`
+      : headline[1]
+    : ""
+  const detailRows = view.rows.filter((r) => r !== headline)
+  const step = view.stageLabel && view.stageLabel !== "Approver" ? view.stageLabel : ""
+  const submitted = view.submittedOn
+    ? new Date(view.submittedOn).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+    : ""
+
   return (
     <Shell>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-          Approve {(view.kind || "request").toLowerCase()}
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {view.claimRef} · {view.stageLabel} · submitted by {view.requester}
+      <div className="mb-5">
+        <p className="text-sm text-muted-foreground">
+          {view.kind} · <span className="font-mono tabular-nums">{view.claimRef}</span>
         </p>
+        <h1 className="mt-1 font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          {view.title || view.kind}
+        </h1>
+        {step && (
+          <span className="mt-2 inline-block rounded-full border px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+            Your step: {step}
+          </span>
+        )}
+      </div>
+
+      {/* Who is asking and for how much, before anything else. */}
+      <div className="mb-5 flex flex-col gap-4 rounded-xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <Initials name={view.requester} />
+          <div className="min-w-0">
+            <div className="text-xs text-muted-foreground">Submitted by</div>
+            <div className="truncate text-base font-semibold">{view.requester}</div>
+            <div className="truncate text-sm text-muted-foreground">
+              {[view.department, submitted].filter(Boolean).join(" · ")}
+            </div>
+          </div>
+        </div>
+        {headlineText && (
+          <div className="border-t pt-3 sm:border-0 sm:pt-0 sm:text-right">
+            <div className="text-xs text-muted-foreground">{headline?.[0] === "Days" ? "Duration" : "Total"}</div>
+            <div className="font-mono text-2xl font-bold tabular-nums">{headlineText}</div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-5">
-        <SectionCard icon={<FileText />} title={view.title || "Request"}>
+        <SectionCard icon={<FileText />} title="Details">
           <div className="flex flex-col gap-4">
             {view.description && (
               <p className="whitespace-pre-wrap text-sm leading-relaxed">
@@ -291,16 +333,12 @@ export function ApprovalPage({ token }: { token: string }) {
             )}
             <table className="w-full text-sm">
               <tbody>
-                {view.rows.map(([k, v]) => (
+                {detailRows.map(([k, v]) => (
                   <tr key={k} className="border-b last:border-0">
                     <td className="py-2 pr-4 align-top text-muted-foreground">{k}</td>
                     <td className="py-2 text-right font-medium tabular-nums">{v}</td>
                   </tr>
                 ))}
-                <tr>
-                  <td className="py-2 pr-4 align-top text-muted-foreground">Department</td>
-                  <td className="py-2 text-right font-medium">{view.department}</td>
-                </tr>
               </tbody>
             </table>
           </div>

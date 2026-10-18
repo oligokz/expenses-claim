@@ -8,6 +8,7 @@ import {
 
 import { Button } from "@/components/ui/button"
 import { TypeBadge } from "@/components/MyRequests"
+import { Initials } from "@/components/Initials"
 import { cn } from "@/lib/utils"
 import { fetchMyApprovals } from "@/lib/api"
 import type { PendingApproval } from "@/lib/types"
@@ -161,9 +162,15 @@ export function Approvals({
                 </div>
 
                 <div className="truncate text-[15px] font-semibold">{a.title || a.kind}</div>
-                <div className="truncate text-sm text-muted-foreground">
-                  {a.requester}
-                  {a.department ? ` · ${a.department}` : ""}
+                {/* Who it's from carries as much weight as what it is. */}
+                <div className="mt-1 flex min-w-0 items-center gap-2.5">
+                  <Initials name={a.requester} className="size-8 text-xs" />
+                  <div className="min-w-0 leading-tight">
+                    <div className="truncate text-sm font-medium">{a.requester}</div>
+                    {a.department && (
+                      <div className="truncate text-xs text-muted-foreground">{a.department}</div>
+                    )}
+                  </div>
                 </div>
                 {a.step && (
                   <div>
