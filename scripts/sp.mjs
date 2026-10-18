@@ -6,6 +6,7 @@
  *   node scripts/sp.mjs items  --site <url> --list "Purchase Requisitions" [--top 5] [--id 19]
  *   node scripts/sp.mjs graph  GET /sites/{site}/lists          # any Graph call
  *   node scripts/sp.mjs graph  PATCH <path> --body file.json --yes
+ *   node scripts/sp.mjs date-times --site <url> [--yes]   # show approval times in SharePoint
  *
  * Sign-in is Microsoft's device-code flow with its own Graph command-line
  * client (see setup-requisition-lists.mjs): it prints a code, you approve it in
@@ -312,12 +313,35 @@ async function cmdGraph(token) {
   console.log(JSON.stringify(out, null, 2));
 }
 
-const COMMANDS = { sites: cmdSites, audit: cmdAudit, items: cmdItems, graph: cmdGraph };
+/* Approval date columns were created date-only. SharePoint keeps the time the
+ * app writes either way; the format only decides whether list views show it.
+ * Switches each stage's date column, from the module registry, to date and time. */
+async function cmdDateTimes(token) {
+  const { MODULES } = require('../api/_lib/approvals.js');
+  const site = await siteId(token);
+  const apply = flag('--yes');
+  for (const mod of Object.values(MODULES)) {
+    const list = encodeURIComponent(mod.listName());
+    const wanted = new Set(mod.stages.map((st) => st.dateField).filter(Boolean));
+    const cols = await all(token, `/sites/${site}/lists/${list}/columns?$select=id,name,dateTime`);
+    for (const c of cols.filter((c) => wanted.has(c.name))) {
+      const label = `${mod.listName()} / ${c.name}`;
+      if (c.dateTime?.format === 'dateTime') { console.log(`  ${label}: already date and time`); continue; }
+      if (!apply) { console.log(`  ${label}: would change to date and time`); continue; }
+      await graph(token, 'PATCH', `/sites/${site}/lists/${list}/columns/${c.id}`,
+        { dateTime: { format: 'dateTime', displayAs: 'standard' } });
+      console.log(`  ${label}: now date and time`);
+    }
+  }
+  if (!apply) console.log('\nNothing changed. Re-run with --yes to apply.');
+}
+
+const COMMANDS = { sites: cmdSites, audit: cmdAudit, items: cmdItems, graph: cmdGraph, 'date-times': cmdDateTimes };
 
 (async () => {
   const run = COMMANDS[CMD];
   if (!run) {
-    console.log('Commands: sites | audit --site <url> [--columns] | items --site <url> --list <name> [--id n] | graph <METHOD> <path> [--site <url>] [--body f] [--yes]');
+    console.log('Commands: sites | audit --site <url> [--columns] | items --site <url> --list <name> [--id n] | graph <METHOD> <path> [--site <url>] [--body f] [--yes] | date-times --site <url> [--yes]');
     process.exit(1);
   }
   await run(await getToken());

@@ -157,10 +157,10 @@ const REQ_COLUMNS = [
   { name: 'ApprovalStage',          ...choice('Reporting Manager', 'Final Approval', 'Complete') },
   { name: 'ReportingManager',       ...text() },
   { name: 'ReportingManagerStatus', ...choice(...APPROVAL_STATES) },
-  { name: 'ReportingManagerDate',   ...dateOnly() },
+  { name: 'ReportingManagerDate',   ...dateTime() },
   { name: 'FinalApprover',          ...text() },
   { name: 'FinalApprovalStatus',    ...choice(...APPROVAL_STATES) },
-  { name: 'FinalApprovalDate',      ...dateOnly() },
+  { name: 'FinalApprovalDate',      ...dateTime() },
   { name: 'ApprovalNotes',          ...multiline() },
 
   // Approval mechanics. The token id is the nonce from the emailed link: it is
@@ -246,13 +246,13 @@ const TRAVEL_COLUMNS = [
   { name: 'ApprovalStage',          ...choice('Reporting Manager', 'Finance/HR', 'Final Approval', 'Complete') },
   { name: 'ReportingManager',       ...text() },
   { name: 'ReportingManagerStatus', ...choice(...APPROVAL_STATES) },
-  { name: 'ReportingManagerDate',   ...dateOnly() },
+  { name: 'ReportingManagerDate',   ...dateTime() },
   { name: 'FinanceApprover',        ...text() },
   { name: 'FinanceApprovalStatus',  ...choice(...APPROVAL_STATES) },
-  { name: 'FinanceApprovalDate',    ...dateOnly() },
+  { name: 'FinanceApprovalDate',    ...dateTime() },
   { name: 'FinalApprover',          ...text() },
   { name: 'FinalApprovalStatus',    ...choice(...APPROVAL_STATES) },
-  { name: 'FinalApprovalDate',      ...dateOnly() },
+  { name: 'FinalApprovalDate',      ...dateTime() },
   { name: 'ApprovalNotes',          ...multiline() },
 
   { name: 'Stage1TokenId',      ...text() },
@@ -273,7 +273,7 @@ const TRAVEL_COLUMNS = [
  * from when approvals were done by hand, so only the mechanics are missing. */
 const SINGLE_STAGE_COLUMNS = [
   { name: 'ApproverEmail',    ...text() },
-  { name: 'DecisionDate',     ...dateOnly() },
+  { name: 'DecisionDate',     ...dateTime() },
   { name: 'ApproverComments', ...multiline() },
   { name: 'Stage1TokenId',    ...text() },
   { name: 'Stage1SignedName', ...text() },
