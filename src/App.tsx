@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, ClipboardCheck, Loader2, LogOut, Send } from "lucide-react"
+import { ArrowLeft, ClipboardCheck, Loader2, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
@@ -29,7 +29,8 @@ import {
 } from "@/components/ClaimConfirmation"
 import { Button } from "@/components/ui/button"
 
-import { clearSession, initAuth, logout } from "@/lib/auth"
+import { clearSession, initAuth, logout, signIn } from "@/lib/auth"
+import { SignInScreen } from "@/components/SignInScreen"
 import { useIdleTimeout } from "@/lib/useIdleTimeout"
 import {
   fetchMyApprovals,
@@ -56,7 +57,7 @@ import type {
 import { cn } from "@/lib/utils"
 import { useProfileJobTitle } from "@/components/JobTitleField"
 
-type AuthState = "loading" | "ready" | "redirecting" | "error"
+type AuthState = "loading" | "ready" | "redirecting" | "signin" | "error"
 
 /** DOM ids for required controls, in document order, used to focus the first invalid field. */
 const FIELD_IDS: Partial<Record<keyof FormErrors, string>> = {
@@ -230,6 +231,10 @@ export default function App() {
     ;(async () => {
       try {
         const account = await initAuth()
+        if (account === "signin") {
+          setAuthState("signin")
+          return
+        }
         if (!account) {
           setAuthState("redirecting")
           return
@@ -431,24 +436,16 @@ export default function App() {
   /* ── Idled out ── */
   if (idledOut) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-background px-6 text-center">
-        <div className="flex max-w-sm flex-col items-center gap-3">
-          <span className="grid size-12 place-items-center rounded-full bg-secondary text-muted-foreground">
-            <LogOut className="size-5" />
-          </span>
-          <h1 className="font-display text-lg font-semibold tracking-tight">
-            Signed out
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            You were signed out after a period of inactivity.
-          </p>
-          <Button className="mt-2" onClick={() => window.location.reload()}>
-            Sign in again
-          </Button>
-        </div>
-      </div>
+      <SignInScreen
+        heading="Signed out"
+        message="You were signed out after a period of inactivity."
+        onSignIn={() => window.location.reload()}
+      />
     )
   }
+
+  /* ── First visit on this device, or after Sign out ── */
+  if (authState === "signin") return <SignInScreen onSignIn={signIn} />
 
   /* ── Non-ready states ── */
   if (authState !== "ready") {

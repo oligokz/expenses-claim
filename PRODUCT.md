@@ -14,7 +14,7 @@ A handful of managers approve requests, again mostly on a phone, usually by tapp
 
 ## Product Purpose
 
-CREOX Forms (app.creoxtech.com) is the company's request portal: four forms, a list of each person's own requests, and an inbox for approvers. A request goes in, is routed to the right approvers in order, and ends approved or rejected, with a signed PDF for purchase requisitions and travel requests. Success means a staff member files a correct, complete request on the first try, always knows where it stands, and never has to chase it by email.
+CREOX Staff Portal (app.creoxtech.com) is the company's request portal: four forms, a list of each person's own requests, and an inbox for approvers. A request goes in, is routed to the right approvers in order, and ends approved or rejected, with a signed PDF for purchase requisitions and travel requests. Success means a staff member files a correct, complete request on the first try, always knows where it stands, and never has to chase it by email.
 
 ## Positioning
 

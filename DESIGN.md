@@ -1,5 +1,5 @@
 ---
-name: CREOX Forms
+name: CREOX Staff Portal
 description: A composed, exact, dependable request portal. Manrope throughout, black-and-white surfaces, one vivid blue for action, built for phones first.
 colors:
   action-blue: "oklch(0.546 0.245 262.881)"
@@ -16,6 +16,7 @@ colors:
   night-ink: "oklch(0.985 0 0)"
   night-muted-ink: "oklch(0.708 0 0)"
   counter-black: "oklch(0.205 0 0)"
+  brand-navy: "#0A1F8F"
   success-teal: "oklch(0.62 0.13 165)"
   success-teal-text: "oklch(0.48 0.1 165)"
   warning-amber: "oklch(0.78 0.15 80)"
@@ -107,13 +108,13 @@ components:
     height: "56px"
 ---
 
-# Design System: CREOX Forms
+# Design System: CREOX Staff Portal
 
 ## Overview
 
 **Creative North Star: "The Concierge Desk"**
 
-CREOX Forms feels like being waved over to a competent service counter by someone who already knows who you are. Your name arrives filled in and locked, the right approvers are a tap away, and exactly one next action is ever prominent. The white field is calm and unhurried; the near-black top bar is the desk between you and the paperwork, where the system quietly handles things on your behalf. Vivid blue is the ink: it appears only where the system wants your hand.
+CREOX Staff Portal feels like being waved over to a competent service counter by someone who already knows who you are. Your name arrives filled in and locked, the right approvers are a tap away, and exactly one next action is ever prominent. The white field is calm and unhurried; the near-black top bar is the desk between you and the paperwork, where the system quietly handles things on your behalf. Vivid blue is the ink: it appears only where the system wants your hand.
 
 The system is composed, exact and dependable. Composed: surfaces are flat at rest and nothing shouts. Exact: every amount uses tabular figures and every date is Singapore time. Dependable: a request's status, who has it and since when are always visible, and input is never lost. It is built for a phone held in one hand: the figure that matters and the Submit button sit in the thumb zone, above a four-slot bottom bar.
 
@@ -153,6 +154,9 @@ A strict black-and-white system with one vivid blue. Small semantic colours sign
 ### Request-type tints
 Each request type has one fixed tinted chip (background at about 10% opacity, text in the same hue's dark shade, light shade in dark mode). These are the one permitted exception to the One Blue Rule and may never be blue, green, teal, amber or red, which already carry meaning.
 - Expense: violet. Leave: stone. Travel: fuchsia. Purchase: orange.
+
+### Brand navy
+The company navy from creoxtech.com (brand-navy) fills the band behind the white logo on the sign-in screen, and nowhere else. It is identity, not action: the Sign in button there keeps Action Blue.
 
 ### Named Rules
 **The One Blue Rule.** Blue means act, selected or focused, and nothing else. No decorative blue, and no second accent hue competing with it.

@@ -8,6 +8,28 @@ let msalInstance: PublicClientApplication | null = null
 let account: AccountInfo | null = null
 
 const RETURN_PATH_KEY = "postLoginPath"
+/* Set once someone has signed in on this device, cleared on Sign out. Only a
+ * convenience: without it the person sees the sign-in screen once more. */
+const SEEN_KEY = "signedInBefore"
+
+function seenBefore(): boolean {
+  try {
+    return localStorage.getItem(SEEN_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function setSeen(on: boolean) {
+  try {
+    if (on) localStorage.setItem(SEEN_KEY, "1")
+    else localStorage.removeItem(SEEN_KEY)
+  } catch {
+    // Private mode or blocked storage: the sign-in screen just shows again.
+  }
+}
+
+const isApprovalLink = () => window.location.pathname.replace(/\/+$/, "") === "/approve"
 
 /** Put back the path the user arrived on before being bounced to sign-in. */
 function restoreDeepLink() {
@@ -22,9 +44,12 @@ function restoreDeepLink() {
 
 /**
  * Initialise MSAL and ensure the user is signed in.
- * Returns the signed-in account, or null while redirecting to the sign-in page.
+ * Returns the signed-in account, null while redirecting to Microsoft, or
+ * "signin" when the app's own sign-in screen should show: a first visit on
+ * this device, or after Sign out. Anyone who has signed in here before, and
+ * every approval link, goes straight to Microsoft as before.
  */
-export async function initAuth(): Promise<AccountInfo | null> {
+export async function initAuth(): Promise<AccountInfo | null | "signin"> {
   msalInstance = new PublicClientApplication({
     auth: {
       clientId: AUTH.clientId,
@@ -45,18 +70,13 @@ export async function initAuth(): Promise<AccountInfo | null> {
   }
 
   if (!account) {
-    // redirectUri is the origin, so signing in would otherwise drop the path a
-    // deep link arrived on, which is exactly what an approval link is. Stash
-    // it and put it back once we're through.
-    sessionStorage.setItem(
-      RETURN_PATH_KEY,
-      window.location.pathname + window.location.search,
-    )
-    await msalInstance.loginRedirect({ scopes: [API_SCOPE] })
+    if (!seenBefore() && !isApprovalLink()) return "signin"
+    await signIn()
     return null // navigating away to sign in
   }
 
   restoreDeepLink()
+  setSeen(true)
 
   msalInstance.setActiveAccount(account)
   return account
@@ -81,9 +101,21 @@ export async function clearSession(): Promise<void> {
   sessionStorage.clear()
 }
 
+/** Send the browser to Microsoft sign-in, coming back to the current path. */
+export async function signIn(): Promise<void> {
+  if (!msalInstance) throw new Error("Sign-in is not ready")
+  // redirectUri is the origin, so signing in would otherwise drop the path a
+  // deep link arrived on, which is exactly what an approval link is. Stash
+  // it and put it back once we're through.
+  sessionStorage.setItem(RETURN_PATH_KEY, window.location.pathname + window.location.search)
+  await msalInstance.loginRedirect({ scopes: [API_SCOPE] })
+}
+
 /** Sign the user out and return to the app origin. */
 export async function logout(): Promise<void> {
   if (!msalInstance) return
+  // Someone who chose to sign out sees the sign-in screen next time.
+  setSeen(false)
   await msalInstance.logoutRedirect({
     postLogoutRedirectUri: window.location.origin,
   })
