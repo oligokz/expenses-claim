@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ArrowLeft, Loader2, LogOut, Send } from "lucide-react"
+import { ArrowLeft, ClipboardCheck, Loader2, LogOut, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button"
 import { clearSession, initAuth, logout } from "@/lib/auth"
 import { useIdleTimeout } from "@/lib/useIdleTimeout"
 import {
+  fetchMyApprovals,
   fetchRates,
   submitClaim,
   uploadReceipt,
@@ -269,6 +270,18 @@ export default function App() {
     },
   })
 
+  /* How many requests are waiting on this person, for the banner and the tab
+   * badge. An approver who arrives by any route, even a forwarded requester
+   * email that opens the expense form (REQ-19), sees there is something to do.
+   * Failing quietly is fine: the Approvals tab still lists them. */
+  const [approvalsCount, setApprovalsCount] = useState(0)
+  useEffect(() => {
+    if (authState !== "ready" || window.location.pathname.startsWith("/approve")) return
+    fetchMyApprovals()
+      .then(({ approvals }) => setApprovalsCount(approvals.length))
+      .catch(() => {})
+  }, [authState])
+
   /* Refresh rates every 5 minutes once signed in. */
   useEffect(() => {
     if (authState !== "ready") return
@@ -499,12 +512,13 @@ export default function App() {
         onLogout={handleLogout}
         onViewRates={() => setView("rates")}
       />
-      <AppNav view={view} onChange={setView} />
+      <AppNav view={view} onChange={setView} approvalsCount={approvalsCount} />
       <MobileNav
         view={view}
         onChange={setView}
         userName={userName}
         onLogout={handleLogout}
+        approvalsCount={approvalsCount}
       />
 
       {/* On a phone, clear the bottom bar, plus the expense form's sticky
@@ -517,6 +531,24 @@ export default function App() {
             : "pb-[calc(var(--mobile-nav-h)+env(safe-area-inset-bottom)+2rem)]",
         )}
       >
+        {approvalsCount > 0 && view !== "approvals" && (
+          <button
+            type="button"
+            onClick={() => setView("approvals")}
+            className="mx-auto mb-5 flex w-full max-w-2xl items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-left outline-none transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50"
+          >
+            <ClipboardCheck className="size-5 shrink-0 text-primary" />
+            <span className="min-w-0 flex-1 text-sm">
+              <span className="font-semibold">
+                {approvalsCount === 1
+                  ? "1 request is waiting for your approval"
+                  : `${approvalsCount} requests are waiting for your approval`}
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-medium text-primary">Review</span>
+          </button>
+        )}
+
         {view === "expense" &&
           (result ? (
           <ClaimConfirmation
@@ -610,7 +642,7 @@ export default function App() {
           <PurchaseRequisition employeeName={userName} rates={rates} />
         )}
         {view === "history" && <MyRequests />}
-        {view === "approvals" && <Approvals />}
+        {view === "approvals" && <Approvals onLoaded={setApprovalsCount} />}
         {view === "rates" && (
           <div className="mx-auto max-w-2xl">
             {/* Back through history when we came from inside the app, so the

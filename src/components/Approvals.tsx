@@ -19,7 +19,12 @@ type LoadState = "loading" | "ready" | "error"
  * the only way in, and an approver who can't find it, or was forwarded the
  * requester's copy instead, had no route to the request at all.
  */
-export function Approvals() {
+export function Approvals({
+  onLoaded,
+}: {
+  /** Reports the count, so the tab badge and banner stay in step. */
+  onLoaded?: (count: number) => void
+}) {
   const [state, setState] = useState<LoadState>("loading")
   const [approvals, setApprovals] = useState<PendingApproval[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
@@ -31,6 +36,7 @@ export function Approvals() {
       .then(({ approvals, warnings }) => {
         setApprovals(approvals)
         setWarnings(warnings)
+        onLoaded?.(approvals.length)
         setState("ready")
       })
       .catch((e: Error) => {

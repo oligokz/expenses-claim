@@ -6,6 +6,7 @@ import type {
   ClaimantForm,
   LeaveTypeOption,
   MyRequest,
+  NotYoursInfo,
   PendingApproval,
   Rates,
   RequestType,
@@ -241,6 +242,16 @@ export async function fetchMyApprovals(): Promise<{
   }
 }
 
+/** Thrown when the signed-in person isn't this link's approver (a forwarded email). */
+export class NotYoursError extends Error {
+  constructor(
+    message: string,
+    public info: NotYoursInfo,
+  ) {
+    super(message)
+  }
+}
+
 /** GET /api/approval, what this approver is being asked to sign. */
 export async function fetchApproval(token: string): Promise<ApprovalView> {
   const apiToken = await getApiToken()
@@ -248,8 +259,28 @@ export async function fetchApproval(token: string): Promise<ApprovalView> {
     headers: { Authorization: `Bearer ${apiToken}` },
   })
   const data = await res.json()
+  if (res.status === 403 && data.notYours) throw new NotYoursError(data.error, data.notYours)
   if (!res.ok) throw new Error(data.error || "Could not load this approval")
   return data as ApprovalView
+}
+
+/**
+ * POST /api/approval {action: "remind"}, re-email whoever has one of your
+ * requests. Limited to one per request per day; the server enforces it.
+ */
+export async function remindApprover(
+  type: RequestType,
+  itemId: string,
+): Promise<{ sentTo: string; nextAllowed: string }> {
+  const token = await getApiToken()
+  const res = await fetch("/api/approval", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ action: "remind", type, itemId }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Could not send the reminder")
+  return { sentTo: data.sentTo, nextAllowed: data.nextAllowed }
 }
 
 /** POST /api/approval, record an approve or reject decision. */

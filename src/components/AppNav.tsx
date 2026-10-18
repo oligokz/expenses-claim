@@ -103,9 +103,12 @@ export const VIEW_LABELS: Record<View, string> = {
 export function AppNav({
   view,
   onChange,
+  approvalsCount = 0,
 }: {
   view: View
   onChange: (v: View) => void
+  /** Requests waiting on the signed-in person, shown on the Approvals tab. */
+  approvalsCount?: number
 }) {
   /* Short labels fit from sm up. The bar still scrolls as a fallback for a
    * large text size, so bring the active tab into view, otherwise a link to
@@ -141,6 +144,12 @@ export function AppNav({
               <Icon className="size-4 shrink-0" />
               <span className="lg:hidden">{t.short}</span>
               <span className="hidden lg:inline">{t.label}</span>
+              {t.id === "approvals" && approvalsCount > 0 && (
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-white">
+                  {approvalsCount > 9 ? "9+" : approvalsCount}
+                  <span className="sr-only"> waiting</span>
+                </span>
+              )}
               {active && (
                 <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-primary" />
               )}

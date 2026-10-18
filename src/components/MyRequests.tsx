@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import {
   AlertCircle,
   AlertTriangle,
+  BellRing,
   CalendarDays,
   FileDown,
   Inbox,
@@ -16,7 +17,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { deleteRequest, fetchMyRequests } from "@/lib/api"
+import { deleteRequest, fetchMyRequests, remindApprover } from "@/lib/api"
 import { fmt } from "@/lib/currency"
 import type { MyRequest, RequestType } from "@/lib/types"
 import { cn } from "@/lib/utils"
@@ -75,6 +76,14 @@ export function TypeBadge({ type }: { type: RequestType }) {
   )
 }
 
+/* One reminder a day per request; the server holds the same line. */
+const REMIND_GAP_MS = 20 * 60 * 60 * 1000
+const canRemind = (r: MyRequest) =>
+  !r.lastReminderAt || Date.now() - new Date(r.lastReminderAt).getTime() > REMIND_GAP_MS
+
+const shortDate = (s: string) =>
+  s ? new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : ""
+
 /* Only a request nobody has decided yet can be deleted by its requester. The
  * server enforces this too; here it just decides whether to offer the control. */
 const isPending = (status: string) =>
@@ -89,6 +98,7 @@ export function MyRequests() {
   /** Row id awaiting confirmation, and the one currently being deleted. */
   const [confirming, setConfirming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [reminding, setReminding] = useState<string | null>(null)
 
   const load = () => {
     setState("loading")
@@ -127,6 +137,20 @@ export function MyRequests() {
       toast.error((e as Error).message)
     } finally {
       setDeleting(null)
+    }
+  }
+
+  const remind = async (r: MyRequest) => {
+    setReminding(r.id)
+    try {
+      const { sentTo } = await remindApprover(r.type, r.id.slice(r.type.length + 1))
+      const now = new Date().toISOString()
+      setRequests((prev) => prev.map((x) => (x.id === r.id ? { ...x, lastReminderAt: now } : x)))
+      toast.success(`Reminder sent to ${sentTo}.`)
+    } catch (e) {
+      toast.error((e as Error).message)
+    } finally {
+      setReminding(null)
     }
   }
 
@@ -326,6 +350,40 @@ export function MyRequests() {
                       </Button>
                     ))}
                 </div>
+
+                {/* Where it is now. Before this, "Pending" was all a requester
+                    saw, and REQ-19's requester forwarded the wrong email to
+                    find out. */}
+                {r.waitingOn && confirming !== r.id && (
+                  <div className="order-4 col-span-2 mt-1 flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2 sm:col-span-4">
+                    <p className="min-w-0 text-xs text-muted-foreground">
+                      Waiting on{" "}
+                      <span className="font-medium text-foreground">{r.waitingOn.name}</span>
+                      {" "}({r.waitingOn.stageLabel.toLowerCase()})
+                      {r.waitingOn.since ? `, since ${shortDate(r.waitingOn.since)}` : ""}
+                    </p>
+                    {canRemind(r) ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0"
+                        disabled={reminding === r.id}
+                        onClick={() => remind(r)}
+                      >
+                        {reminding === r.id ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <BellRing className="size-3.5" />
+                        )}
+                        Remind
+                      </Button>
+                    ) : (
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        Reminded {shortDate(r.lastReminderAt!)}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {confirming === r.id && (
                   <div className="order-4 col-span-2 mt-2 flex flex-col gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 sm:col-span-4 sm:flex-row sm:items-center sm:justify-between">

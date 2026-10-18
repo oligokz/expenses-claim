@@ -28,12 +28,15 @@ function BarItem({
   label,
   active,
   onClick,
+  badge = 0,
   ...rest
 }: {
   icon: typeof Menu
   label: string
   active: boolean
   onClick?: () => void
+  /** A count shown on the icon, e.g. approvals waiting. */
+  badge?: number
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
@@ -49,11 +52,17 @@ function BarItem({
     >
       <span
         className={cn(
-          "grid h-7 w-12 place-items-center rounded-full transition-colors motion-reduce:transition-none",
+          "relative grid h-7 w-12 place-items-center rounded-full transition-colors motion-reduce:transition-none",
           active && "bg-accent text-accent-foreground",
         )}
       >
         <Icon className="size-5" aria-hidden="true" />
+        {badge > 0 && (
+          <span className="absolute -top-1 right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white">
+            {badge > 9 ? "9+" : badge}
+            <span className="sr-only"> waiting</span>
+          </span>
+        )}
       </span>
       {label}
     </button>
@@ -119,11 +128,13 @@ export function MobileNav({
   onChange,
   userName,
   onLogout,
+  approvalsCount = 0,
 }: {
   view: View
   onChange: (v: View) => void
   userName: string
   onLogout: () => void
+  approvalsCount?: number
 }) {
   const [sheet, setSheet] = useState<"new" | "more" | null>(null)
 
@@ -157,6 +168,7 @@ export function MobileNav({
             icon={APPROVALS_TAB.icon}
             label="Approvals"
             active={view === APPROVALS_TAB.id}
+            badge={approvalsCount}
             onClick={() => go(APPROVALS_TAB.id)}
             aria-current={view === APPROVALS_TAB.id ? "page" : undefined}
           />

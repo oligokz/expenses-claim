@@ -156,6 +156,7 @@ function expectedLists() {
       }
     }
     if (mod.pdf) cols.add('ApprovedPdfUrl');
+    cols.add('LastReminderAt'); // the requester's Remind button
     return [...cols];
   };
 

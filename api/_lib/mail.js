@@ -195,16 +195,23 @@ function layout({ heading, intro, body, items, currency, rows, action, footer })
 function approvalRequest({
   kind, claimRef, requester, item, description, department, submittedOn,
   rows = [], items, currency, stageLabel, token, ttlDays, hasAttachments,
+  /** Set when the requester sent a reminder: when it started waiting on you. */
+  reminderSince,
 }) {
   const what = (kind || 'Request').toLowerCase();
   const subjectItem = item ? `: ${item}` : '';
+  const waitingSince = reminderSince
+    ? new Date(reminderSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Singapore' })
+    : '';
   return {
     // Name the thing in the subject line too. An approver triaging a full inbox
     // decides from the subject whether this is the one they were waiting on.
-    subject: `${kind || 'Request'} ${claimRef}${subjectItem} needs your approval`,
+    subject: `${reminderSince ? 'Reminder: ' : ''}${kind || 'Request'} ${claimRef}${subjectItem} needs your approval`,
     html: layout({
-      heading: `A ${what} needs your approval`,
-      intro: `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
+      heading: reminderSince ? `Reminder: a ${what} is waiting for you` : `A ${what} needs your approval`,
+      intro: reminderSince
+        ? `${requester} sent a reminder. This has been waiting for you, as ${(stageLabel || 'approver').toLowerCase()}, since ${waitingSince}.`
+        : `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
       body: description,
       items,
       currency,

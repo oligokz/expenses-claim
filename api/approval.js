@@ -3,7 +3,7 @@ const {
 } = require('./_lib/sharepoint');
 const {
   MODULES, readToken, mintToken, getRow, getRowWithEtag, patchRow,
-  assertActionable, currentStage, isExpectedApprover, TOKEN_TTL_DAYS,
+  assertActionable, currentStage, waitingOn, isExpectedApprover, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments, topFolderFor } = require('./_lib/attachments');
@@ -193,6 +193,91 @@ async function handleInbox(req, res) {
   return res.status(200).json({ approvals, warnings });
 }
 
+/* ── POST {action: 'remind'}: the requester nudges whoever has it ──
+ *
+ * Resends the approval email to the current stage's approver. The link reuses
+ * the nonce already on the row, so the original email keeps working too. One
+ * reminder per request per REMIND_GAP_HOURS, recorded in LastReminderAt, so a
+ * requester can't flood an approver's inbox.
+ */
+const REMIND_GAP_HOURS = 20;
+const REMINDABLE = ['leave', 'expense', 'requisition', 'travel'];
+
+async function handleRemind(req, res) {
+  const user = await verifyUserToken(req);
+  const { type, itemId } = req.body || {};
+  if (!REMINDABLE.includes(type) || !itemId)
+    return res.status(400).json({ error: 'Unknown request' });
+
+  const mod = MODULES[type];
+  const token  = await getAppToken();
+  const siteId = await getSiteId(token);
+  const { fields, etag } = await getRowWithEtag(token, siteId, mod, itemId);
+  const summary = mod.summarise(fields);
+  const claimRef = `${mod.refPrefix}-${itemId}`;
+
+  if ((summary.requesterEmail || '').toLowerCase() !== (user.email || '').toLowerCase())
+    return res.status(403).json({ error: 'You can only send reminders for your own requests.' });
+
+  const waiting = waitingOn(mod, fields);
+  if (!waiting || !waiting.email)
+    return res.status(409).json({ error: 'This request is not waiting on anyone.' });
+
+  const last = fields.LastReminderAt ? new Date(fields.LastReminderAt).getTime() : 0;
+  const nextAllowed = last + REMIND_GAP_HOURS * 3600 * 1000;
+  if (Date.now() < nextAllowed) {
+    return res.status(429).json({
+      error: 'A reminder was sent recently. You can send another tomorrow.',
+      nextAllowed: new Date(nextAllowed).toISOString(),
+    });
+  }
+
+  // Claim the slot first, against the row as read, so two clicks can't both send.
+  let jti = fields[waiting.stage.tokenField];
+  const patch = { LastReminderAt: nowIso() };
+  if (!jti) {
+    ({ jti } = await mintToken({ module: type, itemId, stage: waiting.stage.n, approver: waiting.email }));
+    patch[waiting.stage.tokenField] = jti;
+  }
+  try {
+    await patchRow(token, siteId, mod, itemId, patch, { ifMatch: etag || undefined });
+  } catch (e) {
+    if (e.code === 'etag-mismatch') return res.status(409).json({ error: 'This request just changed. Refresh and try again.' });
+    throw e;
+  }
+
+  const { token: link } = await mintToken({
+    module: type, itemId, stage: waiting.stage.n, approver: waiting.email, jti,
+  });
+  await sendMail(token, {
+    to: waiting.email,
+    replyTo: summary.requesterEmail || undefined,
+    ...templates.approvalRequest({
+      kind: mod.kind, claimRef,
+      requester:   summary.requester,
+      item:        summary.title,
+      description: summary.description,
+      department:  summary.department,
+      submittedOn: summary.submittedOn,
+      items:       summary.items,
+      currency:    summary.currency,
+      rows:        summary.rows,
+      stageLabel:  waiting.stage.label,
+      token:       link,
+      ttlDays:     TOKEN_TTL_DAYS,
+      hasAttachments: true,
+      reminderSince: waiting.since,
+    }),
+  });
+
+  return res.status(200).json({
+    ok: true,
+    claimRef,
+    sentTo: await approverName(token, siteId, waiting.email),
+    nextAllowed: new Date(Date.now() + REMIND_GAP_HOURS * 3600 * 1000).toISOString(),
+  });
+}
+
 /* ── GET: what the approver is being asked to sign ── */
 async function handleGet(req, res) {
   if (!req.query.t) return handleInbox(req, res);
@@ -208,8 +293,22 @@ async function handleGet(req, res) {
    * stage, as now recorded. The address baked into the link is not enough on
    * its own, since the row can be reassigned in SharePoint after it was sent. */
   if (!isExpectedApprover(fields, stage, user.email)) {
+    /* Usually a forwarded email. Say where the request actually stands so the
+     * person can stop worrying about it, but nothing of its contents: they are
+     * not an approver of it. */
+    const waiting = waitingOn(mod, fields);
     return res.status(403).json({
       error: `This approval is addressed to someone else. You are signed in as ${user.email}.`,
+      notYours: {
+        claimRef,
+        kind: mod.kind,
+        status: fields.Status || 'Pending',
+        isRequester:
+          (mod.summarise(fields).requesterEmail || '').toLowerCase() === (user.email || '').toLowerCase(),
+        withName: waiting ? await approverName(token, siteId, waiting.email) : null,
+        withStage: waiting ? waiting.stage.label : null,
+        since: waiting ? waiting.since : null,
+      },
     });
   }
 
@@ -468,6 +567,7 @@ module.exports = async function handler(req, res) {
 
   try {
     if (req.method === 'GET')  return await handleGet(req, res);
+    if (req.method === 'POST' && req.body?.action === 'remind') return await handleRemind(req, res);
     if (req.method === 'POST') return await handlePost(req, res);
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {

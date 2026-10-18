@@ -241,4 +241,19 @@ export interface MyRequest {
   status: string
   /** Set once a requisition is fully approved and its PDF has been composed. */
   pdfUrl?: string
+  /** Who has it now. Null once decided, and always for expense claims. */
+  waitingOn: { name: string; stageLabel: string; since: string } | null
+  /** When the requester last pressed Remind, if ever. */
+  lastReminderAt: string | null
+}
+
+/** Where a request stands, shown to someone who opened a link not meant for them. */
+export interface NotYoursInfo {
+  claimRef: string
+  kind: string
+  status: string
+  isRequester: boolean
+  withName: string | null
+  withStage: string | null
+  since: string | null
 }

@@ -1,6 +1,8 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendError } = require('./_lib/http');
 const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
+const { getModule, waitingOn } = require('./_lib/approvals');
+const { listApprovers } = require('./_lib/approvers');
 
 /* The three lists a person can have rows in, and how each one names things.
  * Requisitions use Requestor*; the older two use Employee*. */
@@ -114,9 +116,13 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    const results = await Promise.all(
-      SOURCES.map((s) => listFor(token, siteId, s, user.email))
-    );
+    const [results, roster] = await Promise.all([
+      Promise.all(SOURCES.map((s) => listFor(token, siteId, s, user.email))),
+      // Display names for "waiting on". Unreadable just means emails are shown.
+      listApprovers(token, siteId).catch(() => null),
+    ]);
+    const nameOf = (email) =>
+      roster?.find((a) => a.email.toLowerCase() === email.toLowerCase())?.name || email;
 
     const requests = [];
     const warnings = [];
@@ -126,6 +132,10 @@ module.exports = async function handler(req, res) {
       const source = SOURCES[i];
       for (const it of items) {
         const f = it.fields || {};
+        /* Who has it now, so a requester can see where it is instead of
+         * guessing and forwarding emails (REQ-19). Expense claims have no
+         * approver in the app, so they never show one. */
+        const waiting = waitingOn(getModule(source.type), f);
         requests.push({
           id:     `${source.type}-${it.id}`,
           ref:    `${source.refPrefix}-${it.id}`,
@@ -133,6 +143,14 @@ module.exports = async function handler(req, res) {
           date:   f.SubmissionDate || it.createdDateTime || '',
           status: f.Status || 'Pending',
           ...source.map(f),
+          waitingOn: waiting && waiting.email
+            ? {
+                name: nameOf(waiting.email),
+                stageLabel: waiting.stage.label,
+                since: waiting.since || it.createdDateTime || '',
+              }
+            : null,
+          lastReminderAt: f.LastReminderAt || null,
         });
       }
     });

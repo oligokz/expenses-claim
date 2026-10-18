@@ -403,6 +403,21 @@ function currentStage(mod, fields) {
   return null;
 }
 
+/**
+ * Who a request is waiting on, and since when, or null once it is decided.
+ * `since` is when the previous stage was approved, or when it was submitted.
+ */
+function waitingOn(mod, fields) {
+  const stage = currentStage(mod, fields);
+  if (!stage) return null;
+  const earlier = mod.stages.filter((s) => s.n < stage.n && fields[s.statusField] === 'Approved');
+  const last = earlier[earlier.length - 1];
+  const since =
+    (last && fields[last.dateField]) ||
+    fields.SubmissionDate || fields.Created || fields.StartDate || null;
+  return { stage, email: (fields[stage.approverField] || '').trim(), since };
+}
+
 /** Does the signed-in person match the approver this stage is addressed to? */
 function isExpectedApprover(fields, stage, email) {
   const expected = (fields[stage.approverField] || '').trim().toLowerCase();
@@ -421,6 +436,7 @@ module.exports = {
   patchRow,
   assertActionable,
   currentStage,
+  waitingOn,
   isExpectedApprover,
   TOKEN_TTL_DAYS,
 };

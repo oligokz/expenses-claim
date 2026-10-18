@@ -9,6 +9,7 @@ import {
   Paperclip,
   ThumbsDown,
   ThumbsUp,
+  UserX,
   XCircle,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -20,12 +21,17 @@ import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldLabel } from "@/components/FieldLabel"
 
-import { fetchApproval, submitApproval } from "@/lib/api"
+import { fetchApproval, NotYoursError, submitApproval } from "@/lib/api"
 import { REQUISITION_OTHER } from "@/lib/constants"
 import { fmt } from "@/lib/currency"
-import type { ApprovalView, RequisitionItem } from "@/lib/types"
+import type { ApprovalView, NotYoursInfo, RequisitionItem } from "@/lib/types"
 
-type Phase = "loading" | "ready" | "error" | "done"
+type Phase = "loading" | "ready" | "error" | "done" | "notyours"
+
+const shortDate = (s: string | null) =>
+  s
+    ? new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short" })
+    : ""
 
 /** Bytes as a short human figure, so a receipt's weight reads at a glance. */
 function fileSize(bytes: number): string {
@@ -51,6 +57,7 @@ export function ApprovalPage({ token }: { token: string }) {
   const [signature, setSignature] = useState("")
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
+  const [notYours, setNotYours] = useState<NotYoursInfo | null>(null)
 
   useEffect(() => {
     let alive = true
@@ -62,6 +69,11 @@ export function ApprovalPage({ token }: { token: string }) {
       })
       .catch((e: Error) => {
         if (!alive) return
+        if (e instanceof NotYoursError) {
+          setNotYours(e.info)
+          setPhase("notyours")
+          return
+        }
         setError(e.message)
         setPhase("error")
       })
@@ -97,6 +109,63 @@ export function ApprovalPage({ token }: { token: string }) {
     } finally {
       setBusy(null)
     }
+  }
+
+  /* ── a link meant for someone else, usually a forwarded email ── */
+  if (phase === "notyours" && notYours) {
+    const n = notYours
+    const pending = n.status.toLowerCase() === "pending"
+    return (
+      <Shell>
+        <Card className="flex flex-col items-center gap-3 p-6 text-center sm:p-8">
+          <span className="grid size-12 place-items-center rounded-full bg-secondary text-muted-foreground">
+            <UserX className="size-6" />
+          </span>
+          <h1 className="font-display text-lg font-semibold tracking-tight">
+            {n.isRequester ? "This is your own request" : "This approval isn't for you"}
+          </h1>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {n.isRequester
+              ? "This link is for your approver. They have their own copy, so there's no need to forward it."
+              : "It was probably forwarded to you. Only the named approver can open it, so there's nothing for you to do."}
+          </p>
+          <div className="mt-2 w-full max-w-sm rounded-xl border bg-muted/50 px-4 py-3 text-left text-sm">
+            <div className="flex justify-between gap-3">
+              <span className="text-muted-foreground">Reference</span>
+              <span className="font-mono font-semibold tabular-nums">{n.claimRef}</span>
+            </div>
+            <div className="mt-1.5 flex justify-between gap-3">
+              <span className="text-muted-foreground">Status</span>
+              <span className="font-semibold">
+                {pending && n.withName ? "Waiting for approval" : n.status}
+              </span>
+            </div>
+            {pending && n.withName && (
+              <div className="mt-1.5 flex justify-between gap-3">
+                <span className="text-muted-foreground">With</span>
+                <span className="text-right font-semibold">
+                  {n.withName}
+                  <span className="block text-xs font-normal text-muted-foreground">
+                    {n.withStage}
+                    {n.since ? `, since ${shortDate(n.since)}` : ""}
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="mt-2"
+            onClick={() =>
+              (window.location.href = n.isRequester ? "/my-requests" : "/approvals")
+            }
+          >
+            {n.isRequester ? "Go to my requests" : "Go to my approvals"}
+          </Button>
+        </Card>
+      </Shell>
+    )
   }
 
   /* ── outcome ── */
