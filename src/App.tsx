@@ -568,7 +568,7 @@ export default function App() {
                 New Expense Claim
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Claim back money you spent for work.
+                Reimbursement for work expenses.
               </p>
             </div>
 
@@ -662,8 +662,7 @@ export default function App() {
                 Exchange Rates
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                What 1 SGD buys in each currency. Claims are converted at
-                these rates when you submit.
+                Rates applied to claims at submission.
               </p>
             </div>
             <RatesPanel

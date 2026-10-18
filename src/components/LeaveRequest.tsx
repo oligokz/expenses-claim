@@ -217,7 +217,7 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
           Leave Request
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ask for time off.
+          Apply for leave.
         </p>
       </div>
 

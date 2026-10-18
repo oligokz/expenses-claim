@@ -418,7 +418,7 @@ export function PurchaseRequisition({
           Purchase Requisition
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Ask to buy items or services.
+          Approval to purchase goods or services.
         </p>
       </div>
 

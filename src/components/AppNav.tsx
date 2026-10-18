@@ -52,28 +52,28 @@ export const FORM_TABS: (Tab & { hint: string })[] = [
     label: "New Expense",
     short: "Expense",
     icon: Receipt,
-    hint: "Claim back money you spent",
+    hint: "Reimbursement for work expenses",
   },
   {
     id: "leave",
     label: "Leave Request",
     short: "Leave",
     icon: CalendarDays,
-    hint: "Ask for time off",
+    hint: "Apply for leave",
   },
   {
     id: "travel",
     label: "Travel Request",
     short: "Travel",
     icon: Plane,
-    hint: "Get a business trip approved",
+    hint: "Approval for business travel",
   },
   {
     id: "requisition",
     label: "Purchase Requisition",
     short: "Purchase",
     icon: ShoppingCart,
-    hint: "Ask to buy items or services",
+    hint: "Approval to purchase goods or services",
   },
 ]
 

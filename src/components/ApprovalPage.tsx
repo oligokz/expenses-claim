@@ -92,7 +92,7 @@ export function ApprovalPage({ token }: { token: string }) {
       return
     }
     if (decision === "reject" && !comment.trim()) {
-      toast.error("Please give a reason for rejecting")
+      toast.error("Add a comment to say why you're rejecting it")
       return
     }
 
@@ -349,7 +349,6 @@ export function ApprovalPage({ token }: { token: string }) {
                 id="approval-comment"
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                placeholder="Optional when approving · required when rejecting"
                 className="min-h-20 resize-y bg-card"
               />
             </div>

@@ -126,7 +126,13 @@ async function pendingRows(token, siteId, mod) {
 /** The figure worth showing in a list row: money if there is any, else days. */
 function headlineFigure(rows) {
   const money = rows.find(([, v]) => /^SGD /.test(v));
-  if (money) return money[1];
+  if (money) {
+    // "SGD 5000.00" reads better as "SGD 5,000.00" on a card.
+    const n = Number(money[1].slice(4));
+    return Number.isFinite(n)
+      ? `SGD ${n.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      : money[1];
+  }
   const days = rows.find(([k]) => k === 'Days');
   return days ? `${days[1]} ${Number(days[1]) === 1 ? 'day' : 'days'}` : '';
 }
@@ -182,6 +188,10 @@ async function handleInbox(req, res) {
         department:  summary.department,
         submittedOn: summary.submittedOn || row.createdDateTime || '',
         stageLabel:  stage.label,
+        // The step is only worth showing when there is more than one.
+        step:        mod.stages.length > 1 && stage.label !== 'Approver' ? stage.label : '',
+        // When it reached this person, for "waiting 3 days".
+        since:       waitingOn(mod, fields)?.since || row.createdDateTime || '',
         figure:      headlineFigure(summary.rows),
         token:       approvalToken,
       });

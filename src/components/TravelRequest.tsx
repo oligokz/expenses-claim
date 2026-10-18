@@ -308,7 +308,7 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
           Travel Request
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Get a business trip approved.
+          Approval for business travel.
         </p>
       </div>
 

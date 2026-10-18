@@ -191,7 +191,7 @@ export function MyRequests() {
             My Requests
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Everything you've submitted: expenses, leave, travel and purchases.
+            Your submitted requests.
           </p>
         </div>
         {state === "ready" && requests.length > 0 && (
@@ -261,10 +261,9 @@ export function MyRequests() {
           <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <Inbox className="size-6" />
           </span>
-          <p className="text-sm font-medium">Nothing submitted yet</p>
+          <p className="text-sm font-medium">No requests yet</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            Your expense claims, leave requests and purchase requisitions will
-            appear here.
+            Your submitted requests will appear here.
           </p>
         </div>
       )}

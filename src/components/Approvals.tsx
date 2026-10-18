@@ -3,16 +3,32 @@ import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
   Loader2,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { fmtDate, TypeBadge } from "@/components/MyRequests"
+import { TypeBadge } from "@/components/MyRequests"
+import { cn } from "@/lib/utils"
 import { fetchMyApprovals } from "@/lib/api"
 import type { PendingApproval } from "@/lib/types"
 
 type LoadState = "loading" | "ready" | "error"
+
+const DAY = 24 * 60 * 60 * 1000
+
+/** How long it has been waiting on you, in the largest unit that fits. */
+function waited(since: string): { text: string; long: boolean } {
+  const t = new Date(since).getTime()
+  if (!since || isNaN(t)) return { text: "", long: false }
+  const days = Math.floor((Date.now() - t) / DAY)
+  const text =
+    days < 1 ? "Today"
+    : days < 14 ? `${days} day${days === 1 ? "" : "s"}`
+    : days < 60 ? `${Math.floor(days / 7)} weeks`
+    : `${Math.floor(days / 30)} months`
+  // Past three days is worth drawing the eye to.
+  return { text, long: days > 3 }
+}
 
 /**
  * Everything waiting on the signed-in person. The approval email is otherwise
@@ -61,7 +77,7 @@ export function Approvals({
             Approvals
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Requests waiting for your decision, oldest first.
+            Requests awaiting your approval, oldest first.
           </p>
         </div>
         {state === "ready" && (
@@ -107,52 +123,65 @@ export function Approvals({
           <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
             <CheckCircle2 className="size-6" />
           </span>
-          <p className="text-sm font-medium">Nothing waiting for you</p>
+          <p className="text-sm font-medium">No pending approvals</p>
           <p className="max-w-xs text-sm text-muted-foreground">
-            When someone names you as their approver, the request will appear
-            here as well as in your email.
+            Requests assigned to you will appear here.
           </p>
         </div>
       )}
 
       {state === "ready" && approvals.length > 0 && (
-        <ul className="divide-y overflow-hidden rounded-xl border bg-card shadow-sm">
-          {approvals.map((a) => (
-            <li key={a.ref}>
-              <button
-                type="button"
-                onClick={() => open(a)}
-                className="grid w-full grid-cols-[1fr_auto] items-center gap-x-4 gap-y-1 px-5 py-3.5 text-left outline-none transition-colors hover:bg-secondary/50 focus-visible:bg-secondary/50 sm:grid-cols-[7rem_1fr_9rem_auto]"
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {approvals.map((a) => {
+            const w = waited(a.since || a.submittedOn)
+            return (
+              <li
+                key={a.ref}
+                className="flex flex-col gap-1.5 rounded-xl border bg-card p-4 shadow-sm"
               >
-                <div className="min-w-0">
-                  <div className="font-mono text-sm font-semibold tabular-nums">
-                    {a.ref}
-                  </div>
-                  <div className="mt-0.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                     <TypeBadge type={a.type} />
+                    <span aria-hidden="true">·</span>
+                    <span className="font-mono tabular-nums">{a.ref}</span>
+                  </span>
+                  {w.text && (
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full border px-2 py-px text-[11px] font-semibold",
+                        w.long
+                          ? "border-warning/40 bg-warning/10 text-warning-foreground"
+                          : "text-muted-foreground",
+                      )}
+                      title="Time since it reached you"
+                    >
+                      {w.text}
+                    </span>
+                  )}
+                </div>
+
+                <div className="truncate text-[15px] font-semibold">{a.title || a.kind}</div>
+                <div className="truncate text-sm text-muted-foreground">
+                  {a.requester}
+                  {a.department ? ` · ${a.department}` : ""}
+                </div>
+                {a.step && (
+                  <div>
+                    <span className="rounded-full border px-2 py-px text-[11px] font-medium text-muted-foreground">
+                      Your step: {a.step}
+                    </span>
                   </div>
-                </div>
+                )}
 
-                <div className="order-3 col-span-2 min-w-0 sm:order-none sm:col-span-1">
-                  <div className="truncate text-sm">{a.title || a.kind}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {a.requester}
-                    {a.department ? `, ${a.department}` : ""} ·{" "}
-                    {fmtDate(a.submittedOn)} · you are {a.stageLabel.toLowerCase()}
-                  </div>
+                <div className="mt-auto flex items-center justify-between gap-3 pt-2">
+                  <span className="font-mono text-lg font-bold tabular-nums">{a.figure || ""}</span>
+                  <Button size="sm" variant="outline" onClick={() => open(a)}>
+                    Review
+                  </Button>
                 </div>
-
-                <div className="text-right font-mono text-sm font-semibold tabular-nums">
-                  {a.figure || "-"}
-                </div>
-
-                <ChevronRight
-                  className="hidden size-4 text-muted-foreground sm:block"
-                  aria-hidden="true"
-                />
-              </button>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>

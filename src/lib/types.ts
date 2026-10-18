@@ -225,6 +225,10 @@ export interface PendingApproval {
   stageLabel: string
   /** "SGD 120.00", or "2 days" for leave. */
   figure: string
+  /** The approver's step on multi-step requests ("Finance/HR"), else empty. */
+  step: string
+  /** When it reached the signed-in approver. */
+  since: string
   /** Opens /approve?t=..., interchangeable with the emailed link. */
   token: string
 }
