@@ -77,6 +77,18 @@ export function SignInScreen({
             )}
             {busy ? "Opening Microsoft sign-in" : "Sign in with Microsoft"}
           </Button>
+
+          <p className="mt-5 text-center text-xs leading-relaxed text-muted-foreground">
+            By signing in, you agree to the{" "}
+            <a href="/terms" className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
+              Terms of use
+            </a>{" "}
+            and{" "}
+            <a href="/privacy" className="font-medium text-foreground underline underline-offset-4 hover:no-underline">
+              Privacy notice
+            </a>
+            .
+          </p>
         </div>
         </div>
 
