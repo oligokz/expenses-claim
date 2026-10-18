@@ -93,6 +93,12 @@ export const APPROVALS_TAB: Tab = {
 
 const TABS: Tab[] = [...FORM_TABS, HISTORY_TAB, APPROVALS_TAB]
 
+/** Every view's display name, for "Back to ..." links. */
+export const VIEW_LABELS: Record<View, string> = {
+  ...(Object.fromEntries(TABS.map((t) => [t.id, t.label])) as Record<View, string>),
+  rates: "Exchange Rates",
+}
+
 /** Top tab bar from the sm breakpoint up. Phones get MobileNav instead. */
 export function AppNav({
   view,

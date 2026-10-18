@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Loader2, LogOut, Send } from "lucide-react"
+import { ArrowLeft, Loader2, LogOut, Send } from "lucide-react"
 import { toast } from "sonner"
 
 import { TopBar } from "@/components/TopBar"
 import {
   AppNav,
+  VIEW_LABELS,
   VIEW_PATHS,
   viewFromPath,
   type View,
@@ -98,7 +99,15 @@ export default function App() {
 
   /* Keep the address bar on the tab's own path, so a refresh, a bookmark or an
    * email link lands on the same page, and Back moves between tabs. */
+  /* The page the rates table was opened from, so it can offer a way back. The
+   * form keeps its values meanwhile: they live here, not in the form. Null when
+   * /rates was opened directly. */
+  const viewRef = useRef(view)
+  viewRef.current = view
+  const [ratesFrom, setRatesFrom] = useState<View | null>(null)
+
   const setView = useCallback((v: View) => {
+    if (v === "rates" && viewRef.current !== "rates") setRatesFrom(viewRef.current)
     setViewState(v)
     if (window.location.pathname !== VIEW_PATHS[v]) {
       window.history.pushState(null, "", VIEW_PATHS[v])
@@ -604,6 +613,18 @@ export default function App() {
         {view === "approvals" && <Approvals />}
         {view === "rates" && (
           <div className="mx-auto max-w-2xl">
+            {/* Back through history when we came from inside the app, so the
+                browser's Back and this link agree; otherwise to the form. */}
+            <button
+              type="button"
+              onClick={() =>
+                ratesFrom ? window.history.back() : setView("expense")
+              }
+              className="mb-4 inline-flex items-center gap-1.5 rounded text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <ArrowLeft className="size-4" />
+              Back to {VIEW_LABELS[ratesFrom ?? "expense"]}
+            </button>
             <div className="mb-6">
               <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
                 Exchange Rates
