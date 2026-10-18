@@ -255,13 +255,17 @@ function approvalRequest({
  * that, requesters forwarded this notice to the next approver, whose only link
  * was the requester's own "View my requests" (REQ-19).
  */
-function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover }) {
+function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover, remaining = [] }) {
   const approved = decision === 'approved';
   const what = (kind || 'Request').toLowerCase();
   const moving = approved && !complete;
+  // "Joseph Tay" or "Joseph Tay (Finance/HR), then Michael Ng (Final Approval)".
+  const left = remaining.length
+    ? remaining.map((r) => (r.stageLabel ? `${r.name} (${r.stageLabel})` : r.name)).join(', then ')
+    : nextApprover || 'the next approver';
   return {
     subject: moving
-      ? `${kind || 'Request'} ${claimRef} approved by ${decidedBy}, now with ${nextApprover || 'the next approver'}`
+      ? `${kind || 'Request'} ${claimRef} approved by ${decidedBy}, pending approval from ${remaining[0]?.name || nextApprover || 'the next approver'}`
       : `${kind || 'Request'} ${claimRef} has been ${decision}`,
     html: layout({
       heading: moving
@@ -269,7 +273,7 @@ function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel,
         : `${claimRef} has been ${decision}`,
       // Saying who has it now is what stops people forwarding this (REQ-19).
       intro: moving
-        ? `It is now with ${nextApprover || 'the next approver'} for approval.`
+        ? `Pending approval from ${left}.`
         : approved
           ? `Your ${what} has been fully approved.`
           : `${decidedBy} has rejected your ${what}.`,

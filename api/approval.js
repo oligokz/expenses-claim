@@ -509,6 +509,16 @@ async function handlePost(req, res) {
 
   if (requesterEmail) {
     try {
+      /* Everyone still to approve, in order, so the requester knows exactly
+       * who it is pending with. The step is named only when more than one is
+       * left, since that is when the order matters. */
+      const left = next
+        ? mod.stages.filter((s) => s.n >= next.n && (fields[s.approverField] || '').trim())
+        : [];
+      const remaining = await Promise.all(left.map(async (s) => ({
+        name: await approverName(token, siteId, fields[s.approverField].trim()),
+        stageLabel: left.length > 1 ? s.label : '',
+      })));
       await sendMail(token, {
         to: requesterEmail,
         ...templates.decisionNotice({
@@ -516,6 +526,7 @@ async function handlePost(req, res) {
           decidedBy: user.name, stageLabel: stage.label,
           comment, complete: !next, pdfUrl,
           nextApprover: nextApprover?.name || null,
+          remaining,
         }),
       });
     } catch (e) {
