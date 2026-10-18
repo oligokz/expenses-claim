@@ -16,7 +16,7 @@ const { httpError } = require('./http');
  * Returns null when the list can't be read, so callers can tell "nobody is
  * configured" apart from "we couldn't check".
  */
-async function listApprovers(token, siteId) {
+async function listApprovers(token, siteId, { includeInactive = false } = {}) {
   const listName = process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers';
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(listName)}/items?$expand=fields&$top=500`,
@@ -25,7 +25,9 @@ async function listApprovers(token, siteId) {
   if (!res.ok) return null;
   const rows = ((await res.json()).value || []).map((i) => i.fields || {});
   return rows
-    .filter((f) => f.Active !== false) // treat missing Active as active
+    // Missing Active counts as active. Inactive people can't be picked, but
+    // name lookups still want them: requests already sent to them show a name.
+    .filter((f) => includeInactive || f.Active !== false)
     .filter((f) => f.ApproverEmail)
     .sort((a, b) => (Number(a.SortOrder) || 0) - (Number(b.SortOrder) || 0))
     .map((f) => ({
@@ -90,7 +92,7 @@ async function assertApproversAllowed(token, siteId, requesterEmail, nominees) {
 async function approverName(token, siteId, email) {
   if (!email) return '';
   try {
-    const roster = await listApprovers(token, siteId);
+    const roster = await listApprovers(token, siteId, { includeInactive: true });
     return roster?.find((a) => norm(a.email) === norm(email))?.name || email;
   } catch {
     return email;

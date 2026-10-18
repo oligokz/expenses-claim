@@ -187,6 +187,16 @@ function layout({ heading, intro, body, items, currency, rows, action, footer })
 </body></html>`;
 }
 
+/** "14 Oct", or "14 Oct 2026" with the year, in Singapore time. */
+function shortDate(value, withYear = false) {
+  if (!value) return '';
+  const d = new Date(String(value).length === 10 ? `${value}T00:00:00+08:00` : value);
+  if (isNaN(d.getTime())) return String(value).slice(0, 10);
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'short', ...(withYear ? { year: 'numeric' } : {}), timeZone: 'Asia/Singapore',
+  });
+}
+
 /**
  * Ask an approver to review and sign. The link carries a single-use token, but
  * the token only identifies the request and stage, the approver still signs in
@@ -200,27 +210,28 @@ function approvalRequest({
 }) {
   const what = (kind || 'Request').toLowerCase();
   const subjectItem = item ? `: ${item}` : '';
-  const waitingSince = reminderSince
-    ? new Date(reminderSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Asia/Singapore' })
-    : '';
+  // Only multi-step requests have a step worth naming ("Finance/HR").
+  const step = stageLabel && stageLabel !== 'Approver' ? stageLabel : '';
   return {
     // Name the thing in the subject line too. An approver triaging a full inbox
     // decides from the subject whether this is the one they were waiting on.
-    subject: `${reminderSince ? 'Reminder: ' : ''}${kind || 'Request'} ${claimRef}${subjectItem} needs your approval`,
+    subject: `${reminderSince ? 'Reminder: ' : ''}${kind || 'Request'} ${claimRef}${subjectItem} awaiting your approval`,
     html: layout({
-      heading: reminderSince ? `Reminder: a ${what} is waiting for you` : `A ${what} needs your approval`,
+      heading: reminderSince ? `Reminder: ${claimRef} is awaiting your approval` : `${claimRef} is awaiting your approval`,
       intro: reminderSince
-        ? `${requester} sent a reminder. This has been waiting for you, as ${(stageLabel || 'approver').toLowerCase()}, since ${waitingSince}.`
-        : `${requester} submitted this and you are the ${(stageLabel || 'approver').toLowerCase()} for it.`,
+        ? `${requester} is following up on this ${what}. It has been awaiting your approval since ${shortDate(reminderSince)}.`
+        : `${requester} has submitted a ${what} for your approval.`,
       body: description,
       items,
       currency,
       rows: [
         ['Reference', claimRef],
-        ['Item', item || ''],
+        // The items table already names them on a requisition.
+        ['Item', items?.length ? '' : item || ''],
         ['Requested by', requester || ''],
         ['Department', department || ''],
-        ['Submitted', submittedOn ? String(submittedOn).slice(0, 10) : ''],
+        ['Submitted', shortDate(submittedOn, true)],
+        ['Your step', step],
         ...rows,
       ],
       action: {
@@ -247,25 +258,26 @@ function approvalRequest({
 function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover }) {
   const approved = decision === 'approved';
   const what = (kind || 'Request').toLowerCase();
+  const moving = approved && !complete;
   return {
-    subject: `${kind || 'Request'} ${claimRef} was ${decision}`,
+    subject: moving
+      ? `${kind || 'Request'} ${claimRef} approved by ${decidedBy}, now with ${nextApprover || 'the next approver'}`
+      : `${kind || 'Request'} ${claimRef} has been ${decision}`,
     html: layout({
-      heading: approved
-        ? complete
-          ? `Your ${what} is approved`
-          : `${stageLabel} approved your ${what}`
-        : `Your ${what} was rejected`,
-      intro: approved
-        ? complete
-          ? 'No further approval is needed.'
-          : `It has moved to ${nextApprover || 'the next approver'}, who has been emailed a link to review it. You do not need to forward this email.`
-        : `${decidedBy} rejected this request.`,
+      heading: moving
+        ? `${claimRef} approved by ${decidedBy}`
+        : `${claimRef} has been ${decision}`,
+      // Saying who has it now is what stops people forwarding this (REQ-19).
+      intro: moving
+        ? `It is now with ${nextApprover || 'the next approver'} for approval.`
+        : approved
+          ? `Your ${what} has been fully approved.`
+          : `${decidedBy} has rejected your ${what}.`,
       rows: [
         ['Reference', claimRef],
         ['Item', item],
         [approved ? 'Approved by' : 'Rejected by', decidedBy],
         ['Comment', comment || ''],
-        ...(approved && !complete && nextApprover ? [['Now with', nextApprover]] : []),
       ],
       action:
         complete && approved && pdfUrl

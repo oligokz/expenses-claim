@@ -357,12 +357,12 @@ export function MyRequests() {
                 {r.waitingOn && confirming !== r.id && (
                   <div className="order-4 col-span-2 mt-1 flex items-center justify-between gap-3 rounded-lg bg-secondary/60 px-3 py-2 sm:col-span-4">
                     <p className="min-w-0 text-xs text-muted-foreground">
-                      Waiting on{" "}
+                      With{" "}
                       <span className="font-medium text-foreground">{r.waitingOn.name}</span>
-                      {" "}({r.waitingOn.stageLabel.toLowerCase()})
-                      {r.waitingOn.since ? `, since ${shortDate(r.waitingOn.since)}` : ""}
+                      {r.waitingOn.stageLabel ? ` (${r.waitingOn.stageLabel})` : ""}
+                      {r.waitingOn.since ? ` since ${shortDate(r.waitingOn.since)}` : ""}
                     </p>
-                    {canRemind(r) ? (
+                    {r.waitingOn.team ? null : canRemind(r) ? (
                       <Button
                         variant="outline"
                         size="sm"

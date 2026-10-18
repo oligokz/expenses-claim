@@ -242,7 +242,9 @@ export interface MyRequest {
   /** Set once a requisition is fully approved and its PDF has been composed. */
   pdfUrl?: string
   /** Who has it now. Null once decided, and always for expense claims. */
-  waitingOn: { name: string; stageLabel: string; since: string } | null
+  /** Who has it now. `team` marks a group, like Finance for expense claims,
+   *  which has no one to remind. `stageLabel` is empty for one-step requests. */
+  waitingOn: { name: string; stageLabel: string; since: string; team?: boolean } | null
   /** When the requester last pressed Remind, if ever. */
   lastReminderAt: string | null
 }

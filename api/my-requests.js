@@ -119,7 +119,7 @@ module.exports = async function handler(req, res) {
     const [results, roster] = await Promise.all([
       Promise.all(SOURCES.map((s) => listFor(token, siteId, s, user.email))),
       // Display names for "waiting on". Unreadable just means emails are shown.
-      listApprovers(token, siteId).catch(() => null),
+      listApprovers(token, siteId, { includeInactive: true }).catch(() => null),
     ]);
     const nameOf = (email) =>
       roster?.find((a) => a.email.toLowerCase() === email.toLowerCase())?.name || email;
@@ -146,10 +146,14 @@ module.exports = async function handler(req, res) {
           waitingOn: waiting && waiting.email
             ? {
                 name: nameOf(waiting.email),
-                stageLabel: waiting.stage.label,
+                // Only worth naming the step when there is more than one.
+                stageLabel: getModule(source.type).stages.length > 1 ? waiting.stage.label : '',
                 since: waiting.since || it.createdDateTime || '',
               }
-            : null,
+            : source.type === 'expense' && (f.Status || 'Pending') === 'Pending'
+              // Expense claims have no approver in the app; Finance processes them.
+              ? { name: 'Finance', stageLabel: '', since: '', team: true }
+              : null,
           lastReminderAt: f.LastReminderAt || null,
         });
       }
