@@ -16,12 +16,12 @@ function MicrosoftMark() {
 
 /**
  * The front door: shown on a first visit and after signing out, never to
- * someone already known on this device. The navy band is the company's own
- * (creoxtech.com) and appears on this screen only; the action keeps the app's
- * blue.
+ * someone already known on this device. One card on the company navy from
+ * creoxtech.com, which appears on this screen only; the action keeps the
+ * app's blue.
  */
 export function SignInScreen({
-  heading = "CREOX Staff Portal",
+  heading = "Sign in to CREOX Staff Portal",
   message = "Expense claims, leave, travel and purchase requests.",
   onSignIn,
 }: {
@@ -41,22 +41,13 @@ export function SignInScreen({
   }
 
   return (
-    <div className="grid min-h-dvh grid-rows-[auto_1fr] bg-background lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:grid-rows-1">
-      {/* Brand band: top of the phone screen, the left half on a desktop. */}
-      <div className="relative flex min-h-[46dvh] items-end bg-[#0a1f8f] px-6 pb-10 pt-[max(2.5rem,env(safe-area-inset-top))] sm:px-10 lg:min-h-dvh lg:items-center lg:px-16">
-        <div className="relative w-fit p-4">
-          {/* Corner brackets, as around the company line on creoxtech.com. */}
-          <span aria-hidden="true" className="absolute left-0 top-0 size-3 border-l border-t border-white/50" />
-          <span aria-hidden="true" className="absolute right-0 top-0 size-3 border-r border-t border-white/50" />
-          <span aria-hidden="true" className="absolute bottom-0 left-0 size-3 border-b border-l border-white/50" />
-          <span aria-hidden="true" className="absolute bottom-0 right-0 size-3 border-b border-r border-white/50" />
-          <img src="/logo.svg" alt="CREOX" className="h-9 w-auto sm:h-11 lg:h-14" />
-        </div>
-      </div>
+    <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#0a1f8f] px-4 py-[max(1.5rem,env(safe-area-inset-top))]">
+      <main className="relative w-full max-w-[400px] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+        <div className="rounded-2xl border bg-card p-6 text-card-foreground shadow-[0_24px_60px_-20px_rgb(2_6_40/0.55)] sm:p-8">
+          {/* The logo file is white; the light card shows it in ink. */}
+          <img src="/logo.svg" alt="CREOX" className="h-6 w-auto invert dark:invert-0" />
 
-      <main className="relative flex flex-col px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-10 sm:px-10 lg:justify-center lg:px-16">
-        <div className="w-full max-w-sm motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
-          <h1 className="text-balance font-display text-2xl font-bold tracking-tight sm:text-3xl">
+          <h1 className="mt-8 text-balance font-display text-xl font-bold tracking-tight sm:text-2xl">
             {heading}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">{message}</p>
@@ -78,9 +69,7 @@ export function SignInScreen({
           </Button>
         </div>
 
-        <p className="mt-auto pt-12 text-xs text-muted-foreground lg:absolute lg:bottom-8 lg:pt-0">
-          CREOX Computing Singapore Pte. Ltd.
-        </p>
+        <p className="mt-6 text-center text-xs text-white/75">CREOX Computing Singapore Pte. Ltd.</p>
       </main>
     </div>
   )
