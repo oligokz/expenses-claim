@@ -122,7 +122,7 @@ export function Approvals({
 
       {state === "ready" && approvals.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-card py-16 text-center">
-          <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+          <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary-text">
             <CheckCircle2 className="size-6" />
           </span>
           <p className="text-sm font-medium">No pending approvals</p>

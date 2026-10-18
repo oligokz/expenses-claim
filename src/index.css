@@ -4,6 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  color-scheme: light;
   --radius: 0.625rem;
   /* Height of the phone bottom bar, before the safe-area inset. */
   --mobile-nav-h: 4.25rem;
@@ -20,10 +21,11 @@
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.52 0 0);          /* 5.0:1 on muted, 5.5:1 on white */
   --accent: oklch(0.95 0.03 262.881);          /* faint blue wash, hover / selected */
   --accent-foreground: oklch(0.45 0.18 262.881);
-  --destructive: oklch(0.577 0.245 27.325);
+  --primary-text: oklch(0.546 0.245 262.881);  /* blue as text (links, icons) */
+  --destructive: oklch(0.53 0.2 27);           /* 5.0:1 as text on its own /10 tint */
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
   --ring: oklch(0.546 0.245 262.881);          /* blue focus ring */
@@ -45,6 +47,7 @@
      dark counter panels and semantic states keep working. */
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.62 0.13 165);             /* teal-green, success state only */
+  --success-text: oklch(0.48 0.1 165);         /* teal as text; plain teal is 3.4:1 on white */
   --success-foreground: oklch(0.205 0 0);      /* dark text on teal (5.2:1) */
   --warning: oklch(0.78 0.15 80);              /* amber, "stale / cached" status only */
   --warning-foreground: oklch(0.205 0 0);
@@ -58,6 +61,8 @@
 }
 
 .dark {
+  /* Native controls (date pickers, scrollbars, autofill) follow the theme. */
+  color-scheme: dark;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -72,6 +77,9 @@
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.3 0.06 262.881);           /* subtle blue-tinted hover / selected */
   --accent-foreground: oklch(0.985 0 0);
+  /* Blue-600 is only 3.4:1 as text on the dark card; links and icons use a
+     lighter blue (7:1) while buttons keep the vivid fill. */
+  --primary-text: oklch(0.72 0.14 262.881);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -91,8 +99,9 @@
   --sidebar-ring: oklch(0.556 0 0);
 
   /* App-specific tokens */
-  --destructive-foreground: oklch(0.985 0 0);
+  --destructive-foreground: oklch(0.145 0 0);  /* dark ink on the light red (6.8:1); white is 2.8:1 */
   --success: oklch(0.66 0.13 165);
+  --success-text: oklch(0.66 0.13 165);
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.8 0.14 80);
   --warning-foreground: oklch(0.145 0 0);
@@ -130,10 +139,12 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-primary-text: var(--primary-text);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
+  --color-success-text: var(--success-text);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);

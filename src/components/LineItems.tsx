@@ -161,7 +161,7 @@ export function LineItems({ row, rates, onUpdate, errors, onViewRates }: Expense
           <button
             type="button"
             onClick={onViewRates}
-            className="-mx-1 rounded px-1 text-xs font-medium text-primary underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+            className="-mx-1 rounded px-1 text-xs font-medium text-primary-text underline-offset-2 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
           >
             View all rates
           </button>

@@ -5,6 +5,16 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>CREOX</title>
+    <!-- Apply the saved or system theme before first paint so dark-mode users
+         don't get a white flash. Mirrors next-themes (key "theme"). -->
+    <script>
+      try {
+        var t = localStorage.getItem("theme") || "system"
+        if (t === "system") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+        document.documentElement.classList.add(t)
+        document.documentElement.style.colorScheme = t
+      } catch (e) {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

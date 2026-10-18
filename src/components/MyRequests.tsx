@@ -340,7 +340,7 @@ export function MyRequests() {
 
       {state === "ready" && requests.length === 0 && (
         <div className="flex flex-col items-center gap-3 rounded-xl border bg-card py-16 text-center">
-          <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary">
+          <span className="grid size-12 place-items-center rounded-full bg-primary/10 text-primary-text">
             <Inbox className="size-6" />
           </span>
           <p className="text-sm font-medium">No requests yet</p>
@@ -482,7 +482,7 @@ export function MyRequests() {
                   type="button"
                   onClick={() => toggleOpen(r.id)}
                   aria-expanded={open.has(r.id)}
-                  className="-mx-1 mt-2 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                  className="-mx-1 mt-2 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-primary-text outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
                 >
                   {open.has(r.id) ? "Hide progress" : "Show progress"}
                   <ChevronDown

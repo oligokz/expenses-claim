@@ -1,5 +1,7 @@
-import { ArrowRightLeft, ChevronsUpDown, LogOut } from "lucide-react"
+import { ArrowRightLeft, Check, ChevronsUpDown, LogOut } from "lucide-react"
+import { useTheme } from "next-themes"
 import { DropdownMenu } from "radix-ui"
+import { THEME_OPTIONS } from "@/components/ThemeChoice"
 
 interface TopBarProps {
   userName: string
@@ -15,6 +17,7 @@ function avatarUrl(seed: string) {
 }
 
 export function TopBar({ userName, onLogout, onViewRates }: TopBarProps) {
+  const { theme = "system", setTheme } = useTheme()
   return (
     <header className="sticky top-0 z-50 bg-surface-dark text-surface-dark-foreground">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
@@ -57,6 +60,27 @@ export function TopBar({ userName, onLogout, onViewRates }: TopBarProps) {
                 <ArrowRightLeft className="size-4" />
                 Exchange rates
               </DropdownMenu.Item>
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
+              <DropdownMenu.Label className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
+                Appearance
+              </DropdownMenu.Label>
+              <DropdownMenu.RadioGroup value={theme} onValueChange={setTheme}>
+                {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+                  <DropdownMenu.RadioItem
+                    key={value}
+                    value={value}
+                    onSelect={(e) => e.preventDefault()}
+                    className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground"
+                  >
+                    <Icon className="size-4" />
+                    <span className="flex-1">{label}</span>
+                    <DropdownMenu.ItemIndicator>
+                      <Check className="size-4" />
+                    </DropdownMenu.ItemIndicator>
+                  </DropdownMenu.RadioItem>
+                ))}
+              </DropdownMenu.RadioGroup>
+              <DropdownMenu.Separator className="my-1 h-px bg-border" />
               <DropdownMenu.Item
                 onSelect={() => onLogout()}
                 className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground"

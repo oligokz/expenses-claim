@@ -537,7 +537,7 @@ export default function App() {
             onClick={() => setView("approvals")}
             className="mx-auto mb-5 flex w-full max-w-2xl items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-left outline-none transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/50"
           >
-            <ClipboardCheck className="size-5 shrink-0 text-primary" />
+            <ClipboardCheck className="size-5 shrink-0 text-primary-text" />
             <span className="min-w-0 flex-1 text-sm">
               <span className="font-semibold">
                 {approvalsCount === 1
@@ -545,7 +545,7 @@ export default function App() {
                   : `${approvalsCount} requests are waiting for your approval`}
               </span>
             </span>
-            <span className="shrink-0 text-sm font-medium text-primary">Review</span>
+            <span className="shrink-0 text-sm font-medium text-primary-text">Review</span>
           </button>
         )}
 

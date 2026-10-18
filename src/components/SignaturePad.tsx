@@ -94,7 +94,9 @@ export function SignaturePad({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="relative overflow-hidden rounded-xl border-2 border-dashed bg-card">
+      {/* Always white paper with dark ink, in dark mode too: the PNG is stamped
+          onto the white PDF, and dark ink on a dark card can't be seen. */}
+      <div className="relative overflow-hidden rounded-xl border-2 border-dashed border-neutral-300 bg-white">
         <canvas
           ref={canvasRef}
           onPointerDown={start}
@@ -108,7 +110,7 @@ export function SignaturePad({
           style={{ cursor: disabled ? "not-allowed" : "crosshair" }}
         />
         {!hasInk && (
-          <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-muted-foreground">
+          <span className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-neutral-500">
             Sign here
           </span>
         )}

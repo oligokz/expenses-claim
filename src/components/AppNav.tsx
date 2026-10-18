@@ -145,7 +145,7 @@ export function AppNav({
               <span className="lg:hidden">{t.short}</span>
               <span className="hidden lg:inline">{t.label}</span>
               {t.id === "approvals" && approvalsCount > 0 && (
-                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-white">
+                <span className="grid h-5 min-w-5 place-items-center rounded-full bg-destructive px-1.5 text-[11px] font-bold leading-none text-destructive-foreground">
                   {approvalsCount > 9 ? "9+" : approvalsCount}
                   <span className="sr-only"> waiting</span>
                 </span>

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 const BADGE: Record<RouteStep["status"], { text: string; className: string }> = {
   done: {
     text: "Done",
-    className: "border-success/30 bg-success/10 text-success",
+    className: "border-success/30 bg-success/10 text-success-text",
   },
   current: {
     text: "Pending",
@@ -54,7 +54,8 @@ function describe(s: RouteStep, prev?: RouteStep): string {
 
 /**
  * A request's path as a vertical timeline: submitted, then each approver.
- * Steps still to come are dimmed, so where it stands reads at a glance.
+ * Steps still to come are dimmed, so where it stands reads at a glance. Dimmed
+ * with the muted ink rather than opacity, which took the text below AA.
  */
 export function Timeline({ steps, className }: { steps: RouteStep[]; className?: string }) {
   return (
@@ -80,9 +81,11 @@ export function Timeline({ steps, className }: { steps: RouteStep[]; className?:
             >
               {s.status === "done" && <span className="size-2 rounded-full bg-success" />}
             </span>
-            <div className={cn("min-w-0", dim && "opacity-55")}>
+            <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                <span className="text-sm font-semibold">{s.name}</span>
+                <span className={cn("text-sm font-semibold", dim && "text-muted-foreground")}>
+                  {s.name}
+                </span>
                 <span
                   className={cn(
                     "rounded-full border px-2 py-px text-[11px] font-semibold",

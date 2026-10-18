@@ -13,7 +13,7 @@ export function Initials({ name, className }: { name: string; className?: string
     <span
       aria-hidden="true"
       className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary",
+        "grid size-10 shrink-0 place-items-center rounded-full bg-primary/10 text-sm font-semibold text-primary-text",
         className,
       )}
     >

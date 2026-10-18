@@ -15,6 +15,7 @@ import {
   HISTORY_TAB,
   type View,
 } from "@/components/AppNav"
+import { ThemeSegmented } from "@/components/ThemeChoice"
 import { cn } from "@/lib/utils"
 
 const FORM_VIEWS = new Set<View>(FORM_TABS.map((t) => t.id))
@@ -58,7 +59,7 @@ function BarItem({
       >
         <Icon className="size-5" aria-hidden="true" />
         {badge > 0 && (
-          <span className="absolute -top-1 right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -top-1 right-1.5 grid h-4 min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
             {badge > 9 ? "9+" : badge}
             <span className="sr-only"> waiting</span>
           </span>
@@ -234,6 +235,12 @@ export function MobileNav({
           <RowIcon icon={ArrowRightLeft} />
           <span className="flex-1 text-sm font-semibold">Exchange rates</span>
         </button>
+        <div className="px-3 pb-2 pt-3">
+          <div className="mb-2 text-xs font-medium text-muted-foreground">
+            Appearance
+          </div>
+          <ThemeSegmented />
+        </div>
         <button
           type="button"
           className={ROW}
