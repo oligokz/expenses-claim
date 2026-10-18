@@ -647,15 +647,17 @@ export function PurchaseRequisition({
 
         {/* ── Approval ── approvers sit last on every form, just above Submit. */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
-          <ApproverField
-            id="req-manager"
-            label="Approver"
-            required
-            value={form.reportingManager}
-            onChange={(v) => update("reportingManager", v)}
-            approvers={approvers}
-            error={errors.reportingManager}
-          />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <ApproverField
+              id="req-manager"
+              label="Approver"
+              required
+              value={form.reportingManager}
+              onChange={(v) => update("reportingManager", v)}
+              approvers={approvers}
+              error={errors.reportingManager}
+            />
+            </div>
         </SectionCard>
 
         {/* On a phone the sticky bar below carries Submit instead. */}

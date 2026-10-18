@@ -534,7 +534,8 @@ export function TravelRequest({ employeeName }: { employeeName: string }) {
 
         {/* ── Approvals ── */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
-          <div className="flex flex-col gap-5">
+          {/* Same two-column grid as Your Details, so a name isn't a full-width bar. */}
+          <div className="grid gap-5 sm:grid-cols-2">
             <ApproverField
               id="trv-manager"
               label="Reporting manager"

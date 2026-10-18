@@ -406,15 +406,17 @@ export function LeaveRequest({ employeeName }: { employeeName: string }) {
 
         {/* Approvers sit last on every form, just above Submit. */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
-          <ApproverField
-            id="leave-approver"
-            label="Approver"
-            required
-            value={form.approverEmail}
-            onChange={(v) => update("approverEmail", v)}
-            approvers={approvers}
-            error={errors.approverEmail}
-          />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <ApproverField
+              id="leave-approver"
+              label="Approver"
+              required
+              value={form.approverEmail}
+              onChange={(v) => update("approverEmail", v)}
+              approvers={approvers}
+              error={errors.approverEmail}
+            />
+            </div>
         </SectionCard>
 
         {/* On a phone the sticky bar below carries Submit instead. */}
