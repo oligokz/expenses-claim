@@ -16,9 +16,9 @@ function MicrosoftMark() {
 
 /**
  * The front door: shown on a first visit and after signing out, never to
- * someone already known on this device. One card on the company navy from
- * creoxtech.com, which appears on this screen only; the action keeps the
- * app's blue.
+ * someone already known on this device. One card over the company's circuit
+ * photograph, on the deep navy its edges fade into; that navy appears on
+ * this screen only, and the action keeps the app's blue.
  */
 export function SignInScreen({
   heading = "Sign in to CREOX Staff Portal",
@@ -41,9 +41,19 @@ export function SignInScreen({
   }
 
   return (
-    <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#0a1f8f] px-4 py-[max(1.5rem,env(safe-area-inset-top))]">
-      <main className="relative w-full max-w-[400px] motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
-        <div className="rounded-2xl border bg-card p-6 text-card-foreground shadow-[0_24px_60px_-20px_rgb(2_6_40/0.55)] sm:p-8">
+    <div className="relative grid min-h-dvh place-items-center overflow-hidden bg-[#020b3a] px-4 py-[max(1.5rem,env(safe-area-inset-top))]">
+      <main className="relative w-full max-w-[400px] motion-safe:animate-in motion-safe:slide-in-from-bottom-2 motion-safe:duration-500">
+        <div className="relative">
+          {/* The photo carries the logo at its centre, about 71% of its width.
+              Sized to 134% of the card and centred on it, the card always hides
+              that logo and the traces show around it, fading into the page. */}
+          <img
+            src="/brand/circuit.webp"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 w-[134%] max-w-none -translate-x-[47.9%] -translate-y-[47.9%] select-none [mask-image:radial-gradient(closest-side,black_45%,transparent)]"
+          />
+        <div className="relative rounded-2xl border bg-card p-6 text-card-foreground shadow-[0_24px_60px_-20px_rgb(2_6_40/0.55)] sm:p-8">
           {/* The logo file is white; the light card shows it in ink. */}
           <img src="/logo.svg" alt="CREOX" className="h-6 w-auto invert dark:invert-0" />
 
@@ -67,6 +77,7 @@ export function SignInScreen({
             )}
             {busy ? "Opening Microsoft sign-in" : "Sign in with Microsoft"}
           </Button>
+        </div>
         </div>
 
         <p className="mt-6 text-center text-xs text-white/75">CREOX Computing Singapore Pte. Ltd.</p>
