@@ -19,7 +19,9 @@ const PDF_BUILDERS = {
   TRV: buildTravelPdf,
 };
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const { sgDay, sgMonth } = require('./_lib/dates');
+
+const todayIso = () => sgDay(new Date());
 // Decisions record the moment, not just the day, the PDF shows a real time.
 const nowIso = () => new Date().toISOString();
 
@@ -82,7 +84,7 @@ async function renderPdf(token, siteId, mod, itemId, claimRef) {
   const build = PDF_BUILDERS[mod.refPrefix];
   if (!build) throw new Error(`No PDF builder for ${mod.refPrefix}`);
   const bytes = await build({ fields, claimRef, signatures });
-  const month = (fields.SubmissionDate || todayIso()).slice(0, 7);
+  const month = sgMonth(fields.SubmissionDate || new Date());
   const { webUrl } = await storePdf(token, siteId, bytes, claimRef, month);
 
   if (webUrl) {

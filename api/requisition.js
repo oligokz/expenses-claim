@@ -4,6 +4,7 @@ const { mintToken, getModule, patchRow, TOKEN_TTL_DAYS } = require('./_lib/appro
 const { assertApproversAllowed, approverName } = require('./_lib/approvers');
 const { createListItem, withColumnReport } = require('./_lib/lists');
 const { sendError } = require('./_lib/http');
+const { sgDay } = require('./_lib/dates');
 const { getRates, toSGD } = require('./_lib/rates');
 const {
   normaliseItems, itemsTitle, itemsHeadline, flatColumns,
@@ -59,7 +60,8 @@ module.exports = async function handler(req, res) {
     const submittedAt    = new Date().toISOString();
     // Date-only for the Title and folder paths; the column keeps the full
     // timestamp so the PDF can show a real time rather than a fake midnight.
-    const submissionDate = submittedAt.slice(0, 10);
+    // The Singapore day: before 8 am the UTC date is still yesterday.
+    const submissionDate = sgDay(submittedAt);
     const title    = itemsTitle(items);
     const headline = itemsHeadline(items);
 

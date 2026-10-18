@@ -8,6 +8,7 @@
 // first and falls back to scanning the month folders for the reference.
 
 const { getDriveId } = require('./sharepoint');
+const { sgMonth } = require('./dates');
 
 /* The single source of truth for where a reference's files live. upload.js,
  * pdf.js and this module all route through it so the three cannot drift. */
@@ -58,7 +59,7 @@ async function locateFolder(token, driveId, claimRef, dates = []) {
     ...new Set(
       dates
         .filter(Boolean)
-        .map((d) => String(d).slice(0, 7))
+        .map(sgMonth)
         .filter((m) => /^\d{4}-\d{2}$/.test(m))
     ),
   ];

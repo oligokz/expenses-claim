@@ -2,6 +2,7 @@ const { getAppToken, getSiteId, getDriveId, verifyUserToken, applyCors } = requi
 const { topFolderFor } = require('./_lib/attachments');
 const { getModule, getRow } = require('./_lib/approvals');
 const { httpError, sendError } = require('./_lib/http');
+const { sgMonth } = require('./_lib/dates');
 
 /* Vercel refuses a function request body over 4.5 MB before this code runs,
  * so the real ceiling is below that once multipart framing is counted. The
@@ -141,9 +142,7 @@ module.exports = async function handler(req, res) {
     const ref = meta.claimRef || '';
     const topFolder   = topFolderFor(ref);
     const rowDate     = String(fields.SubmissionDate || fields.StartDate || '');
-    const month       = /^\d{4}-\d{2}/.test(rowDate)
-      ? rowDate.slice(0, 7)
-      : new Date().toISOString().slice(0, 7);
+    const month       = sgMonth(rowDate || new Date()) || sgMonth(new Date());
     const claimFolder = (ref || 'Unfiled').replace(/[^a-z0-9_-]/gi, '_');
     const idx         = Number.isInteger(meta.index) ? meta.index + 1 : 1;
     const safeFile    = (filePart.filename || 'receipt').replace(/[^a-z0-9._-]/gi, '_');

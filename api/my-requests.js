@@ -3,6 +3,7 @@ const { sendError } = require('./_lib/http');
 const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
 const { getModule, waitingOn, buildRoute } = require('./_lib/approvals');
 const { listApprovers } = require('./_lib/approvers');
+const { sgDay } = require('./_lib/dates');
 
 /* The three lists a person can have rows in, and how each one names things.
  * Requisitions use Requestor*; the older two use Employee*. */
@@ -28,7 +29,7 @@ const SOURCES = [
       const days = Number(f.Days) || 0;
       return {
         title:     f.LeaveType || 'Leave',
-        detail:    [f.StartDate, f.EndDate].filter(Boolean).map((d) => String(d).slice(0, 10)).join(' → '),
+        detail:    [f.StartDate, f.EndDate].filter(Boolean).map(sgDay).join(' → '),
         amountSGD: null, // leave has no money, the UI shows `meta` instead
         meta:      days ? `${days} ${days === 1 ? 'day' : 'days'}` : '',
       };
@@ -45,7 +46,7 @@ const SOURCES = [
       amountSGD: f.TotalEstimatedSGD ?? 0,
       meta:      [f.TravelFrom, f.TravelTo]
         .filter(Boolean)
-        .map((d) => String(d).slice(0, 10))
+        .map(sgDay)
         .join(' → '),
       pdfUrl:    f.ApprovedPdfUrl || '',
     }),

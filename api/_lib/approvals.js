@@ -7,6 +7,7 @@
 
 const crypto = require('node:crypto');
 const { itemsFromRow, itemsTitle } = require('./requisitionItems');
+const { sgDay } = require('./dates');
 
 /* ── module registry ── */
 
@@ -148,7 +149,7 @@ const MODULES = {
         ['Destination', f.Destination || ''],
         ['Dates', [f.TravelFrom, f.TravelTo]
           .filter(Boolean)
-          .map((d) => String(d).slice(0, 10))
+          .map(sgDay)
           .join(' to ')],
         ['Estimated cost', `SGD ${Number(f.TotalEstimatedSGD || 0).toFixed(2)}`],
       ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
@@ -188,10 +189,10 @@ const MODULES = {
       requester: f.EmployeeName || '',
       requesterEmail: f.EmployeeEmail || '',
       department: f.Department || '',
-      submittedOn: f.StartDate || '',
+      submittedOn: f.Created || '',
       rows: [
-        ['Start', String(f.StartDate || '').slice(0, 10)],
-        ['End', String(f.EndDate || '').slice(0, 10)],
+        ['Start', f.StartDate ? sgDay(f.StartDate) : ''],
+        ['End', f.EndDate ? sgDay(f.EndDate) : ''],
         ['Days', String(f.Days ?? '')],
       ].filter(([, v]) => v && v.trim() !== ''),
     }),

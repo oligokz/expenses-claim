@@ -4,6 +4,7 @@ const { mintToken, getModule, patchRow, TOKEN_TTL_DAYS } = require('./_lib/appro
 const { assertApproversAllowed, approverName } = require('./_lib/approvers');
 const { createListItem, withColumnReport } = require('./_lib/lists');
 const { sendError } = require('./_lib/http');
+const { sgDay } = require('./_lib/dates');
 
 const LIST = () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests';
 
@@ -29,8 +30,14 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
 
     // The first stage has to exist or the request never reaches anyone.
+    // All three travel stages are required, here as well as in the form, so a
+    // hand-made request can't skip Finance/HR or final approval.
     if (!String(reportingManager || '').trim())
       return res.status(400).json({ error: 'Select the reporting manager' });
+    if (!String(financeApprover || '').trim())
+      return res.status(400).json({ error: 'Select the Finance/HR approver' });
+    if (!String(finalApprover || '').trim())
+      return res.status(400).json({ error: 'Select the final approver' });
 
     if (String(travelTo) < String(travelFrom))
       return res.status(400).json({ error: 'The return date cannot be before the departure date' });
@@ -57,7 +64,8 @@ module.exports = async function handler(req, res) {
       [reportingManager, financeApprover, finalApprover]);
 
     const submittedAt    = new Date().toISOString();
-    const submissionDate = submittedAt.slice(0, 10);
+    // The Singapore day: before 8 am the UTC date is still yesterday.
+    const submissionDate = sgDay(submittedAt);
 
     const fields = {
       Title:            `${user.name} - ${destination} - ${submissionDate}`,
