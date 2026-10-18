@@ -199,7 +199,7 @@ function expectedLists() {
     },
     {
       key: 'approvers', name: process.env.SP_REQAPPROVERS_LIST_NAME || 'Requisition Approvers',
-      cols: ['ApproverEmail', 'ApprovalStage', 'Department', 'Active', 'SortOrder'],
+      cols: ['ApproverEmail', 'ApprovalStage', 'Active', 'SortOrder'],
       choices: { ApprovalStage: ['Reporting Manager', 'Final Approval', 'Both'] },
     },
     { key: 'leaveTypes', name: process.env.SP_LEAVETYPES_LIST_NAME || 'Leave Types', cols: ['Active'] },
@@ -247,6 +247,11 @@ async function cmdAudit(token) {
     for (const n of exp.multiline || []) {
       const c = cols.get(n);
       if (c && !(c.text && c.text.allowMultipleLines)) flag_(`${n} is ${typeOf(c)}, needs multiple lines (255-char limit otherwise)`);
+    }
+    // Remind compares times, so a date-only column would allow one a calendar day, not 24 hours.
+    if (exp.cols.includes('LastReminderAt')) {
+      const c = cols.get('LastReminderAt');
+      if (c && c.dateTime?.format !== 'dateTime') flag_(`LastReminderAt is ${typeOf(c)}, needs date and time`);
     }
     for (const n of exp.indexed || []) {
       const c = cols.get(n);

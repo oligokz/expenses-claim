@@ -113,6 +113,7 @@ const text      = ()      => ({ text: {} });
 const multiline = ()      => ({ text: { allowMultipleLines: true, textType: 'plain' } });
 const number    = (d = 2) => ({ number: { decimalPlaces: d === 0 ? 'none' : 'two' } });
 const dateOnly  = ()      => ({ dateTime: { format: 'dateOnly' } });
+const dateTime  = ()      => ({ dateTime: { format: 'dateTime' } });
 const yesNo     = ()      => ({ boolean: {} });
 const choice    = (...c)  => ({ choice: { choices: c, displayAs: 'dropDownMenu' } });
 
@@ -173,6 +174,8 @@ const REQ_COLUMNS = [
   { name: 'Stage1SignedName',    ...text() },   // verified identity at signing
   { name: 'Stage2SignedName',    ...text() },
   { name: 'ApprovedPdfUrl',      ...text() },
+  // The requester's Remind button: one per request per day. Needs the time.
+  { name: 'LastReminderAt',      ...dateTime() },
 ];
 
 // Mirrors the "Leave Types" list shape: Title is the category name.
@@ -190,7 +193,6 @@ const CAT_COLUMNS = [
 const APR_COLUMNS = [
   { name: 'ApproverEmail', ...text() },
   { name: 'ApprovalStage', ...choice('Reporting Manager', 'Final Approval', 'Both') },
-  { name: 'Department',    ...text() },   // blank = approves for every department
   { name: 'Active',        ...yesNo() },
   { name: 'SortOrder',     ...number(0) },
 ];
@@ -263,6 +265,7 @@ const TRAVEL_COLUMNS = [
   { name: 'Stage2SignedName',   ...text() },
   { name: 'Stage3SignedName',   ...text() },
   { name: 'ApprovedPdfUrl',     ...text() },
+  { name: 'LastReminderAt',     ...dateTime() },
 ];
 
 /* Leave and expense join the approval flow with one stage and no signature.
@@ -274,6 +277,7 @@ const SINGLE_STAGE_COLUMNS = [
   { name: 'ApproverComments', ...multiline() },
   { name: 'Stage1TokenId',    ...text() },
   { name: 'Stage1SignedName', ...text() },
+  { name: 'LastReminderAt',   ...dateTime() },
 ];
 
 const SEED_CATEGORIES = [
@@ -559,7 +563,6 @@ async function seedApprovers(token, siteId, listId) {
           Title:         a.name,
           ApproverEmail: a.email,
           ApprovalStage: a.stage,
-          Department:    '',
           Active:        true,
           SortOrder:     (i + 1) * 10,
         },
@@ -582,6 +585,11 @@ const INDEX_TARGETS = [
   { list: process.env.SP_LEAVE_LIST_NAME || 'Leave Requests', column: 'EmployeeEmail' },
   { list: REQ_LIST, column: 'RequestorEmail' },
   { list: TRV_LIST, column: 'RequestorEmail' },
+  // The approvals inbox filters every list on Status.
+  { list: readable('SP_LIST_NAME') || 'ExpenseClaims', column: 'Status' },
+  { list: process.env.SP_LEAVE_LIST_NAME || 'Leave Requests', column: 'Status' },
+  { list: REQ_LIST, column: 'Status' },
+  { list: TRV_LIST, column: 'Status' },
 ];
 
 async function indexColumns(token, siteId) {

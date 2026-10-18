@@ -8,6 +8,7 @@
 const crypto = require('node:crypto');
 const { itemsFromRow, itemsTitle } = require('./requisitionItems');
 const { sgDay } = require('./dates');
+const { money } = require('./format');
 
 /* ── module registry ── */
 
@@ -70,9 +71,9 @@ const MODULES = {
         currency,
         rows: [
           currency !== 'SGD'
-            ? ['Total', `${currency} ${Number(f.EstimatedTotal || 0).toFixed(2)}`]
+            ? ['Total', `${currency} ${money(f.EstimatedTotal)}`]
             : ['', ''],
-          ['Estimated total', `SGD ${Number(f.EstimatedTotalSGD || 0).toFixed(2)}`],
+          ['Estimated total', `SGD ${money(f.EstimatedTotalSGD)}`],
           ['Vendor', f.VendorName || ''],
           ['Vendor contact', f.VendorContact || ''],
           ['Project / customer', f.ProjectCustomer || ''],
@@ -151,7 +152,7 @@ const MODULES = {
           .filter(Boolean)
           .map(sgDay)
           .join(' to ')],
-        ['Estimated cost', `SGD ${Number(f.TotalEstimatedSGD || 0).toFixed(2)}`],
+        ['Estimated cost', `SGD ${money(f.TotalEstimatedSGD)}`],
       ].filter(([, v]) => v && v.trim() !== '' && !/^SGD 0\.00$/.test(v)),
     }),
   },
@@ -229,8 +230,8 @@ const MODULES = {
       submittedOn: f.SubmissionDate || '',
       rows: [
         ['Quantity', String(f.Quantity ?? '')],
-        ['Amount', `${f.Currency || 'SGD'} ${Number(f.Amount || 0).toFixed(2)}`],
-        ['Total (SGD)', `SGD ${Number(f.TotalAmountSGD || 0).toFixed(2)}`],
+        ['Amount', `${f.Currency || 'SGD'} ${money(f.Amount)}`],
+        ['Total (SGD)', `SGD ${money(f.TotalAmountSGD)}`],
         ['Notes', f.Notes || ''],
       ].filter(([, v]) => v && v.trim() !== ''),
     }),

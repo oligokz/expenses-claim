@@ -20,6 +20,7 @@ const PDF_BUILDERS = {
 };
 
 const { sgDay, sgMonth } = require('./_lib/dates');
+const { money } = require('./_lib/format');
 
 const todayIso = () => sgDay(new Date());
 // Decisions record the moment, not just the day, the PDF shows a real time.
@@ -127,14 +128,8 @@ async function pendingRows(token, siteId, mod) {
 
 /** The figure worth showing in a list row: money if there is any, else days. */
 function headlineFigure(rows) {
-  const money = rows.find(([, v]) => /^SGD /.test(v));
-  if (money) {
-    // "SGD 5000.00" reads better as "SGD 5,000.00" on a card.
-    const n = Number(money[1].slice(4));
-    return Number.isFinite(n)
-      ? `SGD ${n.toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : money[1];
-  }
+  const total = rows.find(([, v]) => /^SGD /.test(v));
+  if (total) return total[1];
   const days = rows.find(([k]) => k === 'Days');
   return days ? `${days[1]} ${Number(days[1]) === 1 ? 'day' : 'days'}` : '';
 }

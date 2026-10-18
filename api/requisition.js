@@ -6,6 +6,7 @@ const { createListItem, withColumnReport } = require('./_lib/lists');
 const { sendError } = require('./_lib/http');
 const { sgDay } = require('./_lib/dates');
 const { getRates, toSGD } = require('./_lib/rates');
+const { money } = require('./_lib/format');
 const {
   normaliseItems, itemsTitle, itemsHeadline, flatColumns,
 } = require('./_lib/requisitionItems');
@@ -130,10 +131,7 @@ module.exports = async function handler(req, res) {
     if (reportingManager) {
       try {
         const name = await approverName(token, siteId, reportingManager);
-        const fmtMoney = estimatedTotalSGD.toLocaleString('en-SG', {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
-        });
+        const fmtMoney = money(estimatedTotalSGD);
 
         /* The approval link's nonce can only be stored once the row exists -
          * the item id is part of what the token authorises. Write it back, then

@@ -5,6 +5,7 @@ const { assertApproversAllowed, approverName } = require('./_lib/approvers');
 const { createListItem, withColumnReport } = require('./_lib/lists');
 const { sendError } = require('./_lib/http');
 const { sgDay } = require('./_lib/dates');
+const { money } = require('./_lib/format');
 
 const LIST = () => process.env.SP_TRAVEL_LIST_NAME || 'Travel Requests';
 
@@ -119,9 +120,7 @@ module.exports = async function handler(req, res) {
         });
         await patchRow(token, siteId, mod, itemId, { [stage.tokenField]: jti });
 
-        const money = total.toLocaleString('en-SG', {
-          minimumFractionDigits: 2, maximumFractionDigits: 2,
-        });
+        const amount = money(total);
         const dates = `${travelFrom} to ${travelTo}`;
 
         await sendMail(token, {
@@ -141,7 +140,7 @@ module.exports = async function handler(req, res) {
               ['Event',          eventName || ''],
               ['Destination',    destination],
               ['Dates',          dates],
-              ['Estimated cost', `SGD ${money}`],
+              ['Estimated cost', `SGD ${amount}`],
             ].filter(([, v]) => v && String(v).trim() !== ''),
             stageLabel: stage.label,
             token:      approvalToken,
@@ -157,7 +156,7 @@ module.exports = async function handler(req, res) {
             claimRef,
             destination,
             dates,
-            totalSGD: money,
+            totalSGD: amount,
             approverName: name,
           }),
         });

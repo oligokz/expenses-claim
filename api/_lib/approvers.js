@@ -10,8 +10,8 @@ const { httpError } = require('./http');
 /* Who may approve, from the "Requisition Approvers" SharePoint list, so the set
  * is bounded and editable without a redeploy.
  * Columns: Title (display name), ApproverEmail, ApprovalStage
- * ('Reporting Manager' | 'Final Approval' | 'Both'), Department (blank = all),
- * Active (yes/no), SortOrder (number).
+ * ('Reporting Manager' | 'Final Approval' | 'Both'), Active (yes/no),
+ * SortOrder (number).
  *
  * Returns null when the list can't be read, so callers can tell "nobody is
  * configured" apart from "we couldn't check".
@@ -34,7 +34,6 @@ async function listApprovers(token, siteId, { includeInactive = false } = {}) {
       name:       f.Title || f.ApproverEmail,
       email:      f.ApproverEmail,
       stage:      f.ApprovalStage || 'Reporting Manager',
-      department: f.Department || '',
     }));
 }
 

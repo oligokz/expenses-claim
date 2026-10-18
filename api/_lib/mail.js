@@ -11,6 +11,7 @@
 // Without that policy the grant is far broader than this app needs.
 
 const { categoryLabel } = require('./requisitionItems');
+const { money } = require('./format');
 
 const SENDER = () => process.env.MAIL_SENDER || 'noreply@creoxtech.com';
 
@@ -110,8 +111,6 @@ async function sendMail(token, { to, subject, html, replyTo }) {
 /** A requisition's line items as their own table, above the summary rows. */
 function itemsTable(items, currency) {
   if (!Array.isArray(items) || items.length === 0) return '';
-  const money = (n) =>
-    Number(n || 0).toLocaleString('en-SG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const th = 'padding:6px 8px;font-size:12px;color:#666;font-weight:600;text-align:left;border-bottom:1px solid #e5e5e5';
   const td = 'padding:8px;font-size:13px;vertical-align:top;border-bottom:1px solid #f0f0f0';
   const num = `${td};text-align:right;white-space:nowrap`;
@@ -119,7 +118,7 @@ function itemsTable(items, currency) {
       <td style="${td};color:#888">${i + 1}</td>
       <td style="${td}"><strong>${esc(categoryLabel(it))}</strong><br /><span style="color:#555">${esc(it.description).replace(/\n/g, '<br />')}</span></td>
       <td style="${num}">${esc(it.quantity)}</td>
-      <td style="${num}">${it.unitPrice == null ? '–' : esc(money(it.unitPrice))}</td>
+      <td style="${num}">${it.unitPrice == null ? '-' : esc(money(it.unitPrice))}</td>
       <td style="${num};font-weight:600">${esc(money(it.total))}</td>
     </tr>`).join('');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;border-collapse:collapse">

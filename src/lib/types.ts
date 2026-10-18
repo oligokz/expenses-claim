@@ -62,7 +62,6 @@ export interface ApproverOption {
   name: string
   email: string
   stage: string
-  department: string
 }
 
 /** One line on a requisition. Every item shares the requisition's currency. */
