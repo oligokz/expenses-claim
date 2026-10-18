@@ -8,7 +8,7 @@ const {
 const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments, topFolderFor } = require('./_lib/attachments');
 const { approverName, nameLookup } = require('./_lib/approvers');
-const { sendError } = require('./_lib/http');
+const { httpError, sendError } = require('./_lib/http');
 const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
 /* Which document a module renders once it is fully approved. Keyed by prefix
@@ -261,26 +261,35 @@ async function handleRemind(req, res) {
   const { token: link } = await mintToken({
     module: type, itemId, stage: waiting.stage.n, approver: waiting.email, jti,
   });
-  await sendMail(token, {
-    to: waiting.email,
-    replyTo: summary.requesterEmail || undefined,
-    ...templates.approvalRequest({
-      kind: mod.kind, claimRef,
-      requester:   summary.requester,
-      item:        summary.title,
-      description: summary.description,
-      department:  summary.department,
-      submittedOn: summary.submittedOn,
-      items:       summary.items,
-      currency:    summary.currency,
-      rows:        summary.rows,
-      stageLabel:  waiting.stage.label,
-      token:       link,
-      ttlDays:     TOKEN_TTL_DAYS,
-      hasAttachments: true,
-      reminderSince: waiting.since,
-    }),
-  });
+  try {
+    await sendMail(token, {
+      to: waiting.email,
+      replyTo: summary.requesterEmail || undefined,
+      ...templates.approvalRequest({
+        kind: mod.kind, claimRef,
+        requester:   summary.requester,
+        item:        summary.title,
+        description: summary.description,
+        department:  summary.department,
+        submittedOn: summary.submittedOn,
+        items:       summary.items,
+        currency:    summary.currency,
+        rows:        summary.rows,
+        stageLabel:  waiting.stage.label,
+        token:       link,
+        ttlDays:     TOKEN_TTL_DAYS,
+        hasAttachments: true,
+        reminderSince: waiting.since,
+      }),
+    });
+  } catch (e) {
+    /* Nothing went out, so give the slot back; otherwise one mail hiccup would
+     * block every retry for the next 20 hours. The nonce stays: it is valid. */
+    console.error('[approval] reminder mail failed:', e.message);
+    await patchRow(token, siteId, mod, itemId, { LastReminderAt: fields.LastReminderAt || null })
+      .catch((err) => console.error('[approval] could not release reminder slot:', err.message));
+    throw httpError(502, 'The reminder could not be sent. Try again in a minute.');
+  }
 
   return res.status(200).json({
     ok: true,

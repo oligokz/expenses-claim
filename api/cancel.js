@@ -14,20 +14,37 @@
 
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendError } = require('./_lib/http');
-const { getModule, getRow, currentStage } = require('./_lib/approvals');
+const { getModule, getRow, getRowWithEtag, currentStage } = require('./_lib/approvals');
 const { deleteAttachments } = require('./_lib/attachments');
 const { sendMail, templates } = require('./_lib/mail');
 
 const ALLOWED = ['expense', 'leave', 'travel', 'requisition'];
 
-async function deleteItem(token, siteId, mod, itemId) {
+/** DELETE the row. With `ifMatch`, Graph refuses (412) if the row changed since it was read. */
+async function deleteItem(token, siteId, mod, itemId, ifMatch) {
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/lists/${encodeURIComponent(mod.listName())}/items/${encodeURIComponent(itemId)}`,
-    { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }
+    {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}`, ...(ifMatch ? { 'If-Match': ifMatch } : {}) },
+    }
   );
+  if (res.status === 412) return false;
   if (!res.ok && res.status !== 204) {
     throw new Error(`Could not delete the request (${res.status}): ${await res.text()}`);
   }
+  return true;
+}
+
+/** Why this row can't be deleted by its requester, or null if it can. */
+function blockedReason(mod, fields) {
+  const status = fields.Status || 'Pending';
+  if (status !== 'Pending') return `This request was already ${String(status).toLowerCase()} and can no longer be deleted.`;
+  /* Overall Status stays Pending until the last stage, so it alone would let a
+   * requester erase a request an approver has already signed. */
+  const signed = mod.stages.find((s) => fields[s.statusField] === 'Approved');
+  if (signed) return `The ${signed.label.toLowerCase()} has already approved this, so it can no longer be deleted.`;
+  return null;
 }
 
 module.exports = async function handler(req, res) {
@@ -49,7 +66,7 @@ module.exports = async function handler(req, res) {
     const token  = await getAppToken();
     const siteId = await getSiteId(token);
 
-    const fields = await getRow(token, siteId, mod, itemId);
+    const { fields, etag } = await getRowWithEtag(token, siteId, mod, itemId);
     const summary = mod.summarise(fields);
     const claimRef = `${mod.refPrefix}-${itemId}`;
 
@@ -59,28 +76,22 @@ module.exports = async function handler(req, res) {
       return res.status(403).json({ error: 'You can only delete your own requests.' });
     }
 
-    // Guard 2: a decided request is a record, not a draft.
-    const status = fields.Status || 'Pending';
-    if (status !== 'Pending') {
-      return res.status(409).json({
-        error: `This request was already ${String(status).toLowerCase()} and can no longer be deleted.`,
-      });
+    // Guard 2: a decided request, or one any stage has approved, is a record.
+    const blocked = blockedReason(mod, fields);
+    if (blocked) return res.status(409).json({ error: blocked });
+
+    /* Delete only if nothing changed since the checks above, so an approval
+     * landing in between can't be wiped. A tag mismatch alone isn't proof of an
+     * approval (any column edit changes it), so re-check and only then delete
+     * without the tag. */
+    if (!(await deleteItem(token, siteId, mod, itemId, etag || undefined))) {
+      const again = blockedReason(mod, await getRow(token, siteId, mod, itemId));
+      if (again) return res.status(409).json({ error: again });
+      await deleteItem(token, siteId, mod, itemId);
     }
 
-    /* Tell the waiting approver before the row goes, since the notice is built
-     * from it. A mail failure must not block the delete: the person asked for
-     * this to disappear, and leaving it behind because Exchange hiccuped would
-     * be the wrong trade. */
-    /* Overall Status stays Pending until the last stage, so it alone would let
-     * a requester erase a request an approver has already signed. Any approved
-     * stage makes it a record too. */
-    const signedStage = mod.stages.find((s) => fields[s.statusField] === 'Approved');
-    if (signedStage) {
-      return res.status(409).json({
-        error: `The ${signedStage.label.toLowerCase()} has already approved this, so it can no longer be deleted.`,
-      });
-    }
-
+    /* Tell the waiting approver only once the row is really gone. A mail
+     * failure is reported, never fatal: the request is already deleted. */
     const stage = currentStage(mod, fields);
     const waiting = stage && { stage, approver: fields[stage.approverField].trim() };
     let notified = false;
@@ -102,8 +113,6 @@ module.exports = async function handler(req, res) {
         console.error('[cancel] withdrawal mail failed:', e.message);
       }
     }
-
-    await deleteItem(token, siteId, mod, itemId);
 
     // Best effort, and never fatal: an orphaned folder beats a half-done delete.
     const filesRemoved = await deleteAttachments(token, siteId, claimRef, [
