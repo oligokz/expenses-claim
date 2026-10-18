@@ -144,12 +144,33 @@ const STEP_STYLE = {
   rejected: { dot: 'background:#dc2626;border:2px solid #dc2626', badge: 'Rejected', badgeCss: 'color:#b91c1c;background:#fef2f2;border:1px solid #fecaca', text: '#111111' },
 };
 
+/** "15 Oct 2026, 10:00 am" in Singapore time; date only when there is no time. */
+function whenText(value) {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(String(value));
+  if (dateOnly) return shortDate(value, true);
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return String(value);
+  const time = d.toLocaleTimeString('en-SG', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Singapore' }).toLowerCase();
+  return `${shortDate(value, true)}, ${time}`;
+}
+
+/** What happened at a step, in words. Mirrors src/components/Timeline.tsx. */
+function stepText(s, prev) {
+  if (s.label === 'Submitted') return s.date ? `Submitted ${whenText(s.date)}` : 'Submitted';
+  const what =
+    s.status === 'done' ? (s.date ? `Approved ${whenText(s.date)}` : 'Approved')
+    : s.status === 'rejected' ? (s.date ? `Rejected ${whenText(s.date)}` : 'Rejected')
+    : s.status === 'current' ? (prev?.date ? `Waiting since ${whenText(prev.date)}` : 'Waiting')
+    : prev ? `After ${prev.name}` : '';
+  return [s.label !== s.name ? s.label : '', what].filter(Boolean).join(' · ');
+}
+
 function timelineHtml(steps) {
   if (!steps || !steps.length) return '';
   const rowsHtml = steps.map((s, i) => {
     const st = STEP_STYLE[s.status] || STEP_STYLE.upcoming;
     const last = i === steps.length - 1;
-    const sub = [s.label !== s.name ? s.label : '', s.date ? shortDate(s.date, true) : ''].filter(Boolean).join(' · ');
+    const sub = stepText(s, steps[i - 1]);
     return `<tr>
       <td width="22" style="width:22px;vertical-align:top;padding:3px 0 0">
         <div style="width:10px;height:10px;border-radius:50%;${st.dot};margin:0 auto"></div>

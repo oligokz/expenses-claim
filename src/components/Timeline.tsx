@@ -27,11 +27,28 @@ const DOT: Record<RouteStep["status"], string> = {
   rejected: "border-destructive bg-destructive",
 }
 
-function fmtDate(s: string) {
-  const d = new Date(s)
-  return isNaN(d.getTime())
-    ? s
-    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+/** "15 Oct 2026, 10:00 am" in Singapore time; date only when there is no time. */
+function fmtWhen(s: string) {
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(s)
+  const d = new Date(dateOnly ? `${s}T00:00:00+08:00` : s)
+  if (isNaN(d.getTime())) return s
+  const opts = { timeZone: "Asia/Singapore" } as const
+  const date = d.toLocaleDateString("en-GB", { ...opts, day: "numeric", month: "short", year: "numeric" })
+  if (dateOnly) return date
+  const time = d.toLocaleTimeString("en-SG", { ...opts, hour: "numeric", minute: "2-digit" }).toLowerCase()
+  return `${date}, ${time}`
+}
+
+/** What happened at this step, in words: "Approved 15 Oct 2026, 10:00 am". */
+function describe(s: RouteStep, prev?: RouteStep): string {
+  if (s.label === "Submitted") return s.date ? `Submitted ${fmtWhen(s.date)}` : "Submitted"
+  const what =
+    s.status === "done" ? (s.date ? `Approved ${fmtWhen(s.date)}` : "Approved")
+    : s.status === "rejected" ? (s.date ? `Rejected ${fmtWhen(s.date)}` : "Rejected")
+    : s.status === "current" ? (prev?.date ? `Waiting since ${fmtWhen(prev.date)}` : "Waiting")
+    : prev ? `After ${prev.name}` : ""
+  // A one-person step like "Finance" needn't repeat its name as its role.
+  return [s.label !== s.name ? s.label : "", what].filter(Boolean).join(" · ")
 }
 
 /**
@@ -44,9 +61,7 @@ export function Timeline({ steps, className }: { steps: RouteStep[]; className?:
       {steps.map((s, i) => {
         const last = i === steps.length - 1
         const dim = s.status === "upcoming"
-        const sub = [s.label !== s.name ? s.label : "", s.date ? fmtDate(s.date) : ""]
-          .filter(Boolean)
-          .join(" · ")
+        const sub = describe(s, steps[i - 1])
         return (
           <li key={`${s.label}-${i}`} className="relative flex gap-3 pb-4 last:pb-0">
             {!last && (
