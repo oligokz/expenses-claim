@@ -117,7 +117,7 @@ function StatusBadge({ status }: { status: string }) {
 const TYPE_TINT: Record<RequestType, string> = {
   // DESIGN.md: never blue, green, teal, amber or red, which carry meaning elsewhere.
   expense: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  leave: "bg-stone-500/15 text-stone-700 dark:text-stone-300",
+  leave: "bg-stone-500/15 text-stone-700 dark:bg-stone-400/25 dark:text-stone-100",
   travel: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
   requisition: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
 }

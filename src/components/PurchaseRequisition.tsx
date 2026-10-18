@@ -114,8 +114,8 @@ const BEFORE_ITEMS: (keyof RequisitionErrors)[] = ["department"]
 const AFTER_ITEMS: (keyof RequisitionErrors)[] = [
   "vendorName",
   "vendorEmail",
-  "quotation",
   "projectCustomer",
+  "quotation",
   // The approver card is last on the form, so its error comes last too.
   "reportingManager",
 ]
@@ -613,17 +613,6 @@ export function PurchaseRequisition({
           </div>
         </SectionCard>
 
-        <div className="flex flex-col gap-1.5">
-          <Receipts
-            files={files}
-            onAdd={addFiles}
-            onRemove={removeFile}
-            title="Quotation"
-            hint={`PDF or photo, up to ${MAX_UPLOAD_LABEL} each`}
-          />
-          <FieldError id="req-quotation-error" message={errors.quotation} />
-        </div>
-
         {/* ── Project ── */}
         <SectionCard icon={<Briefcase />} title="Project">
           <div className="flex flex-col gap-1.5">
@@ -646,6 +635,17 @@ export function PurchaseRequisition({
             />
           </div>
         </SectionCard>
+
+        <div className="flex flex-col gap-1.5">
+          <Receipts
+            files={files}
+            onAdd={addFiles}
+            onRemove={removeFile}
+            title="Quotation"
+            hint={`PDF or photo, up to ${MAX_UPLOAD_LABEL} each`}
+          />
+          <FieldError id="req-quotation-error" message={errors.quotation} />
+        </div>
 
         {/* ── Approval ── approvers sit last on every form, just above Submit. */}
         <SectionCard icon={<CheckCircle2 />} title="Approval">
