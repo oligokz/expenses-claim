@@ -1,7 +1,7 @@
 const { getAppToken, getSiteId, verifyUserToken, applyCors } = require('./_lib/sharepoint');
 const { sendError } = require('./_lib/http');
 const { itemsFromRow, itemsTitle } = require('./_lib/requisitionItems');
-const { getModule, waitingOn } = require('./_lib/approvals');
+const { getModule, waitingOn, buildRoute } = require('./_lib/approvals');
 const { listApprovers } = require('./_lib/approvers');
 
 /* The three lists a person can have rows in, and how each one names things.
@@ -155,6 +155,7 @@ module.exports = async function handler(req, res) {
               ? { name: 'Finance', stageLabel: '', since: '', team: true }
               : null,
           lastReminderAt: f.LastReminderAt || null,
+          route: buildRoute(getModule(source.type), f, nameOf),
         });
       }
     });

@@ -186,6 +186,8 @@ export interface ApprovalView {
   currency?: string
   /** Receipts, MCs or quotations filed against the request. */
   attachments: ApprovalAttachment[]
+  /** Submitted, then each approver, for the progress timeline. */
+  route?: RouteStep[]
 }
 
 export interface ApprovalAttachment {
@@ -247,6 +249,17 @@ export interface MyRequest {
   waitingOn: { name: string; stageLabel: string; since: string; team?: boolean } | null
   /** When the requester last pressed Remind, if ever. */
   lastReminderAt: string | null
+  /** Submitted, then each approver, for the progress timeline. */
+  route: RouteStep[]
+}
+
+/** One step of a request's approval path, for the timeline. */
+export interface RouteStep {
+  /** "Submitted", "Approver", "Finance/HR", ... */
+  label: string
+  name: string
+  status: "done" | "current" | "upcoming" | "rejected"
+  date: string | null
 }
 
 /** Where a request stands, shown to someone who opened a link not meant for them. */

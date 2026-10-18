@@ -1,0 +1,86 @@
+import type { RouteStep } from "@/lib/types"
+import { cn } from "@/lib/utils"
+
+const BADGE: Record<RouteStep["status"], { text: string; className: string }> = {
+  done: {
+    text: "Done",
+    className: "border-success/30 bg-success/10 text-success",
+  },
+  current: {
+    text: "Pending",
+    className: "border-foreground bg-foreground text-background",
+  },
+  upcoming: {
+    text: "Upcoming",
+    className: "border-border bg-card text-muted-foreground",
+  },
+  rejected: {
+    text: "Rejected",
+    className: "border-destructive/30 bg-destructive/10 text-destructive",
+  },
+}
+
+const DOT: Record<RouteStep["status"], string> = {
+  done: "border-success bg-card ring-success",
+  current: "border-foreground bg-foreground",
+  upcoming: "border-border bg-card",
+  rejected: "border-destructive bg-destructive",
+}
+
+function fmtDate(s: string) {
+  const d = new Date(s)
+  return isNaN(d.getTime())
+    ? s
+    : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+}
+
+/**
+ * A request's path as a vertical timeline: submitted, then each approver.
+ * Steps still to come are dimmed, so where it stands reads at a glance.
+ */
+export function Timeline({ steps, className }: { steps: RouteStep[]; className?: string }) {
+  return (
+    <ol className={cn("flex flex-col", className)} aria-label="Approval progress">
+      {steps.map((s, i) => {
+        const last = i === steps.length - 1
+        const dim = s.status === "upcoming"
+        const sub = [s.label !== s.name ? s.label : "", s.date ? fmtDate(s.date) : ""]
+          .filter(Boolean)
+          .join(" · ")
+        return (
+          <li key={`${s.label}-${i}`} className="relative flex gap-3 pb-4 last:pb-0">
+            {!last && (
+              <span
+                aria-hidden="true"
+                className="absolute top-5 bottom-0 left-[9px] w-0.5 bg-border"
+              />
+            )}
+            <span
+              aria-hidden="true"
+              className={cn(
+                "relative mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border-2",
+                DOT[s.status],
+              )}
+            >
+              {s.status === "done" && <span className="size-2 rounded-full bg-success" />}
+            </span>
+            <div className={cn("min-w-0", dim && "opacity-55")}>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="text-sm font-semibold">{s.name}</span>
+                <span
+                  className={cn(
+                    "rounded-full border px-2 py-px text-[11px] font-semibold",
+                    BADGE[s.status].className,
+                  )}
+                >
+                  {BADGE[s.status].text}
+                </span>
+              </div>
+              {sub && <div className="mt-0.5 text-xs text-muted-foreground">{sub}</div>}
+            </div>
+          </li>
+        )
+      })}
+    </ol>
+  )
+}

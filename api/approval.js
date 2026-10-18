@@ -3,11 +3,11 @@ const {
 } = require('./_lib/sharepoint');
 const {
   MODULES, readToken, mintToken, getRow, getRowWithEtag, patchRow,
-  assertActionable, currentStage, waitingOn, isExpectedApprover, TOKEN_TTL_DAYS,
+  assertActionable, currentStage, waitingOn, buildRoute, isExpectedApprover, TOKEN_TTL_DAYS,
 } = require('./_lib/approvals');
 const { sendMail, templates } = require('./_lib/mail');
 const { listAttachments, topFolderFor } = require('./_lib/attachments');
-const { approverName } = require('./_lib/approvers');
+const { approverName, nameLookup } = require('./_lib/approvers');
 const { sendError } = require('./_lib/http');
 const { buildRequisitionPdf, buildTravelPdf, storePdf, fetchDriveFile } = require('./_lib/pdf');
 
@@ -340,6 +340,7 @@ async function handleGet(req, res) {
     reason,
     status: fields.Status || 'Pending',
     attachments,
+    route: buildRoute(mod, fields, await nameLookup(token, siteId)),
     ...mod.summarise(fields),
   });
 }
@@ -395,14 +396,15 @@ async function handlePost(req, res) {
 
   /* ── rejection ends it ── */
   if (decision === 'reject') {
-    await commit({
+    const rejectPatch = {
       [stage.statusField]: 'Rejected',
       [stage.dateField]:   nowIso(),
       [stage.signedNameField]: user.name,
       [stage.tokenField]:  '',            // spend the link
       Status:              'Rejected',
       ...noteWith('Rejected'),
-    });
+    };
+    await commit(rejectPatch);
 
     if (requesterEmail) {
       try {
@@ -412,6 +414,7 @@ async function handlePost(req, res) {
           ...templates.decisionNotice({
             kind: mod.kind, claimRef, item, decision: 'rejected',
             decidedBy: user.name, stageLabel: stage.label, comment, complete: true,
+            route: buildRoute(mod, { ...fields, ...rejectPatch }, await nameLookup(token, siteId)),
           }),
         });
       } catch (e) {
@@ -527,6 +530,11 @@ async function handlePost(req, res) {
           comment, complete: !next, pdfUrl,
           nextApprover: nextApprover?.name || null,
           remaining,
+          route: buildRoute(
+            mod,
+            { ...fields, ...patch, ...(next ? {} : { Status: 'Approved' }) },
+            await nameLookup(token, siteId),
+          ),
         }),
       });
     } catch (e) {

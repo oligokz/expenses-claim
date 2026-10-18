@@ -99,4 +99,13 @@ async function approverName(token, siteId, email) {
   }
 }
 
-module.exports = { listApprovers, assertApproversAllowed, approverName };
+/**
+ * A synchronous email-to-name function, built from one read of the roster, for
+ * pages that name several approvers at once. Falls back to the email.
+ */
+async function nameLookup(token, siteId) {
+  const roster = await listApprovers(token, siteId, { includeInactive: true }).catch(() => null);
+  return (email) => roster?.find((a) => norm(a.email) === norm(email))?.name || email;
+}
+
+module.exports = { listApprovers, assertApproversAllowed, approverName, nameLookup };

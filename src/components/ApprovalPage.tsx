@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   ExternalLink,
   FileText,
+  ListChecks,
   Loader2,
   Paperclip,
   ThumbsDown,
@@ -16,6 +17,7 @@ import { toast } from "sonner"
 
 import { SectionCard } from "@/components/SectionCard"
 import { SignaturePad } from "@/components/SignaturePad"
+import { Timeline } from "@/components/Timeline"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
@@ -330,6 +332,12 @@ export function ApprovalPage({ token }: { token: string }) {
                 </li>
               ))}
             </ul>
+          </SectionCard>
+        )}
+
+        {view.route && view.route.length > 1 && (
+          <SectionCard icon={<ListChecks />} title="Progress">
+            <Timeline steps={view.route} />
           </SectionCard>
         )}
 

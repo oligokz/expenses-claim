@@ -134,7 +134,38 @@ function itemsTable(items, currency) {
   </table>`;
 }
 
-function layout({ heading, intro, body, items, currency, rows, action, footer }) {
+/* The approval route as a vertical timeline, built from tables so it holds
+ * up in Outlook. Desktop Outlook ignores border-radius, so its dots render
+ * square; everything else still reads correctly. */
+const STEP_STYLE = {
+  done:     { dot: 'background:#10b981;border:2px solid #10b981', badge: 'Done',     badgeCss: 'color:#047857;background:#ecfdf5;border:1px solid #a7f3d0', text: '#111111' },
+  current:  { dot: 'background:#111111;border:2px solid #111111', badge: 'Pending',  badgeCss: 'color:#ffffff;background:#111111;border:1px solid #111111', text: '#111111' },
+  upcoming: { dot: 'background:#ffffff;border:2px solid #d4d4d8', badge: 'Upcoming', badgeCss: 'color:#71717a;background:#ffffff;border:1px solid #e4e4e7', text: '#a1a1aa' },
+  rejected: { dot: 'background:#dc2626;border:2px solid #dc2626', badge: 'Rejected', badgeCss: 'color:#b91c1c;background:#fef2f2;border:1px solid #fecaca', text: '#111111' },
+};
+
+function timelineHtml(steps) {
+  if (!steps || !steps.length) return '';
+  const rowsHtml = steps.map((s, i) => {
+    const st = STEP_STYLE[s.status] || STEP_STYLE.upcoming;
+    const last = i === steps.length - 1;
+    const sub = [s.label !== s.name ? s.label : '', s.date ? shortDate(s.date, true) : ''].filter(Boolean).join(' · ');
+    return `<tr>
+      <td width="22" style="width:22px;vertical-align:top;padding:3px 0 0">
+        <div style="width:10px;height:10px;border-radius:50%;${st.dot};margin:0 auto"></div>
+        ${last ? '' : '<div style="width:2px;height:34px;background:#e4e4e7;margin:4px auto 0"></div>'}
+      </td>
+      <td style="vertical-align:top;padding:0 0 ${last ? '0' : '10px'} 10px">
+        <span style="font-size:14px;font-weight:600;color:${st.text}">${esc(s.name)}</span>
+        <span style="display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:600;${st.badgeCss}">${st.badge}</span>
+        ${sub ? `<div style="font-size:12px;color:#888888;margin-top:2px">${esc(sub)}</div>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 20px">${rowsHtml}</table>`;
+}
+
+function layout({ heading, intro, body, items, currency, rows, action, footer, timeline }) {
   const cells = rows
     .filter(([, v]) => v !== '' && v !== null && v !== undefined)
     .map(
@@ -161,6 +192,7 @@ function layout({ heading, intro, body, items, currency, rows, action, footer })
     <tr><td style="padding:28px 28px 20px">
       <h1 style="margin:0 0 8px;font-size:19px;font-weight:700">${esc(heading)}</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.5">${esc(intro)}</p>
+      ${timelineHtml(timeline)}
       ${
         // Free text (an expense description, a leave reason) reads as prose, not
         // as another label/value row, so it gets its own block above the table.
@@ -255,7 +287,7 @@ function approvalRequest({
  * that, requesters forwarded this notice to the next approver, whose only link
  * was the requester's own "View my requests" (REQ-19).
  */
-function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover, remaining = [] }) {
+function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel, comment, complete, pdfUrl, nextApprover, remaining = [], route }) {
   const approved = decision === 'approved';
   const what = (kind || 'Request').toLowerCase();
   const moving = approved && !complete;
@@ -277,10 +309,12 @@ function decisionNotice({ kind, claimRef, item, decision, decidedBy, stageLabel,
         : approved
           ? `Your ${what} has been fully approved.`
           : `${decidedBy} has rejected your ${what}.`,
+      timeline: route,
       rows: [
         ['Reference', claimRef],
         ['Item', item],
-        [approved ? 'Approved by' : 'Rejected by', decidedBy],
+        // The timeline already says who decided.
+        [approved ? 'Approved by' : 'Rejected by', route ? '' : decidedBy],
         ['Comment', comment || ''],
       ],
       action:

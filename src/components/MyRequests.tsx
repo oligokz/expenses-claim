@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   BellRing,
   CalendarDays,
+  ChevronDown,
   FileDown,
   Inbox,
   Loader2,
@@ -17,6 +18,7 @@ import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Timeline } from "@/components/Timeline"
 import { deleteRequest, fetchMyRequests, remindApprover } from "@/lib/api"
 import { fmt } from "@/lib/currency"
 import type { MyRequest, RequestType } from "@/lib/types"
@@ -99,6 +101,14 @@ export function MyRequests() {
   const [confirming, setConfirming] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [reminding, setReminding] = useState<string | null>(null)
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  const toggleOpen = (id: string) =>
+    setOpen((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   const load = () => {
     setState("loading")
@@ -298,6 +308,20 @@ export function MyRequests() {
                   <div className="truncate text-xs text-muted-foreground">
                     {fmtDate(r.date)}
                   </div>
+                  {r.route?.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleOpen(r.id)}
+                      aria-expanded={open.has(r.id)}
+                      className="-mx-1 mt-1 inline-flex items-center gap-1 rounded px-1 text-xs font-medium text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50"
+                    >
+                      {open.has(r.id) ? "Hide progress" : "Show progress"}
+                      <ChevronDown
+                        className={cn("size-3.5 transition-transform motion-reduce:transition-none", open.has(r.id) && "rotate-180")}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  )}
                 </div>
 
                 {/* Leave carries no money value, show its duration instead of a
@@ -382,6 +406,12 @@ export function MyRequests() {
                         Reminded {shortDate(r.lastReminderAt!)}
                       </span>
                     )}
+                  </div>
+                )}
+
+                {open.has(r.id) && (
+                  <div className="order-5 col-span-2 mt-2 rounded-lg border bg-card px-4 py-3 sm:col-span-4">
+                    <Timeline steps={r.route} />
                   </div>
                 )}
 

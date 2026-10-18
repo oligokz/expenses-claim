@@ -421,6 +421,52 @@ function waitingOn(mod, fields) {
   return { stage, email: (fields[stage.approverField] || '').trim(), since };
 }
 
+/**
+ * The request's path as a timeline: submitted, then each approver in order.
+ *
+ * Each step is { label, name, status, date } where status is 'done',
+ * 'current', 'upcoming' or 'rejected'. `nameOf(email)` turns an approver's
+ * address into a display name. Expense claims have no approver in the app, so
+ * their second step is Finance.
+ */
+function buildRoute(mod, fields, nameOf = (e) => e) {
+  const summary = mod.summarise(fields);
+  const steps = [{
+    label: 'Submitted',
+    name: summary.requester,
+    status: 'done',
+    date: fields.SubmissionDate || fields.Created || null,
+  }];
+  const now = currentStage(mod, fields);
+  const named = mod.stages.filter((s) => (fields[s.approverField] || '').trim());
+
+  if (!named.length && mod.refPrefix === 'EXP') {
+    const st = fields.Status || 'Pending';
+    steps.push({
+      label: 'Finance', name: 'Finance',
+      status: st === 'Approved' ? 'done' : st === 'Rejected' ? 'rejected' : 'current',
+      date: st === 'Pending' ? null : fields.DecisionDate || null,
+    });
+    return steps;
+  }
+
+  for (const s of named) {
+    const st = fields[s.statusField];
+    const status =
+      st === 'Approved' ? 'done'
+      : st === 'Rejected' ? 'rejected'
+      : now && now.n === s.n ? 'current'
+      : 'upcoming';
+    steps.push({
+      label: s.label,
+      name: nameOf((fields[s.approverField] || '').trim()),
+      status,
+      date: status === 'done' || status === 'rejected' ? fields[s.dateField] || null : null,
+    });
+  }
+  return steps;
+}
+
 /** Does the signed-in person match the approver this stage is addressed to? */
 function isExpectedApprover(fields, stage, email) {
   const expected = (fields[stage.approverField] || '').trim().toLowerCase();
@@ -440,6 +486,7 @@ module.exports = {
   assertActionable,
   currentStage,
   waitingOn,
+  buildRoute,
   isExpectedApprover,
   TOKEN_TTL_DAYS,
 };
