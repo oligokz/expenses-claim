@@ -22,6 +22,7 @@ import { Initials } from "@/components/Initials"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/FieldError"
 import { FieldLabel } from "@/components/FieldLabel"
 
 import { fetchApproval, NotYoursError, submitApproval } from "@/lib/api"
@@ -57,6 +58,7 @@ export function ApprovalPage({ token }: { token: string }) {
   const [view, setView] = useState<ApprovalView | null>(null)
   const [error, setError] = useState("")
   const [comment, setComment] = useState("")
+  const [commentError, setCommentError] = useState("")
   const [signature, setSignature] = useState("")
   const [busy, setBusy] = useState<"approve" | "reject" | null>(null)
   const [outcome, setOutcome] = useState<Outcome | null>(null)
@@ -93,9 +95,11 @@ export function ApprovalPage({ token }: { token: string }) {
       return
     }
     if (decision === "reject" && !comment.trim()) {
-      toast.error("Add a comment to say why you're rejecting it")
+      setCommentError("Give a reason for rejecting")
+      document.getElementById("approval-comment")?.focus()
       return
     }
+    setCommentError("")
 
     setBusy(decision)
     try {
@@ -379,9 +383,15 @@ export function ApprovalPage({ token }: { token: string }) {
               <Textarea
                 id="approval-comment"
                 value={comment}
-                onChange={(e) => setComment(e.target.value)}
+                onChange={(e) => {
+                  setComment(e.target.value)
+                  if (e.target.value.trim()) setCommentError("")
+                }}
+                aria-invalid={!!commentError || undefined}
+                aria-describedby={commentError ? "approval-comment-error" : undefined}
                 className="min-h-20 resize-y bg-card"
               />
+              <FieldError id="approval-comment-error" message={commentError} />
             </div>
 
             {view.requiresSignature && (
@@ -470,7 +480,7 @@ function ItemsTable({
                 </div>
               </td>
               <td className="py-2 pr-4 text-right tabular-nums">{it.quantity}</td>
-              <td className="py-2 pr-4 text-right tabular-nums">{it.unitPrice == null ? "–" : fmt(it.unitPrice)}</td>
+              <td className="py-2 pr-4 text-right tabular-nums">{it.unitPrice == null ? "-" : fmt(it.unitPrice)}</td>
               <td className="py-2 text-right font-medium tabular-nums">{fmt(it.total)}</td>
             </tr>
           ))}

@@ -1,9 +1,9 @@
 import { ArrowRightLeft, RefreshCw } from "lucide-react"
 import {
   ALL_CURRENCIES,
-  BIG_UNIT_CURRENCIES,
   CURRENCY_NAMES,
 } from "@/lib/constants"
+import { rateInSGD } from "@/lib/currency"
 import type { Rates, RateStatus } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -45,7 +45,7 @@ export function RatesPanel({
           >
             <ArrowRightLeft />
           </span>
-          Live Exchange Rates
+          Value in SGD
         </div>
         <button
           type="button"
@@ -58,11 +58,6 @@ export function RatesPanel({
       </div>
 
       <div className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-[11px] font-medium text-muted-foreground">
-          <span className="h-px w-6 bg-border" />
-          Base currency: SGD
-        </div>
-
         {shown.length === 0 ? (
           <div className="py-6 text-center text-xs text-muted-foreground">
             Fetching rates
@@ -70,24 +65,21 @@ export function RatesPanel({
         ) : (
           <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
             {shown.map((c) => {
-              const big = BIG_UNIT_CURRENCIES.has(c)
-              const v = rates[c].toLocaleString("en-SG", {
-                maximumFractionDigits: big ? 0 : 4,
-                minimumFractionDigits: big ? 0 : 2,
-              })
+              const rate = rateInSGD(c, rates)
+              if (!rate) return null
               return (
                 <div
                   key={c}
                   className="rounded-lg border bg-secondary px-2.5 py-2"
                 >
                   <div className="text-[11px] font-semibold tracking-wide text-muted-foreground">
-                    SGD→{c}
+                    {rate.units}
                   </div>
                   <div className="truncate text-[11px] text-muted-foreground">
                     {CURRENCY_NAMES[c] ?? c}
                   </div>
                   <div className="font-mono text-sm font-semibold tabular-nums">
-                    {v}
+                    {rate.sgd}
                   </div>
                 </div>
               )

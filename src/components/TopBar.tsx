@@ -1,6 +1,7 @@
 import { ArrowRightLeft, Check, ChevronsUpDown, LogOut } from "lucide-react"
 import { useTheme } from "next-themes"
 import { DropdownMenu } from "radix-ui"
+import { Initials } from "@/components/Initials"
 import { THEME_OPTIONS } from "@/components/ThemeChoice"
 
 interface TopBarProps {
@@ -9,28 +10,17 @@ interface TopBarProps {
   onViewRates: () => void
 }
 
-/** Deterministic DiceBear avatar, seeded per user so each person is consistent. */
-function avatarUrl(seed: string) {
-  return `https://api.dicebear.com/10.x/adventurer-neutral/svg?seed=${encodeURIComponent(
-    seed || "user",
-  )}`
-}
-
 export function TopBar({ userName, onLogout, onViewRates }: TopBarProps) {
   const { theme = "system", setTheme } = useTheme()
   return (
     <header className="sticky top-0 z-50 bg-surface-dark text-surface-dark-foreground">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
-        <img src="/logo.svg" alt="Company logo" className="h-6 w-auto sm:h-7" />
+        <img src="/logo.svg" alt="CREOX" className="h-6 w-auto sm:h-7" />
 
         <DropdownMenu.Root>
           <DropdownMenu.Trigger className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 outline-none transition-colors hover:bg-white/10 focus-visible:ring-[3px] focus-visible:ring-white/40">
-            <img
-              src={avatarUrl(userName)}
-              alt=""
-              aria-hidden="true"
-              className="size-7 shrink-0 rounded-full bg-white/15"
-            />
+            {/* Drawn locally: an avatar service would receive every employee's name. */}
+            <Initials name={userName} className="size-7 bg-white/15 text-xs text-surface-dark-foreground" />
             {userName && (
               <span className="hidden max-w-[160px] truncate text-sm font-medium md:inline">
                 {userName}

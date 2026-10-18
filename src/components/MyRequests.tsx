@@ -88,6 +88,12 @@ export function fmtDate(s: string) {
       })
 }
 
+/** A leave card shows the days taken, not the day it was filed. */
+function leaveDates(detail: string) {
+  const [from, to] = detail.split(" → ")
+  return !to || to === from ? fmtDate(from) : `${fmtDate(from)} to ${fmtDate(to)}`
+}
+
 function StatusBadge({ status }: { status: string }) {
   const s = status.toLowerCase()
   return (
@@ -109,10 +115,11 @@ function StatusBadge({ status }: { status: string }) {
 /* One tint per type, so a list can be scanned by kind before reading. None
    is green, amber or red: those already mean approved, overdue and rejected. */
 const TYPE_TINT: Record<RequestType, string> = {
-  expense: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-  leave: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  travel: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-  requisition: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  // DESIGN.md: never blue, green, teal, amber or red, which carry meaning elsewhere.
+  expense: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  leave: "bg-stone-500/15 text-stone-700 dark:text-stone-300",
+  travel: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  requisition: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
 }
 
 export function TypeBadge({ type }: { type: RequestType }) {
@@ -400,7 +407,9 @@ export function MyRequests() {
               <div className="mt-1.5 flex items-end justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate text-[15px] font-semibold">{r.title || "-"}</div>
-                  <div className="text-xs text-muted-foreground">{fmtDate(r.date)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {r.type === "leave" && r.detail ? leaveDates(r.detail) : fmtDate(r.date)}
+                  </div>
                 </div>
                 <div className="shrink-0 text-right font-mono text-base font-bold tabular-nums">
                   {r.amountSGD === null ? r.meta || "-" : `SGD ${fmt(r.amountSGD)}`}

@@ -53,7 +53,8 @@ export function Receipts({
           onAdd(e.dataTransfer.files)
         }}
         className={cn(
-          "flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors",
+          // A one-line row on phones, where the full drop target only pushed Submit away.
+          "flex cursor-pointer items-center gap-3 rounded-xl border-2 border-dashed px-4 py-3 text-left transition-colors sm:flex-col sm:gap-0 sm:py-8 sm:text-center",
           drag
             ? "border-primary bg-accent"
             : "border-border hover:border-muted-foreground/40 hover:bg-muted/40",
@@ -69,15 +70,17 @@ export function Receipts({
             e.target.value = ""
           }}
         />
-        <span className="mb-3 grid size-12 place-items-center rounded-full bg-secondary text-muted-foreground">
+        <span className="grid size-10 shrink-0 place-items-center rounded-full bg-secondary text-muted-foreground sm:mb-3 sm:size-12">
           <UploadCloud className="size-5" />
         </span>
-        <span className="text-sm text-foreground">
-          {/* Phones have nothing to drag, so only offer it where there is. */}
-          <span className="font-semibold">Choose files</span>
-          <span className="hidden sm:inline"> or drag them here</span>
+        <span className="flex min-w-0 flex-col">
+          <span className="text-sm text-foreground">
+            {/* Phones have nothing to drag, so only offer it where there is. */}
+            <span className="font-semibold">Choose files</span>
+            <span className="hidden sm:inline"> or drag them here</span>
+          </span>
+          <span className="mt-0.5 text-xs text-muted-foreground sm:mt-1">{hint}</span>
         </span>
-        <span className="mt-1 text-xs text-muted-foreground">{hint}</span>
       </label>
 
       {files.length > 0 && (

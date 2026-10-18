@@ -16,7 +16,7 @@ import {
   CATEGORIES,
   CURRENCY_NAMES,
 } from "@/lib/constants"
-import { fmt, num, toSGD } from "@/lib/currency"
+import { fmt, num, rateInSGD, toSGD } from "@/lib/currency"
 import type { FormErrors, LineRow, Rates } from "@/lib/types"
 
 interface ExpenseDetailsProps {
@@ -31,10 +31,8 @@ interface ExpenseDetailsProps {
 export function LineItems({ row, rates, onUpdate, errors, onViewRates }: ExpenseDetailsProps) {
   const lineTotal = num(row.amt) * (num(row.qty) || 1)
   const sgd = toSGD(lineTotal, row.cur, rates)
-  const rateNote =
-    row.cur !== "SGD" && row.amt && rates[row.cur]
-      ? `1 ${row.cur} = ${fmt(1 / rates[row.cur], 4)} SGD`
-      : ""
+  const rate = row.cur !== "SGD" && row.amt ? rateInSGD(row.cur, rates) : null
+  const rateNote = rate ? `${rate.units} = ${rate.sgd} SGD` : ""
 
   return (
     <SectionCard
