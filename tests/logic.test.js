@@ -63,3 +63,15 @@ test('a request can be deleted only before anyone approves it', () => {
   assert.match(blockedReason(travel, trip({ ReportingManagerStatus: 'Approved' })), /already approved/);
   assert.match(blockedReason(travel, trip({ Status: 'Rejected' })), /already rejected/);
 });
+
+const { assertApproversAllowed } = require('../api/_lib/approvers');
+
+test('an expense claim with no approver passes the approver check', async () => {
+  // No roster read happens for a blank list, so no token or site is needed.
+  await assert.doesNotReject(assertApproversAllowed(null, null, 'joanne@x', [undefined]));
+  await assert.doesNotReject(assertApproversAllowed(null, null, 'joanne@x', ['', null]));
+});
+
+test('naming yourself as approver is still refused', async () => {
+  await assert.rejects(assertApproversAllowed(null, null, 'joanne@x', ['Joanne@x']), /cannot nominate yourself/);
+});

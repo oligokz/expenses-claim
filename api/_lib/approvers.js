@@ -61,6 +61,8 @@ const coversStage = (entry, stage) =>
  */
 async function assertApproversAllowed(token, siteId, requesterEmail, nominees) {
   const named = nominees
+    // Expense claims name no approver, so a blank (undefined) entry is normal.
+    .filter(Boolean)
     .map((n) => (typeof n === 'string' ? { email: n } : n))
     .map((n) => ({ email: norm(n.email), stage: n.stage || null }))
     .filter((n) => n.email);
