@@ -36,7 +36,12 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     // Without a first approver the requisition is saved but never reaches anyone.
     if (!String(reportingManager || '').trim())
-      return res.status(400).json({ error: 'Select the approver' });
+      return res.status(400).json({ error: 'Select the reporting manager' });
+    // Two signatures, as on the paper form: a manager, then final approval.
+    if (!String(finalApprover || '').trim())
+      return res.status(400).json({ error: 'Select the final approver' });
+    if (String(finalApprover).trim().toLowerCase() === String(reportingManager).trim().toLowerCase())
+      return res.status(400).json({ error: 'Choose someone other than the reporting manager for final approval' });
 
     const items = normaliseItems(rawItems);
 

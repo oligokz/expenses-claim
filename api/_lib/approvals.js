@@ -28,9 +28,9 @@ const MODULES = {
         // What people see. `listValue` is the ApprovalStage choice stored in
         // SharePoint, renaming the display must not break matching against
         // existing rows or the Requisition Approvers list.
-        // The form now asks for one approver. Stage 2 stays for requisitions
-        // submitted with a second approver before that changed.
-        label: 'Approver',
+        // Two approvers, as on the paper form. Requisitions submitted while
+        // the form asked for one have an empty FinalApprover and end at stage 1.
+        label: 'Reporting Manager',
         listValue: 'Reporting Manager',
         nextStage: 'Final Approval',
         approverField: 'ReportingManager',
@@ -42,7 +42,7 @@ const MODULES = {
       },
       {
         n: 2,
-        label: 'Second Approver',
+        label: 'Final Approval',
         listValue: 'Final Approval',
         nextStage: 'Complete',
         approverField: 'FinalApprover',

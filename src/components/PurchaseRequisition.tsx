@@ -107,6 +107,7 @@ const ITEM_FIELD_ORDER: ItemField[] = [
 const FIELD_IDS: Partial<Record<keyof RequisitionErrors, string>> = {
   department: "req-dept",
   reportingManager: "req-manager",
+  finalApprover: "req-final",
   vendorName: "req-vendor",
   vendorEmail: "req-vendor-email",
   projectCustomer: "req-project",
@@ -119,6 +120,7 @@ const AFTER_ITEMS: (keyof RequisitionErrors)[] = [
   "quotation",
   // The approver card is last on the form, so its error comes last too.
   "reportingManager",
+  "finalApprover",
 ]
 
 /** The id of the first invalid control in document order, if it has one. */
@@ -156,6 +158,7 @@ export function PurchaseRequisition({
   // null until loaded, so the field can show a placeholder rather than flashing
   // its free-text fallback on every tab switch.
   const [approvers, setApprovers] = useState<ApproverOption[] | null>(null)
+  const [finalApprovers, setFinalApprovers] = useState<ApproverOption[] | null>(null)
   const [submitted, setSubmitted] = useState<{
     ref: string
     totalSGD: number
@@ -173,6 +176,9 @@ export function PurchaseRequisition({
     fetchApprovers("reporting")
       .then((a) => alive && setApprovers(a))
       .catch(() => alive && setApprovers([]))
+    fetchApprovers("final")
+      .then((a) => alive && setFinalApprovers(a))
+      .catch(() => alive && setFinalApprovers([]))
     return () => {
       alive = false
     }
@@ -273,7 +279,14 @@ export function PurchaseRequisition({
     // Only required once there's a list to pick from, otherwise the free-text
     // fallback stays optional, as it was before.
     if ((approvers?.length ?? 0) > 0 && !form.reportingManager)
-      found.reportingManager = "Select the approver"
+      found.reportingManager = "Select the reporting manager"
+    if ((finalApprovers?.length ?? 0) > 0 && !form.finalApprover)
+      found.finalApprover = "Select the final approver"
+    else if (
+      form.finalApprover &&
+      form.finalApprover.trim().toLowerCase() === form.reportingManager.trim().toLowerCase()
+    )
+      found.finalApprover = "Choose someone other than the reporting manager"
     const itemErrors = form.items.map((it) => {
       const e: RequisitionItemErrors = {}
       if (!it.category) e.category = "Select an item category"
@@ -330,7 +343,7 @@ export function PurchaseRequisition({
           reportingManager: form.reportingManager,
           // One approver per requisition. The API still takes a second, for
           // requests submitted before this changed.
-          finalApprover: "",
+          finalApprover: form.finalApprover,
           quotationAttached: files.length > 0,
         })
 
@@ -650,12 +663,21 @@ export function PurchaseRequisition({
           <div className="grid gap-5 sm:grid-cols-2">
             <ApproverField
               id="req-manager"
-              label="Approver"
+              label="Reporting manager"
               required
               value={form.reportingManager}
               onChange={(v) => update("reportingManager", v)}
               approvers={approvers}
               error={errors.reportingManager}
+            />
+            <ApproverField
+              id="req-final"
+              label="Final approval"
+              required
+              value={form.finalApprover}
+              onChange={(v) => update("finalApprover", v)}
+              approvers={finalApprovers}
+              error={errors.finalApprover}
             />
             </div>
         </SectionCard>
